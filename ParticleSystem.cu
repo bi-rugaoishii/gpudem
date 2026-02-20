@@ -22,6 +22,10 @@ void freeMemory(ParticleSystem* ps)
     free(ps->sqrtm);
     free(ps->invr);
     free(ps->g);
+    
+    free(ps->cellId);
+    free(ps->cellx);
+
     free(ps->etaconst);
     free(ps->walls.n);
     free(ps->walls.d);
@@ -117,6 +121,9 @@ void allocateMemory(ParticleSystem* ps)
     ps->etaconst = (double*)malloc(size);
     ps->g = (double*)malloc(sizeof(double)*DIM);
 
+    ps->cellId = (int*)malloc(sizeof(int)*ps->N);
+    ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
+
     ps->walls.n = (double*)malloc(size_walls*DIM);
     ps->walls.d = (double*)malloc(size_walls);
 
@@ -205,12 +212,13 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
             ps->sqrtm[i] = sqrt(m);
             ps->invm[i] = 1./m;
             ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
+            ps->cellId[i] = -1;
         }
 
 
 }
 
-void nondimensionalize(ParticleSystem* ps){
+void nondimensionalize(ParticleSystem* ps, BoundingBox *box){
     /* get nondimensionalize factor */
     ps->time_factor = sqrt(ps->m[0]/ps->k[0]);
     ps->mass_factor = ps->m[0];
@@ -280,4 +288,21 @@ void nondimensionalize(ParticleSystem* ps){
     for (int i=0; i<ps->walls.N; i++){
         ps->walls.d[i]*=inv_length_factor;
     }
+
+    /* bounding box*/
+
+    box->minx*=inv_length_factor;
+    box->miny*=inv_length_factor;
+    box->minz*=inv_length_factor;
+    box->maxx*=inv_length_factor;
+    box->maxy*=inv_length_factor;
+    box->maxz*=inv_length_factor;
+
+    box->dx*=inv_length_factor;
+    box->dy*=inv_length_factor;
+    box->dz*=inv_length_factor;
+
+    box->rangex*=inv_length_factor;
+    box->rangey*=inv_length_factor;
+    box->rangez*=inv_length_factor;
 }

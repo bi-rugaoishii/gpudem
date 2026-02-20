@@ -55,6 +55,92 @@ void wall_collision_naive(ParticleSystem* ps){
     }
 }
 
+void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
+    update_pList(ps,box);
+
+    for (int i=0; i<ps->N; i++){
+        //particle-particle
+        /* cycle through neighbor cells */
+        int x=ps->cellx[i*DIM+0];
+        int y=ps->cellx[i*DIM+1];
+        int z=ps->cellx[i*DIM+2];
+
+        for (int dx=-1; dx<=1; dx++){
+            for (int dy=-1; dy<=1; dy++){
+                for (int dz=-1; dz<=1; dz++){
+                    int cellId = (box->sizey*(z+dz)+y+dy)*box->sizex+x+dx;
+
+                    int start = box->pStart[cellId];
+                    int end = start+box->pNum[cellId];
+                    for (int k=box->pStart[cellId]; k<end; k++){
+                        int j = box->pList[k];
+                        if (i==j){
+                            continue;
+                        }else{
+                            /* normal points toward particle i */
+                            double dx = ps->x[i*DIM+0]- ps->x[j*DIM+0];
+                            double dy = ps->x[i*DIM+1]- ps->x[j*DIM+1];
+                            double dz = ps->x[i*DIM+2]- ps->x[j*DIM+2];
+                            double distsq =dx*dx+dy*dy+dz*dz;
+                            double R = ps->r[i]+ps->r[j];
+
+                            if (distsq<R*R){
+                                double dist = sqrt(distsq);
+                                double delta = R-dist;
+                                if (delta*ps->invr[i]*0.5>0.01){
+                                    printf("overlap over 10%!!!!\n");
+                                    printf("delta is %f, dist is %f\n",delta,dist);
+                                }
+
+                                /* get normal direction */
+                                double nx,ny,nz;
+                                nx = dx/dist;
+                                ny = dy/dist;
+                                nz = dz/dist;
+
+                                /* get deltas */
+                                double delx,dely,delz;
+                                delx = nx*delta;
+                                dely = ny*delta;
+                                delz = nz*delta;
+
+                                /* get relative velocity */
+                                double v_relx,v_rely,v_relz;
+                                v_relx = ps->v[i*DIM+0] - ps->v[j*DIM+0];
+                                v_rely = ps->v[i*DIM+1] - ps->v[j*DIM+1];
+                                v_relz = ps->v[i*DIM+2] - ps->v[j*DIM+2];
+
+                                double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
+
+                                /* get normal relative velocity*/
+                                double vn_relx,vn_rely,vn_relz;
+                                vn_relx = v_reldotn*nx;
+                                vn_rely = v_reldotn*ny;
+                                vn_relz = v_reldotn*nz;
+
+                                double m_eff = (ps->m[i]*ps->m[j])/(ps->m[i]+ps->m[j]);
+                                double eta = ps->etaconst[i]*sqrt(m_eff);
+
+                                ps->f[i*DIM+0]+= ps->k[i]*delx - eta*vn_relx;
+                                ps->f[i*DIM+1] += ps->k[i]*dely - eta*vn_rely;
+                                ps->f[i*DIM+2] += ps->k[i]*delz - eta*vn_relz;
+
+                                /*
+                                   ps->f[i*DIM+0]+= ps->k[i]*delx;
+                                   ps->f[i*DIM+1]+= ps->k[i]*dely;
+                                   ps->f[i*DIM+2]+= ps->k[i]*delz;
+                                 */
+
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+}
+
 void particle_collision_naive(ParticleSystem* ps){
     for (int i=0; i<ps->N; i++){
         //particle-particle
@@ -111,10 +197,10 @@ void particle_collision_naive(ParticleSystem* ps){
                     ps->f[i*DIM+2] += ps->k[i]*delz - eta*vn_relz;
 
                     /*
-                    ps->f[i*DIM+0]+= ps->k[i]*delx;
-                    ps->f[i*DIM+1]+= ps->k[i]*dely;
-                    ps->f[i*DIM+2]+= ps->k[i]*delz;
-                    */
+                       ps->f[i*DIM+0]+= ps->k[i]*delx;
+                       ps->f[i*DIM+1]+= ps->k[i]*dely;
+                       ps->f[i*DIM+2]+= ps->k[i]*delz;
+                     */
 
                 }
             }
@@ -122,15 +208,16 @@ void particle_collision_naive(ParticleSystem* ps){
     }
 }
 
-void integrateCPU(ParticleSystem* ps)
+void integrateCPU(ParticleSystem* ps, BoundingBox* box)
 {
     /* initialize */
     for (int i=0; i<ps->N*DIM; i++){
         ps->f[i]=0.;
     }
 
-    particle_collision_naive(ps);
-   wall_collision_naive(ps);
+  //  particle_collision_naive(ps);
+    particle_collision_cell_linked(ps,box);
+    wall_collision_naive(ps);
 
     for (int i = 0; i < ps->N; i++)
     {

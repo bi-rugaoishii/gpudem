@@ -4,11 +4,12 @@
 #include <math.h>
 #include <chrono>
 #include "ParticleSystem.h"
+#include "BoundingBox.h"
 #include "device_dem.h"
 #include "cpu_dem.h"
 #include "output.h"
 #define DIM 3
-#define USE_GPU 1
+#define USE_GPU 0
 #define OUTPUT 1
 #define NONDIM 1
 
@@ -23,8 +24,12 @@
 */
 int main()
 {
+    setvbuf(stdout,NULL,_IOLBF,0);
+    setvbuf(stderr,NULL,_IONBF,0);
+
     ParticleSystem ps;
-    ps.N = 100;
+    BoundingBox box;
+    ps.N = 1000;
     ps.walls.N = 5;
     double r = 0.01;
     double res = 0.3; //CoR
@@ -32,12 +37,22 @@ int main()
     double m = density*3.14*r*r*r*4./3.;
     double k = 1e6;
 
+    double minx = 0.;
+    double miny = 0.;
+    double minz = 0.;
+
+    double maxx = 0.5;
+    double maxy = 1.0;
+    double maxz = 0.5;
+       
     printf("allocating memory\n");
     allocateMemory(&ps);
     printf("allocating memory done\n");
     printf("initalizing particles\n");
     initializeParticles(&ps,r,m,k,res);
     printf("initalizing particles done\n");
+
+    initialize_BoundingBox(&ps, &box, minx, maxx, miny, maxy, minz, maxz);
 
     /* give gravity */
     ps.g[0] = 0.;
@@ -46,7 +61,7 @@ int main()
     printf("%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
-    double dt = 5e-6;
+    double dt = 1e-5;
     double out_time = 0.05;
     double end_time = 10.0;
     int outStep = (int)(out_time/dt);
@@ -84,7 +99,7 @@ int main()
     /* non dimensionalize */
     #if NONDIM
         printf("nondimensionalizing ...\n");
-        nondimensionalize(&ps);
+        nondimensionalize(&ps,&box);
         printf("nondimensionalizing done \n");
     #endif
 
@@ -136,7 +151,7 @@ int main()
                 }
             #endif
         #else
-            integrateCPU(&ps);
+            integrateCPU(&ps,&box);
             #if OUTPUT
             if (step % outStep == 0)
             {
@@ -164,6 +179,7 @@ int main()
     #endif
 
     freeMemory(&ps);
+    free_BoundingBox(&box);
     cudaDeviceReset();
     return 0;
 }

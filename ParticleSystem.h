@@ -1,6 +1,7 @@
 #ifndef _PARTICLESYSTEM_H_
 #define _PARTICLESYSTEM_H_
 #define DIM 3
+#include "BoundingBox.h"
 
 /*
 ============================================================
@@ -53,7 +54,7 @@ typedef struct {
 
 } WallGroup;
 
-typedef struct {
+typedef struct ParticleSystem{
     int N;
 
     double* x;
@@ -69,6 +70,9 @@ typedef struct {
     double* invm;
     double* etaconst;
     double* g;
+
+    int* cellId;
+    int* cellx; //coordinate index in structured cell
     
     double dt;
     /* nondimensionalize factor */
@@ -121,7 +125,7 @@ void allocateMemory(ParticleSystem* ps);
 */
 void initializeParticles(ParticleSystem* ps,double r,double m, double k, double res);
 
-void nondimensionalize(ParticleSystem* ps);
+void nondimensionalize(ParticleSystem* ps, BoundingBox* box);
 
 
 
