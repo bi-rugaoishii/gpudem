@@ -1,5 +1,5 @@
 CC = nvcc
-CFLAGS = -O3  -arch=sm_86
+CFLAGS = -O3  -arch=sm_86 -DUSE_GPU=1
 LIBS = -lm 
 OBJS = main.o  cpu_dem.o device_dem.o  ParticleSystem.o output.o BoundingBox.o
 

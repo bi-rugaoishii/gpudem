@@ -9,7 +9,6 @@
 #include "cpu_dem.h"
 #include "output.h"
 #define DIM 3
-#define USE_GPU 0
 #define OUTPUT 1
 #define NONDIM 1
 
@@ -29,7 +28,7 @@ int main()
 
     ParticleSystem ps;
     BoundingBox box;
-    ps.N = 1000;
+    ps.N = 5000;
     ps.walls.N = 5;
     double r = 0.01;
     double res = 0.3; //CoR
@@ -42,7 +41,7 @@ int main()
     double minz = 0.;
 
     double maxx = 0.5;
-    double maxy = 1.0;
+    double maxy = 3.0;
     double maxz = 0.5;
        
     printf("allocating memory\n");
@@ -63,7 +62,7 @@ int main()
     /* set time step */
     double dt = 1e-5;
     double out_time = 0.05;
-    double end_time = 10.0;
+    double end_time = 10.;
     int outStep = (int)(out_time/dt);
 
     ps.dt=dt;
@@ -106,6 +105,7 @@ int main()
     #if USE_GPU
         printf("copying memory to device\n");
         copyToDevice(&ps);
+        copyToDeviceBox(&box,&ps);
         printf("copying memory to device done\n");
     #endif
 
@@ -116,6 +116,7 @@ int main()
     #if USE_GPU
     int blockSize = 256;
     int gridSize = (ps.N + blockSize - 1) / blockSize;
+    printf("grid=%d, block=%d\n", gridSize, blockSize);
 
     check_g_kernel<<<1, 1>>>(ps.d_group);
     cudaDeviceSynchronize();
@@ -134,9 +135,10 @@ int main()
     for (int step = 0; step < steps; step++)
     {
         #if USE_GPU
-        integrateKernel<<<gridSize, blockSize>>>(
-               ps.d_group);
+        /* if want naive collision*/
+        //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
          
+        device_dem(&ps, &box, gridSize, blockSize);
             #if OUTPUT
                 if (step % outStep == 0)
                 {
@@ -161,7 +163,9 @@ int main()
                     #else
                         writeParticlesVTK(&ps, step);
                     #endif
-                printf("Output step %d\n", step);
+                        end = clock();
+                        ms = (double)(end-start)*1000./CLOCKS_PER_SEC;;
+                        printf("Output step %d, CPU time: %f s\n", step,ms/1000.);
             }
             #endif
         #endif

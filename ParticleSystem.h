@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _PARTICLESYSTEM_H_
 #define _PARTICLESYSTEM_H_
 #define DIM 3
@@ -8,7 +9,7 @@
 GPU専用構造体（SoA）
 ============================================================
 */
-typedef struct {
+typedef struct DeviceWallGroup{
     int N;
 
     /* assumed to be normalized */
@@ -17,7 +18,7 @@ typedef struct {
     double *d;
 } DeviceWallGroup;
 
-typedef struct {
+typedef struct DeviceParticleGroup{
     int N;
     double* x;
     double* v;
@@ -33,6 +34,10 @@ typedef struct {
     double* etaconst;
     double* g;
     double dt;
+
+    int* cellId;
+    int* cellx; //coordinate index in structured cell
+
     DeviceWallGroup walls;
 } DeviceParticleGroup;
 
@@ -44,7 +49,7 @@ CPU管理構造体
 ============================================================
 */
 
-typedef struct {
+typedef struct WallGroup{
     int N;
 
     /* assumed to be normalized */

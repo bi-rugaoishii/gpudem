@@ -31,7 +31,6 @@ void freeMemory(ParticleSystem* ps)
     free(ps->walls.d);
 
     #if USE_GPU
-        /* device */
         cudaFree(ps->d_group.x);
         cudaFree(ps->d_group.v);
         cudaFree(ps->d_group.r);
@@ -45,6 +44,10 @@ void freeMemory(ParticleSystem* ps)
         cudaFree(ps->d_group.invr);
         cudaFree(ps->d_group.etaconst);
         cudaFree(ps->d_group.g);
+
+        cudaFree(ps->d_group.cellId);
+        cudaFree(ps->d_group.cellx);
+
         cudaFree(ps->d_group.walls.n);
         cudaFree(ps->d_group.walls.d);
     #endif
@@ -52,11 +55,11 @@ void freeMemory(ParticleSystem* ps)
 
 
 /*
-============================================================
-Host→Device転送
-============================================================
-*/
-void copyToDevice(ParticleSystem* ps)
+   ============================================================
+   Host→Device転送
+   ============================================================
+ */
+void copyToDevice(ParticleSystem *ps)
 {
     size_t size = ps->N * sizeof(double);
     size_t size_walls = ps->walls.N * sizeof(double);
@@ -69,8 +72,8 @@ void copyToDevice(ParticleSystem* ps)
     cudaMemcpy(ps->d_group.v, ps->v, size*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.r, ps->r, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.rsq, ps->rsq, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.a, ps->a, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.f, ps->f, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.a, ps->a, size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.f, ps->f, size*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.m, ps->m, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.invm, ps->invm, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.sqrtm, ps->sqrtm, size, cudaMemcpyHostToDevice);
@@ -85,10 +88,10 @@ void copyToDevice(ParticleSystem* ps)
 
 
 /*
-============================================================
-Device→Host転送
-============================================================
-*/
+   ============================================================
+   Device→Host転送
+   ============================================================
+ */
 void copyFromDevice(ParticleSystem* ps)
 {
     size_t size = ps->N * sizeof(double);
@@ -97,10 +100,10 @@ void copyFromDevice(ParticleSystem* ps)
 }
 
 /*
-============================================================
-メモリ確保
-============================================================
-*/
+   ============================================================
+   メモリ確保
+   ============================================================
+ */
 void allocateMemory(ParticleSystem* ps)
 {
     size_t size = ps->N * sizeof(double);
@@ -128,6 +131,7 @@ void allocateMemory(ParticleSystem* ps)
     ps->walls.d = (double*)malloc(size_walls);
 
     // Device
+    #if USE_GPU
     cudaMalloc(&ps->d_group.x, size*DIM);
     cudaMalloc(&ps->d_group.v, size*DIM);
     cudaMalloc(&ps->d_group.a, size*DIM);
@@ -140,80 +144,86 @@ void allocateMemory(ParticleSystem* ps)
     cudaMalloc(&ps->d_group.invm, size);
     cudaMalloc(&ps->d_group.k, size);
     cudaMalloc(&ps->d_group.etaconst, size);
-    cudaMalloc(&ps->d_group.walls.n, size*DIM);
-    cudaMalloc(&ps->d_group.walls.d, size);
+
+
+    cudaMalloc(&ps->d_group.cellId, sizeof(int)*ps->N);
+    cudaMalloc(&ps->d_group.cellx, sizeof(int)*DIM*ps->N);
+
+    cudaMalloc(&ps->d_group.walls.n, size_walls*DIM);
+    cudaMalloc(&ps->d_group.walls.d, size_walls);
     cudaMalloc(&ps->d_group.g, sizeof(double)*DIM);
+    #endif
 
 }
 
 /*
-============================================================
-初期化
-============================================================
-*/
+   ============================================================
+   初期化
+   ============================================================
+ */
 void initializeParticles(ParticleSystem* ps,double r,double m,double k,double res)
 {
-        int max_trials = 1000; // 1粒子あたりの再配置試行回数
+    int max_trials = 1000; // 1粒子あたりの再配置試行回数
 
 
-        for (int i = 0; i < ps->N; i++){
-            int trial = 0;
-            int success = 0;
-            while (trial < max_trials)
+    for (int i = 0; i < ps->N; i++){
+        int trial = 0;
+        int success = 0;
+        while (trial < max_trials)
+        {
+            // ランダム配置
+            double x = (double)rand() / RAND_MAX * 0.25 + 0.1;
+            double y = (double)rand() / RAND_MAX * 2.0 + 0.5;
+            double z = (double)rand() / RAND_MAX * 0.25 + 0.1;
+
+            // 既存粒子との距離チェック
+            int overlap = 0;
+            for (int j = 0; j < i; j++)
             {
-                // ランダム配置
-                double x = (double)rand() / RAND_MAX * 0.2 + 0.1;
-                double y = (double)rand() / RAND_MAX * 1.0 + 0.5;
-                double z = (double)rand() / RAND_MAX * 0.2 + 0.1;
-
-                // 既存粒子との距離チェック
-                int overlap = 0;
-                for (int j = 0; j < i; j++)
+                double dx = x - ps->x[j*DIM+0];
+                double dy = y - ps->x[j*DIM+1];
+                double dz = z - ps->x[j*DIM+2];
+                double d2 = dx*dx + dy*dy + dz*dz;
+                if (d2 < 4*r*r) // 半径2倍以上離れているか
                 {
-                    double dx = x - ps->x[j*DIM+0];
-                    double dy = y - ps->x[j*DIM+1];
-                    double dz = z - ps->x[j*DIM+2];
-                    double d2 = dx*dx + dy*dy + dz*dz;
-                    if (d2 < 4*r*r) // 半径2倍以上離れているか
-                    {
-                        overlap = 1;
-                        break;
-                    }
-                }
-
-                if (!overlap)
-                {
-                    ps->x[i*DIM+0] = x;
-                    ps->x[i*DIM+1] = y;
-                    ps->x[i*DIM+2] = z;
-                    success = 1;
+                    overlap = 1;
                     break;
                 }
-
-                trial++;
             }
 
-            if (trial == max_trials){
-                printf("!!!couldn't place them!!\n");
-            };
+            if (!overlap)
+            {
+                ps->x[i*DIM+0] = x;
+                ps->x[i*DIM+1] = y;
+                ps->x[i*DIM+2] = z;
+                success = 1;
+                break;
+            }
 
-
-            /*
-            ps->x[i*DIM+0] = 0.25;
-            ps->x[i*DIM+1] = (double)i*1.0+0.03;
-            ps->x[i*DIM+2] = 0.25;
-            */
-
-            ps->r[i] = r;
-            ps->rsq[i] = ps->r[i]*ps->r[i];
-            ps->invr[i] = 1./ps->r[i];
-            ps->k[i] = k;
-            ps->m[i] = m;
-            ps->sqrtm[i] = sqrt(m);
-            ps->invm[i] = 1./m;
-            ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
-            ps->cellId[i] = -1;
+            trial++;
         }
+
+        if (trial == max_trials){
+            printf("!!!couldn't place them!!\n");
+        };
+
+
+        /*
+           ps->x[i*DIM+0] = 0.25;
+           ps->x[i*DIM+1] = (double)i*1.0+0.03;
+           ps->x[i*DIM+2] = 0.25;
+         */
+
+        ps->r[i] = r;
+        ps->rsq[i] = ps->r[i]*ps->r[i];
+        ps->invr[i] = 1./ps->r[i];
+        ps->k[i] = k;
+        ps->m[i] = m;
+        ps->sqrtm[i] = sqrt(m);
+        ps->invm[i] = 1./m;
+        ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
+        ps->cellId[i] = -1;
+    }
 
 
 }
@@ -284,7 +294,7 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box){
         ps->invr[i]*=ps->length_factor;
     }
 
-    
+
     for (int i=0; i<ps->walls.N; i++){
         ps->walls.d[i]*=inv_length_factor;
     }
@@ -301,6 +311,10 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box){
     box->dx*=inv_length_factor;
     box->dy*=inv_length_factor;
     box->dz*=inv_length_factor;
+
+    box->invdx*=ps->length_factor;
+    box->invdy*=ps->length_factor;
+    box->invdz*=ps->length_factor;
 
     box->rangex*=inv_length_factor;
     box->rangey*=inv_length_factor;

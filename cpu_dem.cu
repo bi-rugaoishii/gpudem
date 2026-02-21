@@ -65,10 +65,10 @@ void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
         int y=ps->cellx[i*DIM+1];
         int z=ps->cellx[i*DIM+2];
 
-        for (int dx=-1; dx<=1; dx++){
-            for (int dy=-1; dy<=1; dy++){
-                for (int dz=-1; dz<=1; dz++){
-                    int cellId = (box->sizey*(z+dz)+y+dy)*box->sizex+x+dx;
+        for (int sx=-1; sx<=1; sx++){
+            for (int sy=-1; sy<=1; sy++){
+                for (int sz=-1; sz<=1; sz++){
+                    int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
 
                     int start = box->pStart[cellId];
                     int end = start+box->pNum[cellId];
@@ -215,7 +215,7 @@ void integrateCPU(ParticleSystem* ps, BoundingBox* box)
         ps->f[i]=0.;
     }
 
-  //  particle_collision_naive(ps);
+    //particle_collision_naive(ps);
     particle_collision_cell_linked(ps,box);
     wall_collision_naive(ps);
 
