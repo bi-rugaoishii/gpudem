@@ -36,6 +36,7 @@ typedef struct DeviceParticleGroup{
     double* g;
     double dt;
 
+    int MAX_NEIGHBOR;
     int* cellId;
     int* cellx; //coordinate index in structured cell
 
@@ -74,13 +75,43 @@ typedef struct ParticleSystem{
     double* m;
     double* sqrtm;
     double* invm;
+
+    double* angv; /* angular velocity */
+    double* anga; /* angular accelartion */
+    double* moi; /* moment of intertia */
+    double* invmoi;
+    double* mom; /* torque */
+
     double* etaconst;
     double* g;
+
+    /* ======== tangential force related =========*/
+     /* history of delta tangent */
+    double* deltHisx; 
+    double* deltHisy;
+    double* deltHisz;
+
+    double* deltHisxWall;
+    double* deltHisyWall;
+    double* deltHiszWall;
+
+    int* indHis; /* Index of collided particles */ 
+    int* indHisWall; /* Index of collided particles */ 
+    int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
+    int* isContactWall;
+    int MAX_NEI; //sets maximum number of neighbors
+                 
+    int* numCont; /* number of contact */
+    int* numContWall; /* number of contact with walls */
+
+
 
     int* cellId;
     int* cellx; //coordinate index in structured cell
     
+                 //
     double dt;
+    double mu; //friction
     /* nondimensionalize factor */
     double time_factor;
     double length_factor;

@@ -8,6 +8,9 @@ typedef struct ContactCache{
     Vec3 fn;
     Vec3 vn_rel;
     Vec3 vt;
+    Vec3 n;
+    double eta;
+
 
     #if USE_GPU
     __host__ __device__

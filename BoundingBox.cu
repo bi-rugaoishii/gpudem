@@ -39,17 +39,18 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
 }
 
 void free_BoundingBox(BoundingBox *box){
+
     free(box->pList);
     free(box->pNum);
     free(box->pStart);
     free(box->cellOffset);
 
     #if USE_GPU
-        cudaFree(box->d_box.pList);
-        cudaFree(box->d_box.tmpExSum);
-        cudaFree(box->d_box.pNum);
-        cudaFree(box->d_box.pStart);
-        cudaFree(box->d_box.cellOffset);
+    cudaFree(box->d_box.pList);
+    cudaFree(box->d_box.tmpExSum);
+    cudaFree(box->d_box.pNum);
+    cudaFree(box->d_box.pStart);
+    cudaFree(box->d_box.cellOffset);
     #endif
 }
 
@@ -94,28 +95,27 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, do
     box->cellOffset = (int*)malloc(sizeof(int)*sizeBox);
 
     #if USE_GPU
-        box->d_box.N= sizeBox;
-        cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
-        cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
-        cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
-        cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
-        cudaMalloc(&box->d_box.tmpExSum, sizeof(int)*sizeBox);
+    box->d_box.N= sizeBox;
+    cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
+    cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
+    cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
+    cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
+    cudaMalloc(&box->d_box.tmpExSum, sizeof(int)*sizeBox);
 
-        /* for cub */
+    /* for cub */
 
-        box->d_box.tmpExSum =NULL;
-        box->d_box.scanTmpBytes = 0;
+    box->d_box.tmpExSum =NULL;
+    box->d_box.scanTmpBytes = 0;
 
-        cub::DeviceScan::ExclusiveSum(
-                box->d_box.tmpExSum,
-                box->d_box.scanTmpBytes,
-                box->d_box.pNum,
-                box->d_box.pStart,
-                box->d_box.N);
-        cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
+    cub::DeviceScan::ExclusiveSum(
+            box->d_box.tmpExSum,
+            box->d_box.scanTmpBytes,
+            box->d_box.pNum,
+            box->d_box.pStart,
+            box->d_box.N);
+    cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
 
     #endif
-
 
 }
 
@@ -137,7 +137,6 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
         p->cellx[i*DIM+0] = dx;
         p->cellx[i*DIM+1] = dy;
         p->cellx[i*DIM+2] = dz;
-
         p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
     }
 
@@ -148,6 +147,7 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
         box->pNum[cellId] +=1;
     }
 
+    box->pStart[0]=0;
     for (int i=1; i<box->N; i++){
         box->pStart[i]=box->pNum[i-1]+box->pStart[i-1];
     }
@@ -161,16 +161,17 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
 
+
         box->pList[startId+offset] = i;  
         box->cellOffset[cellId] +=1;
     }
 }
 
 /*
-===================================
-device  related functions
-===================================
-*/
+   ===================================
+   device  related functions
+   ===================================
+ */
 
 __global__ void dk_build_cellCount(DeviceParticleGroup p, DeviceBoundingBox box){
 
@@ -200,14 +201,14 @@ __global__ void dk_build_pList(DeviceParticleGroup p, DeviceBoundingBox box){
 }
 
 __device__ int d_calcCellId(DeviceParticleGroup p,int i, DeviceBoundingBox box){
-        int dx = floor((p.x[i*DIM+0]-box.minx)*box.invdx)+1; //+1 for ghost cell
-        int dy = floor((p.x[i*DIM+1]-box.miny)*box.invdy)+1; //+1 for ghost cell
-        int dz = floor((p.x[i*DIM+2]-box.minz)*box.invdz)+1; //+1 for ghost cell
-        p.cellx[i*DIM+0] = dx;
-        p.cellx[i*DIM+1] = dy;
-        p.cellx[i*DIM+2] = dz;
+    int dx = floor((p.x[i*DIM+0]-box.minx)*box.invdx)+1; //+1 for ghost cell
+    int dy = floor((p.x[i*DIM+1]-box.miny)*box.invdy)+1; //+1 for ghost cell
+    int dz = floor((p.x[i*DIM+2]-box.minz)*box.invdz)+1; //+1 for ghost cell
+    p.cellx[i*DIM+0] = dx;
+    p.cellx[i*DIM+1] = dy;
+    p.cellx[i*DIM+2] = dz;
 
-        return (box.sizey*dz+dy)*box.sizex+dx;
+    return (box.sizey*dz+dy)*box.sizex+dx;
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){

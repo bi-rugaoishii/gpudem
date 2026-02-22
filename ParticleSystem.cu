@@ -12,21 +12,48 @@ void freeMemory(ParticleSystem* ps)
     /* host*/
     free(ps->x);
     free(ps->v);
-    free(ps->r);
-    free(ps->rsq);
     free(ps->a);
     free(ps->f);
-    free(ps->k);
-    free(ps->m);
-    free(ps->invm);
-    free(ps->sqrtm);
+    free(ps->r);
+    free(ps->rsq);
     free(ps->invr);
+
+
+    free(ps->m);
+    free(ps->sqrtm);
+    free(ps->invm);
+    free(ps->k);
+    free(ps->etaconst);
     free(ps->g);
+
+
+    free(ps->angv);
+    free(ps->anga);
+    free(ps->moi);
+    free(ps->invmoi);
+
+    free(ps->mom);
     
+    free(ps->deltHisx);
+    free(ps->deltHisy);
+    free(ps->deltHisz);
+
+    free(ps->deltHisxWall);
+    free(ps->deltHisyWall);
+    free(ps->deltHiszWall);
+
+    free(ps->indHis);
+    free(ps->numCont);
+
+    free(ps->isContact);
+    free(ps->isContactWall);
+
+    free(ps->indHisWall);
+    free(ps->numContWall);
+
     free(ps->cellId);
     free(ps->cellx);
 
-    free(ps->etaconst);
     free(ps->walls.n);
     free(ps->walls.d);
 
@@ -117,12 +144,37 @@ void allocateMemory(ParticleSystem* ps)
     ps->r = (double*)malloc(size);
     ps->rsq = (double*)malloc(size);
     ps->invr = (double*)malloc(size);
+
     ps->m = (double*)malloc(size);
     ps->sqrtm = (double*)malloc(size);
     ps->invm = (double*)malloc(size);
     ps->k = (double*)malloc(size);
     ps->etaconst = (double*)malloc(size);
     ps->g = (double*)malloc(sizeof(double)*DIM);
+
+    ps->angv = (double*)malloc(size*DIM);
+    ps->anga = (double*)malloc(size*DIM);
+    ps->moi = (double*)malloc(size);
+    ps->invmoi = (double*)malloc(size);
+
+    ps->mom = (double*)malloc(size*DIM);
+
+    ps->deltHisx = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHisy = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHisz = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+
+    ps->deltHisxWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHisyWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHiszWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+
+    ps->indHis = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->numCont = (int*)malloc(sizeof(int)*ps->N);
+
+    ps->isContact = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->isContactWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+
+    ps->indHisWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->numContWall = (int*)malloc(sizeof(int)*ps->N);
 
     ps->cellId = (int*)malloc(sizeof(int)*ps->N);
     ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
@@ -223,6 +275,41 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         ps->invm[i] = 1./m;
         ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
         ps->cellId[i] = -1;
+
+
+        ps->numCont[i] = 0;
+        ps->numContWall[i] = 0;
+
+        ps->v[i*DIM+0] = 0.;
+        ps->v[i*DIM+1] = 0.;
+        ps->v[i*DIM+2] = 0.;
+
+        ps->angv[i*DIM+0] = 0.;
+        ps->angv[i*DIM+1] = 0.;
+        ps->angv[i*DIM+2] = 0.;
+
+        ps->anga[i*DIM+0] = 0.;
+        ps->anga[i*DIM+1] = 0.;
+        ps->anga[i*DIM+2] = 0.;
+
+        ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
+        ps->invmoi[i] = 1./ps->moi[i];
+
+
+        for (int j=0; j<ps->MAX_NEI; j++){
+            ps->indHis[i*ps->MAX_NEI+j] = -1;
+            ps->indHisWall[i*ps->MAX_NEI+j] = -1;
+
+            ps->isContact[i*ps->MAX_NEI+j] = -1;
+            ps->isContactWall[i*ps->MAX_NEI+j] = -1;
+
+            ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
+        }
     }
 
 
@@ -249,56 +336,30 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box){
         ps->x[i*DIM+0]*=inv_length_factor;
         ps->x[i*DIM+1]*=inv_length_factor;
         ps->x[i*DIM+2]*=inv_length_factor;
-    }
 
-    for (int i=0; i<ps->N; i++){
         ps->v[i*DIM+0]*=inv_length_factor*ps->time_factor;
         ps->v[i*DIM+1]*=inv_length_factor*ps->time_factor;
         ps->v[i*DIM+2]*=inv_length_factor*ps->time_factor;
-    }
 
-    for (int i=0; i<ps->N; i++){
         ps->r[i]*=inv_length_factor;
-    }
-
-    for (int i=0; i<ps->N; i++){
         ps->rsq[i]*=inv_length_factor*inv_length_factor;
-    }
-
-    for (int i=0; i<ps->N; i++){
         ps->invr[i]*=ps->length_factor;
-    }
 
-    for (int i=0; i<ps->N; i++){
         ps->m[i]*=inv_mass_factor;
-    }
-
-
-    for (int i=0; i<ps->N; i++){
         ps->sqrtm[i]*=sqrt(inv_mass_factor);
-    }
 
-    for (int i=0; i<ps->N; i++){
         ps->invm[i]*=ps->mass_factor;
-    }
 
-    for (int i=0; i<ps->N; i++){
+        ps->moi[i]*=inv_mass_factor*inv_length_factor*inv_length_factor;
+        ps->invmoi[i]*=ps->mass_factor*ps->length_factor*ps->length_factor;
+
         ps->k[i]*=inv_sqrtk_factor*inv_sqrtk_factor;
-    }
-
-    for (int i=0; i<ps->N; i++){
         ps->etaconst[i]*=inv_sqrtk_factor;
     }
-
-    for (int i=0; i<ps->N; i++){
-        ps->invr[i]*=ps->length_factor;
-    }
-
 
     for (int i=0; i<ps->walls.N; i++){
         ps->walls.d[i]*=inv_length_factor;
     }
-
     /* bounding box*/
 
     box->minx*=inv_length_factor;

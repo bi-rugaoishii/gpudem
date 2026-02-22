@@ -26,7 +26,7 @@ ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double
 
     double v_reldotn = vdot(v_rel,n);
 
-    /* get normal relative velocity*/
+    /* get relative normal velocity*/
     ContactCache result;
     result.vn_rel = vscalar(v_reldotn,n);
 
@@ -37,6 +37,9 @@ ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double
     result.fn.x = p.k[i]*del.x - eta*result.vn_rel.x;
     result.fn.y = p.k[i]*del.y - eta*result.vn_rel.y;
     result.fn.z = p.k[i]*del.z - eta*result.vn_rel.z;
+
+    /* calculate relative tangential velocity */
+    result.vt=vsub(v_rel,result.vn_rel);
 
     return result;
 }

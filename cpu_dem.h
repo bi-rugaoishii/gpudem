@@ -19,6 +19,13 @@ void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box)
 
 inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist);
 
+inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCache c);
+
+inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c);
+
+inline void update_history(ParticleSystem *p,int i);
+inline void update_history_wall(ParticleSystem *p,int i);
+
 void wall_collision_naive(ParticleSystem* ps);
 
 inline void velocity(ParticleSystem* ps);

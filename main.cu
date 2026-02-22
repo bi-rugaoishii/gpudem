@@ -13,6 +13,7 @@
 #define DIM 3
 #define OUTPUT 1
 #define NONDIM 1
+#define MAX_NEIGHBOR 50
 
 
 
@@ -30,14 +31,19 @@ int main()
 
     ParticleSystem ps;
     BoundingBox box;
-    ps.N = 1000;
-    ps.walls.N = 5;
+
+    /* =========== parameters ============= */
     double r = 0.01;
     double res = 0.3; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
     double k = 1e6;
+    double mu = 0.3;
 
+    ps.N = 1000;
+
+    /*============ Walls ================== */
+    ps.walls.N = 5;
     double minx = 0.;
     double miny = 0.;
     double minz = 0.;
@@ -47,8 +53,12 @@ int main()
     double maxz = 0.5;
        
     printf("allocating memory\n");
+    ps.MAX_NEI=MAX_NEIGHBOR;
+    ps.mu = mu;
+
     allocateMemory(&ps);
     printf("allocating memory done\n");
+
     printf("initalizing particles\n");
     initializeParticles(&ps,r,m,k,res);
     printf("initalizing particles done\n");
@@ -62,7 +72,7 @@ int main()
     printf("%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
-    double dt = 2e-5;
+    double dt = 1e-5;
     double out_time = 0.05;
     double end_time = 5.;
     int outStep = (int)(out_time/dt);
@@ -203,7 +213,11 @@ int main()
     #endif
 
     freeMemory(&ps);
+
     free_BoundingBox(&box);
+
+    #if USE_GPU
     cudaDeviceReset();
+    #endif
     return 0;
 }

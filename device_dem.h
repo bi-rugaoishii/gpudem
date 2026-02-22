@@ -34,7 +34,8 @@ void resolveFloorCollision(DeviceParticleGroup p,
 
 /* normal force */
 
-inline ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double delMag,double dist);
+__device__ __forceinline__
+ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double delMag,double dist);
 
 __device__ __forceinline__
 void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundingBox box);
