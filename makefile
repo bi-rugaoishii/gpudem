@@ -1,7 +1,7 @@
 CC = nvcc
 CFLAGS = -O3  -arch=sm_86 -DUSE_GPU=1
 LIBS = -lm 
-OBJS = main.o  cpu_dem.o device_dem.o  ParticleSystem.o output.o BoundingBox.o
+OBJS =  main.o  cpu_dem.o device_dem.o  ParticleSystem.o output.o BoundingBox.o solver_output.o
 
 PROGRAM = myDEM3d
 
@@ -11,6 +11,9 @@ $(PROGRAM): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS)  -o $(PROGRAM)
 
 %.o : %.cu
+	${CC} ${CFLAGS} -c $<
+
+%.o : %.c
 	${CC} ${CFLAGS} -c $<
 
 clean:

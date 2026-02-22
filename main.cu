@@ -8,6 +8,7 @@
 #include "device_dem.h"
 #include "cpu_dem.h"
 #include "output.h"
+#include "solver_output.h"
 #define DIM 3
 #define OUTPUT 1
 #define NONDIM 1
@@ -60,7 +61,7 @@ int main()
     printf("%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
-    double dt = 1e-5;
+    double dt = 2e-5;
     double out_time = 0.05;
     double end_time = 10.;
     int outStep = (int)(out_time/dt);
@@ -120,15 +121,25 @@ int main()
 
     check_g_kernel<<<1, 1>>>(ps.d_group);
     cudaDeviceSynchronize();
-    cudaEvent_t start, stop;
+    cudaEvent_t start, stop, now;
     float ms;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
+    cudaEventCreate(&now);
     cudaEventRecord(start);
     #else
     clock_t start, end;
     double ms;
     start = clock();
+    #endif
+
+    /* initialization for file output */
+    
+    #if OUTPUT
+    const char* outdir = "results";
+    solver_output_init(outdir);
+
+    
     #endif
 
     printf("starting \n");
@@ -142,14 +153,21 @@ int main()
             #if OUTPUT
                 if (step % outStep == 0)
                 {
+                    cudaDeviceSynchronize();
                     copyFromDevice(&ps);
                     //writeParticlesVTKBinary(&ps, step);
                     #if NONDIM
-                        writeParticlesDimensionalizeVTK(&ps, step);
+                        //writeParticlesDimensionalizeVTK(&ps, step);
+                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
                     #else
                         writeParticlesVTK(&ps, step);
                     #endif
-                    printf("Output step %d\n", step);
+
+                    cudaEventRecord(now);
+                    cudaEventSynchronize(now);
+
+                    cudaEventElapsedTime(&ms, start, now);
+                    printf("Output step %d, GPU time: %f s\n", step, ms/1000.0f);
                 }
             #endif
         #else
@@ -157,9 +175,10 @@ int main()
             #if OUTPUT
             if (step % outStep == 0)
             {
-                //writeParticlesVTKBinary(&ps, step);
+                writeParticlesVTKBinary(&ps, step);
                     #if NONDIM
-                        writeParticlesDimensionalizeVTK(&ps, step);
+                        //writeParticlesDimensionalizeVTK(&ps, step);
+                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
                     #else
                         writeParticlesVTK(&ps, step);
                     #endif

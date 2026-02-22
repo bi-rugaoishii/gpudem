@@ -11,9 +11,11 @@ void wall_collision_naive(ParticleSystem* ps){
         //particle-wall
         for (int j=0; j<ps->walls.N; j++){
             double distsq = 0.;
-            distsq += ps->walls.n[j*DIM+0]*ps->x[i*DIM+0];
-            distsq += ps->walls.n[j*DIM+1]*ps->x[i*DIM+1];
-            distsq += ps->walls.n[j*DIM+2]*ps->x[i*DIM+2];
+            int bi = i*DIM;
+            int bj = j*DIM;
+            distsq += ps->walls.n[bj+0]*ps->x[bi+0];
+            distsq += ps->walls.n[bj+1]*ps->x[bi+1];
+            distsq += ps->walls.n[bj+2]*ps->x[bi+2];
             distsq += ps->walls.d[j];
             distsq = distsq*distsq;
             if (distsq < ps->rsq[i]){
@@ -26,29 +28,29 @@ void wall_collision_naive(ParticleSystem* ps){
 
                 /* get deltas */
                 double delx,dely,delz;
-                delx = ps->walls.n[j*DIM+0]*delta;
-                dely = ps->walls.n[j*DIM+1]*delta;
-                delz = ps->walls.n[j*DIM+2]*delta;
+                delx = ps->walls.n[bj+0]*delta;
+                dely = ps->walls.n[bj+1]*delta;
+                delz = ps->walls.n[bj+2]*delta;
 
                 /* get relative velocity (here we assumed walls are stationary) */
                 double v_relx,v_rely,v_relz;
-                v_relx = ps->v[i*DIM+0];
-                v_rely = ps->v[i*DIM+1];
-                v_relz = ps->v[i*DIM+2];
+                v_relx = ps->v[bi+0];
+                v_rely = ps->v[bi+1];
+                v_relz = ps->v[bi+2];
 
-                double v_reldotn = v_relx*ps->walls.n[j*DIM+0]+v_rely*ps->walls.n[j*DIM+1]+v_relz*ps->walls.n[j*DIM+2];
+                double v_reldotn = v_relx*ps->walls.n[bj+0]+v_rely*ps->walls.n[bj+1]+v_relz*ps->walls.n[bj+2];
 
                 /* get normal relative velocity*/
                 double vn_relx,vn_rely,vn_relz;
-                vn_relx = v_reldotn*ps->walls.n[j*DIM+0];
-                vn_rely = v_reldotn*ps->walls.n[j*DIM+1];
-                vn_relz = v_reldotn*ps->walls.n[j*DIM+2];
+                vn_relx = v_reldotn*ps->walls.n[bj+0];
+                vn_rely = v_reldotn*ps->walls.n[bj+1];
+                vn_relz = v_reldotn*ps->walls.n[bj+2];
 
                 double eta = ps->etaconst[i]*ps->sqrtm[i];
 
-                ps->f[i*DIM+0] += ps->k[i]*delx - eta*vn_relx;
-                ps->f[i*DIM+1] += ps->k[i]*dely - eta*vn_rely;
-                ps->f[i*DIM+2] += ps->k[i]*delz - eta*vn_relz;
+                ps->f[bi+0] += ps->k[i]*delx - eta*vn_relx;
+                ps->f[bi+1] += ps->k[i]*dely - eta*vn_rely;
+                ps->f[bi+2] += ps->k[i]*delz - eta*vn_relz;
 
             }
         }
@@ -61,9 +63,10 @@ void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
     for (int i=0; i<ps->N; i++){
         //particle-particle
         /* cycle through neighbor cells */
-        int x=ps->cellx[i*DIM+0];
-        int y=ps->cellx[i*DIM+1];
-        int z=ps->cellx[i*DIM+2];
+        int bi=i*DIM;
+        int x=ps->cellx[bi+0];
+        int y=ps->cellx[bi+1];
+        int z=ps->cellx[bi+2];
 
         for (int sx=-1; sx<=1; sx++){
             for (int sy=-1; sy<=1; sy++){
@@ -77,10 +80,11 @@ void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
                         if (i==j){
                             continue;
                         }else{
+                            int bj=j*DIM;
                             /* normal points toward particle i */
-                            double dx = ps->x[i*DIM+0]- ps->x[j*DIM+0];
-                            double dy = ps->x[i*DIM+1]- ps->x[j*DIM+1];
-                            double dz = ps->x[i*DIM+2]- ps->x[j*DIM+2];
+                            double dx = ps->x[bi+0]- ps->x[bj+0];
+                            double dy = ps->x[bi+1]- ps->x[bj+1];
+                            double dz = ps->x[bi+2]- ps->x[bj+2];
                             double distsq =dx*dx+dy*dy+dz*dz;
                             double R = ps->r[i]+ps->r[j];
 
@@ -106,9 +110,9 @@ void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
 
                                 /* get relative velocity */
                                 double v_relx,v_rely,v_relz;
-                                v_relx = ps->v[i*DIM+0] - ps->v[j*DIM+0];
-                                v_rely = ps->v[i*DIM+1] - ps->v[j*DIM+1];
-                                v_relz = ps->v[i*DIM+2] - ps->v[j*DIM+2];
+                                v_relx = ps->v[bi+0] - ps->v[bj+0];
+                                v_rely = ps->v[bi+1] - ps->v[bj+1];
+                                v_relz = ps->v[bi+2] - ps->v[bj+2];
 
                                 double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
 
@@ -121,20 +125,12 @@ void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box){
                                 double m_eff = (ps->m[i]*ps->m[j])/(ps->m[i]+ps->m[j]);
                                 double eta = ps->etaconst[i]*sqrt(m_eff);
 
-                                ps->f[i*DIM+0]+= ps->k[i]*delx - eta*vn_relx;
-                                ps->f[i*DIM+1] += ps->k[i]*dely - eta*vn_rely;
-                                ps->f[i*DIM+2] += ps->k[i]*delz - eta*vn_relz;
-
-                                /*
-                                   ps->f[i*DIM+0]+= ps->k[i]*delx;
-                                   ps->f[i*DIM+1]+= ps->k[i]*dely;
-                                   ps->f[i*DIM+2]+= ps->k[i]*delz;
-                                 */
-
+                                ps->f[bi+0]+= ps->k[i]*delx - eta*vn_relx;
+                                ps->f[bi+1] += ps->k[i]*dely - eta*vn_rely;
+                                ps->f[bi+2] += ps->k[i]*delz - eta*vn_relz;
                             }
                         }
                     }
-
                 }
             }
         }
@@ -148,10 +144,12 @@ void particle_collision_naive(ParticleSystem* ps){
             if (i==j){
                 continue;
             }else{
+                int bi = i*DIM;
+                int bj = j*DIM;
                 /* normal points toward particle i */
-                double dx = ps->x[i*DIM+0]- ps->x[j*DIM+0];
-                double dy = ps->x[i*DIM+1]- ps->x[j*DIM+1];
-                double dz = ps->x[i*DIM+2]- ps->x[j*DIM+2];
+                double dx = ps->x[bi+0]- ps->x[bj+0];
+                double dy = ps->x[bi+1]- ps->x[bj+1];
+                double dz = ps->x[bi+2]- ps->x[bj+2];
                 double distsq =dx*dx+dy*dy+dz*dz;
                 double R = ps->r[i]+ps->r[j];
 
@@ -177,9 +175,9 @@ void particle_collision_naive(ParticleSystem* ps){
 
                     /* get relative velocity */
                     double v_relx,v_rely,v_relz;
-                    v_relx = ps->v[i*DIM+0] - ps->v[j*DIM+0];
-                    v_rely = ps->v[i*DIM+1] - ps->v[j*DIM+1];
-                    v_relz = ps->v[i*DIM+2] - ps->v[j*DIM+2];
+                    v_relx = ps->v[bi+0] - ps->v[bj+0];
+                    v_rely = ps->v[bi+1] - ps->v[bj+1];
+                    v_relz = ps->v[bi+2] - ps->v[bj+2];
 
                     double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
 
@@ -192,15 +190,10 @@ void particle_collision_naive(ParticleSystem* ps){
                     double m_eff = (ps->m[i]*ps->m[j])/(ps->m[i]+ps->m[j]);
                     double eta = ps->etaconst[i]*sqrt(m_eff);
 
-                    ps->f[i*DIM+0]+= ps->k[i]*delx - eta*vn_relx;
-                    ps->f[i*DIM+1] += ps->k[i]*dely - eta*vn_rely;
-                    ps->f[i*DIM+2] += ps->k[i]*delz - eta*vn_relz;
+                    ps->f[bi+0]+= ps->k[i]*delx - eta*vn_relx;
+                    ps->f[bi+1] += ps->k[i]*dely - eta*vn_rely;
+                    ps->f[bi+2] += ps->k[i]*delz - eta*vn_relz;
 
-                    /*
-                       ps->f[i*DIM+0]+= ps->k[i]*delx;
-                       ps->f[i*DIM+1]+= ps->k[i]*dely;
-                       ps->f[i*DIM+2]+= ps->k[i]*delz;
-                     */
 
                 }
             }
@@ -221,20 +214,21 @@ void integrateCPU(ParticleSystem* ps, BoundingBox* box)
 
     for (int i = 0; i < ps->N; i++)
     {
+        int bi = i*DIM;
         // acceleration
-        ps->a[i*DIM+0] = ps->f[i*DIM+0]*ps->invm[i]+ps->g[0];
-        ps->a[i*DIM+1] = ps->f[i*DIM+1]*ps->invm[i]+ps->g[1];
-        ps->a[i*DIM+2] = ps->f[i*DIM+2]*ps->invm[i]+ps->g[2];
+        ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
+        ps->a[bi+1] = ps->f[bi+1]*ps->invm[i]+ps->g[1];
+        ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
 
         // velocity
-        ps->v[i*DIM+0] += ps->a[i*DIM+0] * ps->dt;
-        ps->v[i*DIM+1] += ps->a[i*DIM+1] * ps->dt;
-        ps->v[i*DIM+2] += ps->a[i*DIM+2] * ps->dt;
+        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
+        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
+        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
 
         // position
-        ps->x[i*DIM+0] += ps->v[i*DIM+0] * ps->dt;
-        ps->x[i*DIM+1] += ps->v[i*DIM+1] * ps->dt;
-        ps->x[i*DIM+2] += ps->v[i*DIM+2] * ps->dt;
+        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
+        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
+        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
 
     }
 }

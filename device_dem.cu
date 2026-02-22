@@ -13,52 +13,54 @@ void wall_collision_naive(DeviceParticleGroup ps,int i){
     //particle-wall
     for (int j=0; j<ps.walls.N; j++){
         double distsq = 0.;
-        distsq += ps.walls.n[j*DIM+0]*ps.x[i*DIM+0];
-        distsq += ps.walls.n[j*DIM+1]*ps.x[i*DIM+1];
-        distsq += ps.walls.n[j*DIM+2]*ps.x[i*DIM+2];
+        int bi = i*DIM;
+        int bj = j*DIM;
+        distsq += ps.walls.n[bj+0]*ps.x[bi+0];
+        distsq += ps.walls.n[bj+1]*ps.x[bi+1];
+        distsq += ps.walls.n[bj+2]*ps.x[bi+2];
         distsq += ps.walls.d[j];
         distsq = distsq*distsq;
-        
+
         if (distsq < ps.rsq[i]){
             double dist = sqrt(distsq);
             double delta = ps.r[i]-dist;
-                if (delta*ps.invr[i]>0.01){
-                    printf("overlap over 10% with wall!!!!\n");
-                }
+            if (delta*ps.invr[i]>0.01){
+                printf("overlap over 10% with wall!!!!\n");
+            }
 
 
             /* get deltas */
             double delx,dely,delz;
-            delx = ps.walls.n[j*DIM+0]*delta;
-            dely = ps.walls.n[j*DIM+1]*delta;
-            delz = ps.walls.n[j*DIM+2]*delta;
+            delx = ps.walls.n[bj+0]*delta;
+            dely = ps.walls.n[bj+1]*delta;
+            delz = ps.walls.n[bj+2]*delta;
 
             /* get relative velocity (here we assumed walls are stationary) */
             double v_relx,v_rely,v_relz;
-            v_relx = ps.v[i*DIM+0];
-            v_rely = ps.v[i*DIM+1];
-            v_relz = ps.v[i*DIM+2];
+            v_relx = ps.v[bi+0];
+            v_rely = ps.v[bi+1];
+            v_relz = ps.v[bi+2];
 
-            double v_reldotn = v_relx*ps.walls.n[j*DIM+0]+v_rely*ps.walls.n[j*DIM+1]+v_relz*ps.walls.n[j*DIM+2];
+            double v_reldotn = v_relx*ps.walls.n[bj+0]+v_rely*ps.walls.n[bj+1]+v_relz*ps.walls.n[bj+2];
 
             /* get normal relative velocity*/
             double vn_relx,vn_rely,vn_relz;
-            vn_relx = v_reldotn*ps.walls.n[j*DIM+0];
-            vn_rely = v_reldotn*ps.walls.n[j*DIM+1];
-            vn_relz = v_reldotn*ps.walls.n[j*DIM+2];
+            vn_relx = v_reldotn*ps.walls.n[bj+0];
+            vn_rely = v_reldotn*ps.walls.n[bj+1];
+            vn_relz = v_reldotn*ps.walls.n[bj+2];
 
             double eta = ps.etaconst[i]*ps.sqrtm[i];
 
-            
-            ps.f[i*DIM+0] += ps.k[i]*delx - eta*vn_relx;
-            ps.f[i*DIM+1] += ps.k[i]*dely - eta*vn_rely;
-            ps.f[i*DIM+2] += ps.k[i]*delz - eta*vn_relz;
-            
+
+            ps.f[bi+0] += ps.k[i]*delx - eta*vn_relx;
+            ps.f[bi+1] += ps.k[i]*dely - eta*vn_rely;
+            ps.f[bi+2] += ps.k[i]*delz - eta*vn_relz;
+
             /*
-            ps.f[i*DIM+0] += ps.k[i]*delx;
-            ps.f[i*DIM+1] += ps.k[i]*dely;
-            ps.f[i*DIM+2] += ps.k[i]*delz;
-            */
+               ps.f[bi+0] += ps.k[i]*delx;
+               ps.f[bi+1] += ps.k[i]*dely;
+               ps.f[bi+2] += ps.k[i]*delz;
+             */
 
         }
     }
@@ -69,9 +71,10 @@ void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundi
     //particle-particle
 
     /* cycle through neighbor cells */
-    int x=p.cellx[i*DIM+0];
-    int y=p.cellx[i*DIM+1];
-    int z=p.cellx[i*DIM+2];
+    int bi = i*DIM;
+    int x=p.cellx[bi+0];
+    int y=p.cellx[bi+1];
+    int z=p.cellx[bi+2];
 
     for (int sx=-1; sx<=1; sx++){
         for (int sy=-1; sy<=1; sy++){
@@ -85,10 +88,11 @@ void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundi
                     if (i==j){
                         continue;
                     }else{
+                        int bj = j*DIM;
                         /* normal points toward particle i */
-                        double dx = p.x[i*DIM+0]- p.x[j*DIM+0];
-                        double dy = p.x[i*DIM+1]- p.x[j*DIM+1];
-                        double dz = p.x[i*DIM+2]- p.x[j*DIM+2];
+                        double dx = p.x[bi+0]- p.x[bj+0];
+                        double dy = p.x[bi+1]- p.x[bj+1];
+                        double dz = p.x[bi+2]- p.x[bj+2];
                         double distsq =dx*dx+dy*dy+dz*dz;
                         double R = p.r[i]+p.r[j];
 
@@ -114,9 +118,9 @@ void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundi
 
                             /* get relative velocity */
                             double v_relx,v_rely,v_relz;
-                            v_relx = p.v[i*DIM+0] - p.v[j*DIM+0];
-                            v_rely = p.v[i*DIM+1] - p.v[j*DIM+1];
-                            v_relz = p.v[i*DIM+2] - p.v[j*DIM+2];
+                            v_relx = p.v[bi+0] - p.v[bj+0];
+                            v_rely = p.v[bi+1] - p.v[bj+1];
+                            v_relz = p.v[bi+2] - p.v[bj+2];
 
                             double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
 
@@ -129,9 +133,9 @@ void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundi
                             double m_eff = 1./(p.invm[i]+p.invm[j]);
                             double eta = p.etaconst[i]*sqrt(m_eff);
 
-                            p.f[i*DIM+0]+= p.k[i]*delx - eta*vn_relx;
-                            p.f[i*DIM+1] += p.k[i]*dely - eta*vn_rely;
-                            p.f[i*DIM+2] += p.k[i]*delz - eta*vn_relz;
+                            p.f[bi+0]+= p.k[i]*delx - eta*vn_relx;
+                            p.f[bi+1] += p.k[i]*dely - eta*vn_rely;
+                            p.f[bi+2] += p.k[i]*delz - eta*vn_relz;
                         }
                     }
                 }
@@ -148,10 +152,12 @@ void particle_collision_naive(DeviceParticleGroup ps, int i){
         if (i==j){
             continue;
         }else{
+            int bi = i*DIM;
+            int bj = j*DIM;
             /* normal points toward particle i */
-            double dx = ps.x[i*DIM+0]- ps.x[j*DIM+0];
-            double dy = ps.x[i*DIM+1]- ps.x[j*DIM+1];
-            double dz = ps.x[i*DIM+2]- ps.x[j*DIM+2];
+            double dx = ps.x[bi+0]- ps.x[bj+0];
+            double dy = ps.x[bi+1]- ps.x[bj+1];
+            double dz = ps.x[bi+2]- ps.x[bj+2];
             double distsq =dx*dx+dy*dy+dz*dz;
             double R = ps.r[i]+ps.r[j];
 
@@ -173,9 +179,9 @@ void particle_collision_naive(DeviceParticleGroup ps, int i){
 
                 /* get relative velocity */
                 double v_relx,v_rely,v_relz;
-                v_relx = ps.v[i*DIM+0] - ps.v[j*DIM+0];
-                v_rely = ps.v[i*DIM+1] - ps.v[j*DIM+1];
-                v_relz = ps.v[i*DIM+2] - ps.v[j*DIM+2];
+                v_relx = ps.v[bi+0] - ps.v[bj+0];
+                v_rely = ps.v[bi+1] - ps.v[bj+1];
+                v_relz = ps.v[bi+2] - ps.v[bj+2];
 
                 double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
 
@@ -188,14 +194,14 @@ void particle_collision_naive(DeviceParticleGroup ps, int i){
                 double m_eff = (ps.m[i]*ps.m[j])/(ps.m[i]+ps.m[j]);
                 double eta = ps.etaconst[i]*sqrt(m_eff);
 
-                ps.f[i*DIM+0]+= ps.k[i]*delx - eta*vn_relx;
-                ps.f[i*DIM+1] += ps.k[i]*dely - eta*vn_rely;
-                ps.f[i*DIM+2] += ps.k[i]*delz - eta*vn_relz;
+                ps.f[bi+0]+= ps.k[i]*delx - eta*vn_relx;
+                ps.f[bi+1] += ps.k[i]*dely - eta*vn_rely;
+                ps.f[bi+2] += ps.k[i]*delz - eta*vn_relz;
 
                 /*
-                   ps.f[i*DIM+0]+= ps.k[i]*delx;
-                   ps.f[i*DIM+1]+= ps.k[i]*dely;
-                   ps.f[i*DIM+2]+= ps.k[i]*delz;
+                   ps.f[bi+0]+= ps.k[i]*delx;
+                   ps.f[bi+1]+= ps.k[i]*dely;
+                   ps.f[bi+2]+= ps.k[i]*delz;
                  */
 
             }
@@ -207,9 +213,10 @@ void updateAcceleration(DeviceParticleGroup p,
         int i
         )
 {
-    p.a[i*DIM+0] = (p.g[0]+p.f[i*DIM+0]*p.invm[i]) ;
-    p.a[i*DIM+1] = (p.g[1]+p.f[i*DIM+1]*p.invm[i]);
-    p.a[i*DIM+2] = (p.g[2]+p.f[i*DIM+2]*p.invm[i]);
+    int bi = i*DIM;
+    p.a[bi+0] = (p.g[0]+p.f[bi+0]*p.invm[i]) ;
+    p.a[bi+1] = (p.g[1]+p.f[bi+1]*p.invm[i]);
+    p.a[bi+2] = (p.g[2]+p.f[bi+2]*p.invm[i]);
 }
 
 /* 速度更新（重力適用） */
@@ -217,9 +224,10 @@ void updateAcceleration(DeviceParticleGroup p,
 void updateVelocity(DeviceParticleGroup p,
         int i)
 {
-    p.v[i*DIM+0] += p.a[i*DIM+0] * p.dt;
-    p.v[i*DIM+1] += p.a[i*DIM+1] * p.dt;
-    p.v[i*DIM+2] += p.a[i*DIM+2] * p.dt;
+    int bi = i*DIM;
+    p.v[bi+0] += p.a[bi+0] * p.dt;
+    p.v[bi+1] += p.a[bi+1] * p.dt;
+    p.v[bi+2] += p.a[bi+2] * p.dt;
 }
 
 
@@ -228,9 +236,10 @@ void updateVelocity(DeviceParticleGroup p,
 void updatePosition(DeviceParticleGroup p,
         int i)
 {
-    p.x[i*DIM+0] += p.v[i*DIM+0] * p.dt;
-    p.x[i*DIM+1] += p.v[i*DIM+1] * p.dt;
-    p.x[i*DIM+2] += p.v[i*DIM+2] * p.dt;
+    int bi = i*DIM;
+    p.x[bi+0] += p.v[bi+0] * p.dt;
+    p.x[bi+1] += p.v[bi+1] * p.dt;
+    p.x[bi+2] += p.v[bi+2] * p.dt;
 }
 
 
@@ -263,10 +272,11 @@ __global__ void integrateKernel(DeviceParticleGroup p){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= p.N) return;
 
+    int bi = i*DIM;
     /* initialize */
-    p.f[i*DIM+0]=0.;
-    p.f[i*DIM+1]=0.;
-    p.f[i*DIM+2]=0.;
+    p.f[bi+0]=0.;
+    p.f[bi+1]=0.;
+    p.f[bi+2]=0.;
 
     particle_collision_naive(p,i);
     wall_collision_naive(p,i);
@@ -307,7 +317,7 @@ void device_dem(ParticleSystem *p, BoundingBox *box, int gridSize, int blockSize
     d_update_pList(p,box,gridSize, blockSize);
     k_collision<<<gridSize,blockSize>>>(p->d_group,box->d_box);
     k_integrate<<<gridSize, blockSize>>>(p->d_group);
-//    cudaDeviceSynchronize();
+    //    cudaDeviceSynchronize();
 
 }
 
