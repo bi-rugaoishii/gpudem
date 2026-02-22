@@ -2,6 +2,7 @@
 #ifndef _PARTICLESYSTEM_H_
 #define _PARTICLESYSTEM_H_
 #define DIM 3
+#include "Vec3.h"
 #include "BoundingBox.h"
 
 /*

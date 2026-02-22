@@ -9,6 +9,39 @@ __device__ 関数群
 */
 
 __device__ __forceinline__
+ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double delMag,double dist){
+
+    int bi = i*DIM;
+    int bj = j*DIM;
+
+    /* get deltas */
+    Vec3 del;
+    del = vscalar(delMag,n);
+
+    /* get relative velocity */
+    Vec3 v_rel;
+    v_rel.x = p.v[bi+0] - p.v[bj+0];
+    v_rel.y = p.v[bi+1] - p.v[bj+1];
+    v_rel.z = p.v[bi+2] - p.v[bj+2];
+
+    double v_reldotn = vdot(v_rel,n);
+
+    /* get normal relative velocity*/
+    ContactCache result;
+    result.vn_rel = vscalar(v_reldotn,n);
+
+
+    double m_eff = (p.m[i]*p.m[j])/(p.m[i]+p.m[j]);
+    double eta = p.etaconst[i]*sqrt(m_eff);
+
+    result.fn.x = p.k[i]*del.x - eta*result.vn_rel.x;
+    result.fn.y = p.k[i]*del.y - eta*result.vn_rel.y;
+    result.fn.z = p.k[i]*del.z - eta*result.vn_rel.z;
+
+    return result;
+}
+
+__device__ __forceinline__
 void wall_collision_naive(DeviceParticleGroup ps,int i){
     //particle-wall
     for (int j=0; j<ps.walls.N; j++){
@@ -56,18 +89,13 @@ void wall_collision_naive(DeviceParticleGroup ps,int i){
             ps.f[bi+1] += ps.k[i]*dely - eta*vn_rely;
             ps.f[bi+2] += ps.k[i]*delz - eta*vn_relz;
 
-            /*
-               ps.f[bi+0] += ps.k[i]*delx;
-               ps.f[bi+1] += ps.k[i]*dely;
-               ps.f[bi+2] += ps.k[i]*delz;
-             */
 
         }
     }
 }
 
 __device__ __forceinline__
-void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundingBox box){
+void d_particle_collision_cell_linked_noVec3(DeviceParticleGroup p, int i, DeviceBoundingBox box){
     //particle-particle
 
     /* cycle through neighbor cells */
@@ -136,6 +164,69 @@ void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundi
                             p.f[bi+0]+= p.k[i]*delx - eta*vn_relx;
                             p.f[bi+1] += p.k[i]*dely - eta*vn_rely;
                             p.f[bi+2] += p.k[i]*delz - eta*vn_relz;
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+}
+__device__ __forceinline__
+void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundingBox box){
+    //particle-particle
+
+    /* cycle through neighbor cells */
+    int bi = i*DIM;
+    int x=p.cellx[bi+0];
+    int y=p.cellx[bi+1];
+    int z=p.cellx[bi+2];
+
+    for (int sx=-1; sx<=1; sx++){
+        for (int sy=-1; sy<=1; sy++){
+            for (int sz=-1; sz<=1; sz++){
+                int cellId = (box.sizey*(z+sz)+y+sy)*box.sizex+x+sx;
+
+                int start = box.pStart[cellId];
+                int end = start+box.pNum[cellId];
+                for (int k=start; k<end; k++){
+                    int j = box.pList[k];
+                    if (i==j){
+                        continue;
+                    }else{
+                        int bj = j*DIM;
+
+                        Vec3 del;
+                        /* normal points toward particle i */
+                        del.x = p.x[bi+0]- p.x[bj+0];
+                        del.y = p.x[bi+1]- p.x[bj+1];
+                        del.z = p.x[bi+2]- p.x[bj+2];
+                        double distsq = vdot(del,del);
+                        double R = p.r[i]+p.r[j];
+
+                        if (distsq<R*R){
+                            double dist = sqrt(distsq);
+                            double delMag = R-dist;
+                            if(delMag*p.invr[i]*0.5>0.01){
+                                printf("overlap over 10%!!!!\n");
+                                printf("delta is %f, dist is %f\n",delMag,dist);
+                            }
+
+                            /* ======================================================
+                               Normal Force Calculation
+                               ======================================================*/
+                            /* get normal direction */
+                            Vec3 n;
+                            n.x = del.x/dist;
+                            n.y = del.y/dist;
+                            n.z = del.z/dist;
+
+                            ContactCache c;
+                            c = d_calc_normal_force(p,i,j,n,delMag,dist);
+                            p.f[bi+0] += c.fn.x;
+                            p.f[bi+1] += c.fn.y;
+                            p.f[bi+2] += c.fn.z;
+
                         }
                     }
                 }
@@ -263,7 +354,8 @@ __global__ void k_collision(DeviceParticleGroup p, DeviceBoundingBox box)
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= p.N) return;
 
-    d_particle_collision_cell_linked(p,i,box);
+    //d_particle_collision_cell_linked(p,i,box);
+    d_particle_collision_cell_linked_noVec3(p,i,box);
     wall_collision_naive(p,i);
 
 }

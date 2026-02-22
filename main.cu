@@ -9,6 +9,7 @@
 #include "cpu_dem.h"
 #include "output.h"
 #include "solver_output.h"
+#include "Vec3.h"
 #define DIM 3
 #define OUTPUT 1
 #define NONDIM 1
@@ -29,7 +30,7 @@ int main()
 
     ParticleSystem ps;
     BoundingBox box;
-    ps.N = 5000;
+    ps.N = 1000;
     ps.walls.N = 5;
     double r = 0.01;
     double res = 0.3; //CoR
@@ -63,7 +64,7 @@ int main()
     /* set time step */
     double dt = 2e-5;
     double out_time = 0.05;
-    double end_time = 10.;
+    double end_time = 5.;
     int outStep = (int)(out_time/dt);
 
     ps.dt=dt;
@@ -167,7 +168,7 @@ int main()
                     cudaEventSynchronize(now);
 
                     cudaEventElapsedTime(&ms, start, now);
-                    printf("Output step %d, GPU time: %f s\n", step, ms/1000.0f);
+                    printf("Output step %d, current time: %f, GPU time: %f s\n", step, step*dt,ms/1000.0f);
                 }
             #endif
         #else
@@ -184,7 +185,7 @@ int main()
                     #endif
                         end = clock();
                         ms = (double)(end-start)*1000./CLOCKS_PER_SEC;;
-                        printf("Output step %d, CPU time: %f s\n", step,ms/1000.);
+                        printf("Output step %d,current time: %f s, CPU time: %f s\n", step,step*dt,ms/1000.);
             }
             #endif
         #endif
