@@ -396,7 +396,6 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
             for (int sy=-1; sy<=1; sy++){
                 for (int sz=-1; sz<=1; sz++){
                     int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
-                    printf("%d\n",cellId);
                     int start = box->pStart[cellId];
                     int end = start+box->pNum[cellId];
                     for (int k=box->pStart[cellId]; k<end; k++){
@@ -418,11 +417,10 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
                                 double dist = sqrt(distsq);
                                 double delMag = R-dist;
                                 if (delMag*p->invr[i]*0.5>0.05){
-                                    printf("overlap over %!!!!\n");
-                                    printf("overlap is %f %\n",delMag*p->invr[i]*0.5*100.);
+                                    printf("overlap over 5% with pair %d %d!!!!\n",i,j);
+                                    printf("overlap is %f % with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
                                 }
 
-                                printf("%d\n", i);
                                 /* ======================================================
                                    Force Calculation
                                    ======================================================*/
@@ -434,10 +432,8 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
 
 
                                 ContactCache c;
-                                printf("prenormal%d\n", i);
                                 c = calc_normal_force(p,i,j,n,delMag,dist);
 
-                                printf("afternormal%d\n", i);
 
                                 calc_tangential_force(p,i,j,c);
 
@@ -453,6 +449,7 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
 
     }
 }
+
 void particle_collision_cell_linked(ParticleSystem* p, BoundingBox *box){
     update_pList(p,box);
 
@@ -683,11 +680,13 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
     }
 
     int reorderFreq=100;
+
     if(step%(reorderFreq)==0){
         particle_collision_cell_linked_withSort(ps,tmpPs,box);
     }else{
         particle_collision_cell_linked(ps,box);
     }
+
     wall_collision_naive(ps);
 
     /* update */
@@ -721,6 +720,7 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
 
     }
 }
+
 void integrateCPU(ParticleSystem* ps, BoundingBox* box)
 {
     /* initialize */

@@ -28,7 +28,7 @@ void radixSortUint32(
     int*       workIndex)
 {
     const int RADIX = 256;
-    const int PASS  = 3;   // 30bit Mortonなら3passでOK
+    const int PASS  = 4;   // 30bit Mortonなら3passでOK
 
     uint32_t* srcKey = *keyPtr;
     uint32_t* dstKey = workKey;

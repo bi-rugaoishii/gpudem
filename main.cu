@@ -43,7 +43,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 10;
+    ps.N = 1000;
     tmpPs.N = ps.N;
 
     /*============ Walls ================== */
@@ -82,7 +82,7 @@ int main()
     /* set time step */
     double dt = 1e-5;
     double out_time = 0.05;
-    double end_time = 30.0;
+    double end_time = 2.0;
     int outStep = (int)(out_time/dt);
 
     ps.dt=dt;
@@ -194,8 +194,8 @@ int main()
         #else
 
                 /* CPU */
-            //integrateCPU(&ps,&box);
-                cpu_dem_sort(&ps, &tmpPs, &box, step);
+            integrateCPU(&ps,&box);
+            //    cpu_dem_sort(&ps, &tmpPs, &box, step);
             #if OUTPUT
             if (step % outStep == 0)
             {
