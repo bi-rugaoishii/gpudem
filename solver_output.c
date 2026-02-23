@@ -49,7 +49,7 @@ static void build_filename(
     const char* dir,
     int step)
 {
-    sprintf(out,"%s/result_%04d.bin",dir,step);
+    sprintf(out,"%s/result_%012d.bin",dir,step);
 }
 
 /*

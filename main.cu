@@ -43,7 +43,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 10;
+    ps.N = 1000;
     tmpPs.N = ps.N;
 
     /*============ Walls ================== */
