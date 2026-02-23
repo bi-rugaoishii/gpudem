@@ -1,7 +1,215 @@
 #include "ParticleSystem.h"
 #include "BoundingBox.h"
+#include <stdint.h>
+
+/* ============ Morton key related ================ */
+
+static inline uint32_t expandBits(uint32_t v){
+    v &= 0x000003ff;                 // 10bit
+    v = (v | (v << 16)) & 0x030000FF;
+    v = (v | (v <<  8)) & 0x0300F00F;
+    v = (v | (v <<  4)) & 0x030C30C3;
+    v = (v | (v <<  2)) & 0x09249249;
+    return v;
+}
+static inline uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){
+    return (expandBits(ix) << 2)| (expandBits(iy) << 1)| (expandBits(iz));
+}
+
+// ======================================================
+// ポインタスワップ版 radix sort（最速設計）
+// keyPtr/indexPtr は「ポインタへのポインタ」
+// ======================================================
+void radixSortUint32(
+    uint32_t** keyPtr,
+    int**      indexPtr,
+    int N,
+    uint32_t*  workKey,
+    int*       workIndex)
+{
+    const int RADIX = 256;
+    const int PASS  = 3;   // 30bit Mortonなら3passでOK
+
+    uint32_t* srcKey = *keyPtr;
+    uint32_t* dstKey = workKey;
+
+    int* srcIdx = *indexPtr;
+    int* dstIdx = workIndex;
+
+    int pass;
+
+    for(pass=0; pass<PASS; pass++)
+    {
+        int count[RADIX];
+        int i;
+
+        memset(count,0,sizeof(count));
+
+        int shift = pass*8;
+
+        // --- histogram ---
+        for(i=0;i<N;i++)
+        {
+            uint32_t digit = (srcKey[i] >> shift) & 0xFF;
+            count[digit]++;
+        }
+
+        // --- prefix sum ---
+        int sum = 0;
+        for(i=0;i<RADIX;i++)
+        {
+            int c = count[i];
+            count[i] = sum;
+            sum += c;
+        }
+
+        // --- scatter ---
+        for(i=0;i<N;i++)
+        {
+            uint32_t k = srcKey[i];
+            uint32_t digit = (k >> shift) & 0xFF;
+
+            int pos = count[digit]++;
+
+            dstKey[pos] = k;
+            dstIdx[pos] = srcIdx[i];
+        }
+
+        // --- swap pointer only ---
+        {
+            uint32_t* tk = srcKey;
+            srcKey = dstKey;
+            dstKey = tk;
+        }
+        {
+            int* ti = srcIdx;
+            srcIdx = dstIdx;
+            dstIdx = ti;
+        }
+    }
+
+    // 最終ポインタを返す（コピー無し）
+    *keyPtr   = srcKey;
+    *indexPtr = srcIdx;
+}
+
+void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
+    int N = p->N;
+
+    /* create inverse morton */
+
+    for (int i=0; i<N; i++){
+        int src = p->mortonOrder[i];
+
+        // --- position ---
+        tmp->x[i*3+0] = p->x[src*3+0];
+        tmp->x[i*3+1] = p->x[src*3+1];
+        tmp->x[i*3+2] = p->x[src*3+2];
+
+        // --- velocity ---
+        tmp->v[i*3+0] = p->v[src*3+0];
+        tmp->v[i*3+1] = p->v[src*3+1];
+        tmp->v[i*3+2] = p->v[src*3+2];
+
+        // --- ang velocity ---
+        tmp->angv[i*3+0] = p->angv[src*3+0];
+        tmp->angv[i*3+1] = p->angv[src*3+1];
+        tmp->angv[i*3+2] = p->angv[src*3+2];
+
+        // --- scalar ---
+        tmp->r[i] = p->r[src];
+        tmp->rsq[i] = p->rsq[src];
+        tmp->invr[i] = p->invr[src];
+
+        tmp->m[i] = p->m[src];
+        tmp->sqrtm[i] = p->sqrtm[src];
+        tmp->invm[i] = p->invm[src];
+        tmp->moi[i] = p->moi[src];
+        tmp->invmoi[i] = p->invmoi[src];
+        tmp->etaconst[i] = p->etaconst[src];
+
+        int bi = i*p->MAX_NEI;
+        int bsrc = src*p->MAX_NEI;
+        for (int j=0; j<p->MAX_NEI; j++){
+            // ---- contact history (particle) ----
+            tmp->deltHisx[bi+j] = p->deltHisx[bsrc+j];
+            tmp->deltHisy[bi+j] = p->deltHisy[bsrc+j];
+            tmp->deltHisz[bi+j] = p->deltHisz[bsrc+j];
+
+            tmp->isContact[bi+j] = p->isContact[bsrc+j];
+
+            /* get the after order index of contact particle */
+            tmp->indHis[bi+j] = p->indHis[bsrc+j];
+
+            // ---- contact history (wall) ----
+            tmp->deltHisxWall[bi+j] = p->deltHisxWall[bsrc+j];
+            tmp->deltHisyWall[bi+j] = p->deltHisyWall[bsrc+j];
+            tmp->deltHiszWall[bi+j] = p->deltHiszWall[bsrc+j];
+            tmp->isContactWall[bi+j] = p->isContactWall[bsrc+j];
+            tmp->indHisWall[bi+j] = p->indHisWall[bsrc+j];
+
+        }
+
+        // ---- number of contact ----
+        tmp->numCont[i]     = p->numCont[src];
+        tmp->numContWall[i] = p->numContWall[src];
+
+        // ---- cell info ----
+        tmp->cellId[i] = p->cellId[src];
+        tmp->cellx[i*DIM+0]  = p->cellx[src*DIM+0];
+        tmp->cellx[i*DIM+1]  = p->cellx[src*DIM+1];
+        tmp->cellx[i*DIM+2]  = p->cellx[src*DIM+2];
 
 
+        // ---- morton key ----
+        tmp->mortonKey[i] = p->mortonKey[src];
+        tmp->pId[i] = p->pId[src];
+    }
+
+
+    /* swap pointers*/
+    double* td;
+    int*    ti;
+    uint32_t* tu;
+
+    td=p->x; p->x=tmp->x; tmp->x=td;
+    td=p->v; p->v=tmp->v; tmp->v=td;
+    td=p->r; p->r=tmp->r; tmp->r=td;
+    td=p->rsq; p->rsq=tmp->rsq; tmp->rsq=td;
+    td=p->invr; p->invr=tmp->invr; tmp->invr=td;
+
+    td=p->m; p->m=tmp->m; tmp->m=td;
+    td=p->invm; p->invm=tmp->invm; tmp->invm=td;
+    td=p->sqrtm; p->sqrtm=tmp->sqrtm; tmp->sqrtm=td;
+    td=p->moi; p->moi=tmp->moi; tmp->moi=td;
+    td=p->invmoi; p->invmoi=tmp->invmoi; tmp->invmoi=td;
+    td=p->etaconst; p->etaconst=tmp->etaconst; tmp->etaconst=td;
+
+    td=p->angv; p->angv=tmp->angv; tmp->angv=td;
+    // ---- contact history ----
+    td=p->deltHisx;     p->deltHisx=tmp->deltHisx;     tmp->deltHisx=td;
+    td=p->deltHisy;     p->deltHisy=tmp->deltHisy;     tmp->deltHisy=td;
+    td=p->deltHisz;     p->deltHisz=tmp->deltHisz;     tmp->deltHisz=td;
+
+    td=p->deltHisxWall; p->deltHisxWall=tmp->deltHisxWall; tmp->deltHisxWall=td;
+    td=p->deltHisyWall; p->deltHisyWall=tmp->deltHisyWall; tmp->deltHisyWall=td;
+    td=p->deltHiszWall; p->deltHiszWall=tmp->deltHiszWall; tmp->deltHiszWall=td;
+
+    // ---- contact number ----
+    ti=p->numCont;      p->numCont=tmp->numCont;      tmp->numCont=ti;
+    ti=p->numContWall;  p->numContWall=tmp->numContWall; tmp->numContWall=ti;
+
+    // ---- cell info ----
+    ti=p->cellId;       p->cellId=tmp->cellId;       tmp->cellId=ti;
+    ti=p->cellx;        p->cellx=tmp->cellx;         tmp->cellx=ti;
+
+    // ---- particle id ----
+    ti=p->pId;          p->pId=tmp->pId;             tmp->pId=ti;
+
+    // ---- morton key ----
+    tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
+
+}
 
 void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
 
@@ -116,6 +324,66 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, do
     cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
 
     #endif
+
+}
+
+void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box){
+    /* initialize */
+    for (int i=0; i<box->N; i++){
+        box->pNum[i] = 0;
+    }
+
+    for (int i=0; i<box->N; i++){
+        box->pStart[i] = 0;
+    }
+
+    for(int i=0;i<p->N;i++){
+        p->mortonOrder[i] = i;
+    }
+    /* get cellId and get mortonkey*/
+    for (int i=0; i<p->N; i++){
+        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[i*DIM+0] = dx;
+        p->cellx[i*DIM+1] = dy;
+        p->cellx[i*DIM+2] = dz;
+        p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
+        p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
+    }
+
+    /* ========= sort and reorder ========= */
+    radixSortUint32(&p->mortonKey,&p->mortonOrder,p->N,p->tmpMortonKey,p->tmpMortonOrder);
+
+    swap_ps(p, tmpPs);
+
+
+
+    /* count number of particle in cell */
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+        box->pNum[cellId] +=1;
+    }
+
+    box->pStart[0]=0;
+    for (int i=1; i<box->N; i++){
+        box->pStart[i]=box->pNum[i-1]+box->pStart[i-1];
+    }
+
+    for (int i=0; i<box->N; i++){
+        box->cellOffset[i] = 0;
+    }
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+        int startId = box->pStart[cellId];
+        int offset = box->cellOffset[cellId];
+
+
+        box->pList[startId+offset] = i;  
+        box->cellOffset[cellId] +=1;
+    }
 
 }
 

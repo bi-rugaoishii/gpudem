@@ -5,6 +5,7 @@
 #include <cub/cub.cuh>
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 struct ParticleSystem;
 struct DeviceParticleGroup;
 
@@ -67,7 +68,17 @@ typedef struct {
  * =====================
  */
 
+void radixSortUint32(
+    uint32_t** keyPtr,
+    int**      indexPtr,
+    int N,
+    uint32_t*  workKey,
+    int*       workIndex);
+
+void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
+
 void update_pList(ParticleSystem *p, BoundingBox *box);
+void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
 void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, double maxx, double miny, double maxy, double minz, double maxz);
 void free_BoundingBox(BoundingBox *box);
 

@@ -54,6 +54,13 @@ void freeMemory(ParticleSystem* ps)
     free(ps->cellId);
     free(ps->cellx);
 
+    free(ps->pId);
+    free(ps->mortonKey);
+    free(ps->mortonOrder);
+
+    free(ps->tmpMortonKey);
+    free(ps->tmpMortonOrder);
+
     free(ps->walls.n);
     free(ps->walls.d);
 
@@ -179,6 +186,12 @@ void allocateMemory(ParticleSystem* ps)
     ps->cellId = (int*)malloc(sizeof(int)*ps->N);
     ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
 
+    ps->pId = (int*)malloc(sizeof(int)*ps->N);
+    ps->mortonKey = (uint32_t*)malloc(sizeof(uint32_t)*ps->N);
+    ps->mortonOrder = (int*)malloc(sizeof(int)*ps->N);
+    ps->tmpMortonKey = (uint32_t*)malloc(sizeof(uint32_t)*ps->N);
+    ps->tmpMortonOrder = (int*)malloc(sizeof(int)*ps->N);
+
     ps->walls.n = (double*)malloc(size_walls*DIM);
     ps->walls.d = (double*)malloc(size_walls);
 
@@ -294,6 +307,8 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
 
         ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
         ps->invmoi[i] = 1./ps->moi[i];
+
+        ps->pId[i] = i;
 
 
         for (int j=0; j<ps->MAX_NEI; j++){

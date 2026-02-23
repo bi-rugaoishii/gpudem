@@ -2,6 +2,7 @@
 #ifndef _PARTICLESYSTEM_H_
 #define _PARTICLESYSTEM_H_
 #define DIM 3
+#include <stdint.h>
 #include "Vec3.h"
 #include "BoundingBox.h"
 
@@ -112,6 +113,13 @@ typedef struct ParticleSystem{
                  //
     double dt;
     double mu; //friction
+
+    int* pId;
+    uint32_t *mortonKey;
+    int* mortonOrder;
+
+    uint32_t *tmpMortonKey;
+    int* tmpMortonOrder;
     /* nondimensionalize factor */
     double time_factor;
     double length_factor;

@@ -30,6 +30,9 @@ int main()
     setvbuf(stderr,NULL,_IONBF,0);
 
     ParticleSystem ps;
+    /* copy particle system for later swap */
+    ParticleSystem tmpPs;
+
     BoundingBox box;
 
     /* =========== parameters ============= */
@@ -40,10 +43,12 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 1000;
+    ps.N = 10;
+    tmpPs.N = ps.N;
 
     /*============ Walls ================== */
     ps.walls.N = 5;
+    tmpPs.walls.N = ps.walls.N;
     double minx = 0.;
     double miny = 0.;
     double minz = 0.;
@@ -54,13 +59,16 @@ int main()
        
     printf("allocating memory\n");
     ps.MAX_NEI=MAX_NEIGHBOR;
+    tmpPs.MAX_NEI=ps.MAX_NEI;
     ps.mu = mu;
 
     allocateMemory(&ps);
+    allocateMemory(&tmpPs);
     printf("allocating memory done\n");
 
     printf("initalizing particles\n");
     initializeParticles(&ps,r,m,k,res);
+    initializeParticles(&tmpPs,r,m,k,res);
     printf("initalizing particles done\n");
 
     initialize_BoundingBox(&ps, &box, minx, maxx, miny, maxy, minz, maxz);
@@ -74,7 +82,7 @@ int main()
     /* set time step */
     double dt = 1e-5;
     double out_time = 0.05;
-    double end_time = 5.;
+    double end_time = 30.0;
     int outStep = (int)(out_time/dt);
 
     ps.dt=dt;
@@ -157,10 +165,12 @@ int main()
     for (int step = 0; step < steps; step++)
     {
         #if USE_GPU
+        /* GPU */
+
         /* if want naive collision*/
         //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
          
-        device_dem(&ps, &box, gridSize, blockSize);
+            device_dem(&ps, &box, gridSize, blockSize);
             #if OUTPUT
                 if (step % outStep == 0)
                 {
@@ -182,7 +192,10 @@ int main()
                 }
             #endif
         #else
-            integrateCPU(&ps,&box);
+
+                /* CPU */
+            //integrateCPU(&ps,&box);
+                cpu_dem_sort(&ps, &tmpPs, &box, step);
             #if OUTPUT
             if (step % outStep == 0)
             {

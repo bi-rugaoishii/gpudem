@@ -14,6 +14,7 @@
 void integrateCPU(ParticleSystem *ps, BoundingBox *box);
 void particle_collision_naive(ParticleSystem* ps);
 void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box);
+void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
 
 void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box);
 
@@ -26,6 +27,7 @@ inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c);
 inline void update_history(ParticleSystem *p,int i);
 inline void update_history_wall(ParticleSystem *p,int i);
 
+void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, int step);
 void wall_collision_naive(ParticleSystem* ps);
 
 inline void velocity(ParticleSystem* ps);
