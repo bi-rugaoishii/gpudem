@@ -47,6 +47,7 @@ typedef struct DeviceBoundingBox{
 typedef struct {
 
     DeviceBoundingBox d_box;
+    DeviceBoundingBox* d_boxPtr;
 
     double minx,maxx,miny,maxy,minz,maxz;
     double dx,dy,dz;
@@ -86,10 +87,10 @@ void free_BoundingBox(BoundingBox *box);
  * device related functions
  * ============================*/
 
-__global__ void dk_build_cellCount(DeviceParticleGroup p, DeviceBoundingBox box);
-__global__ void dk_build_pList(DeviceParticleGroup p, DeviceBoundingBox box);
+__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
+__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
 
-__device__ int d_calcCellId(DeviceParticleGroup p,int i, DeviceBoundingBox box);
+__device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box);
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);
 void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps);
 

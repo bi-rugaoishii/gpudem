@@ -14,37 +14,37 @@
 
 
 __device__ __forceinline__
-void updateAcceleration(DeviceParticleGroup p,int i);
+void updateAcceleration(DeviceParticleGroup* p,int i);
 
 __device__ __forceinline__
-void updateVelocity(DeviceParticleGroup p,int i);
+void updateVelocity(DeviceParticleGroup* p,int i);
 
 
 /* 位置更新（オイラー法） */
 __device__ __forceinline__
-void updatePosition(DeviceParticleGroup p,
+void updatePosition(DeviceParticleGroup* p,
                     int i);
 
 
 /* 床衝突処理 */
 __device__ __forceinline__
-void resolveFloorCollision(DeviceParticleGroup p,
+void resolveFloorCollision(DeviceParticleGroup* p,
                            int i,
                            double restitution);
 
 /* normal force */
 
 __device__ __forceinline__
-ContactCache d_calc_normal_force(DeviceParticleGroup p,int i,int j,Vec3 n,double delMag,double dist);
+ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,double delMag,double dist);
 
 __device__ __forceinline__
-void d_particle_collision_cell_linked(DeviceParticleGroup p, int i, DeviceBoundingBox box);
+void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBoundingBox* box);
 
 __device__ __forceinline__
 ContactCache d_calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist);
 
 __device__ __forceinline__
-void d_particle_collision_cell_linked_noVec(DeviceParticleGroup p, int i, DeviceBoundingBox box);
+void d_particle_collision_cell_linked_noVec(DeviceParticleGroup* p, int i, DeviceBoundingBox* box);
 
 __device__ __forceinline__
 void particle_collision_naive(DeviceParticleGroup* ps, int i);
@@ -54,13 +54,13 @@ void particle_collision_naive(DeviceParticleGroup* ps, int i);
 カーネル
 ============================================================
 */
-__global__ void integrateKernel(DeviceParticleGroup p);
+__global__ void integrateKernel(DeviceParticleGroup* p);
 
-__global__ void check_g_kernel(DeviceParticleGroup p);
+__global__ void check_g_kernel(DeviceParticleGroup* p);
 
-__global__ void k_integrate(DeviceParticleGroup p);
+__global__ void k_integrate(DeviceParticleGroup* p);
 
-__global__ void k_collision(DeviceParticleGroup p, DeviceBoundingBox box);
+__global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
 /*
    ======================================================
    main routine 

@@ -67,23 +67,64 @@ void freeMemory(ParticleSystem* ps)
     #if USE_GPU
         cudaFree(ps->d_group.x);
         cudaFree(ps->d_group.v);
-        cudaFree(ps->d_group.r);
-        cudaFree(ps->d_group.rsq);
         cudaFree(ps->d_group.a);
         cudaFree(ps->d_group.f);
-        cudaFree(ps->d_group.k);
+        cudaFree(ps->d_group.r);
+        cudaFree(ps->d_group.rsq);
+        cudaFree(ps->d_group.invr);
+
+
         cudaFree(ps->d_group.m);
         cudaFree(ps->d_group.sqrtm);
         cudaFree(ps->d_group.invm);
-        cudaFree(ps->d_group.invr);
+        cudaFree(ps->d_group.k);
         cudaFree(ps->d_group.etaconst);
         cudaFree(ps->d_group.g);
+
+
+        cudaFree(ps->d_group.angv);
+        cudaFree(ps->d_group.anga);
+        cudaFree(ps->d_group.moi);
+        cudaFree(ps->d_group.invmoi);
+
+        cudaFree(ps->d_group.mom);
+        
+        cudaFree(ps->d_group.deltHisx);
+        cudaFree(ps->d_group.deltHisy);
+        cudaFree(ps->d_group.deltHisz);
+
+        cudaFree(ps->d_group.deltHisxWall);
+        cudaFree(ps->d_group.deltHisyWall);
+        cudaFree(ps->d_group.deltHiszWall);
+
+        cudaFree(ps->d_group.indHis);
+        cudaFree(ps->d_group.numCont);
+
+        cudaFree(ps->d_group.isContact);
+        cudaFree(ps->d_group.isContactWall);
+
+        cudaFree(ps->d_group.indHisWall);
+        cudaFree(ps->d_group.numContWall);
 
         cudaFree(ps->d_group.cellId);
         cudaFree(ps->d_group.cellx);
 
+        cudaFree(ps->d_group.pId);
+        cudaFree(ps->d_group.mortonKey);
+        cudaFree(ps->d_group.mortonOrder);
+
+        cudaFree(ps->d_group.tmpMortonKey);
+        cudaFree(ps->d_group.tmpMortonOrder);
+
         cudaFree(ps->d_group.walls.n);
         cudaFree(ps->d_group.walls.d);
+
+        cudaFree(ps->d_group.tmp_storage);
+        cudaFree(ps->d_group.tmp_storage);
+
+        /* ==== structs ====*/
+        cudaFree(ps->d_groupPtr);
+        cudaFree(ps->d_wallsPtr);
     #endif
 }
 
@@ -103,21 +144,96 @@ void copyToDevice(ParticleSystem *ps)
     ps->d_group.walls.N = ps->walls.N;
 
     cudaMemcpy(ps->d_group.x,  ps->x,  size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.v, ps->v, size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.r, ps->r, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.rsq, ps->rsq, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.a, ps->a, size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.f, ps->f, size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.v,  ps->v,  size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.a,  ps->a,  size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.f,  ps->f,  size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.r,  ps->r,  size,     cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.rsq,ps->rsq,size,     cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.invr,ps->invr,size,   cudaMemcpyHostToDevice);
+
     cudaMemcpy(ps->d_group.m, ps->m, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.invm, ps->invm, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.sqrtm, ps->sqrtm, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.invr, ps->invr, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.etaconst, ps->etaconst, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.invm, ps->invm, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.k, ps->k, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.etaconst, ps->etaconst, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.g, ps->g, sizeof(double)*DIM, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.angv, ps->angv, size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.anga, ps->anga, size*DIM, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.moi, ps->moi, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.invmoi, ps->invmoi, size, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.mom, ps->mom, size*DIM, cudaMemcpyHostToDevice);
+
+
+    // ===== contact history =====
+
+    cudaMemcpy(ps->d_group.deltHisx, ps->deltHisx,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.deltHisy, ps->deltHisy,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.deltHisz, ps->deltHisz,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.deltHisxWall, ps->deltHisxWall,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.deltHisyWall, ps->deltHisyWall,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.deltHiszWall, ps->deltHiszWall,
+            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.indHis, ps->indHis,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.numCont, ps->numCont,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.isContact, ps->isContact,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.isContactWall, ps->isContactWall,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.indHisWall, ps->indHisWall,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.numContWall, ps->numContWall,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+
+
+    // ===== cell / morton =====
+
+    cudaMemcpy(ps->d_group.cellId, ps->cellId,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.cellx, ps->cellx,
+            sizeof(int)*DIM*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.pId, ps->pId,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.mortonKey, ps->mortonKey,
+            sizeof(uint32_t)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.mortonOrder, ps->mortonOrder,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.tmpMortonKey, ps->tmpMortonKey,
+            sizeof(uint32_t)*ps->N, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.tmpMortonOrder, ps->tmpMortonOrder,
+            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.walls.n,  ps->walls.n,  size_walls*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.walls.d,  ps->walls.d,  size_walls, cudaMemcpyHostToDevice);
+
+    /* ========= structs =========== */
+    cudaMemcpy(ps->d_groupPtr, &ps->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_wallsPtr, &ps->walls, sizeof(DeviceWallGroup), cudaMemcpyHostToDevice);
 }
 
 
@@ -197,26 +313,79 @@ void allocateMemory(ParticleSystem* ps)
 
     // Device
     #if USE_GPU
-    cudaMalloc(&ps->d_group.x, size*DIM);
-    cudaMalloc(&ps->d_group.v, size*DIM);
-    cudaMalloc(&ps->d_group.a, size*DIM);
-    cudaMalloc(&ps->d_group.f, size*DIM);
-    cudaMalloc(&ps->d_group.r, size);
-    cudaMalloc(&ps->d_group.rsq, size);
-    cudaMalloc(&ps->d_group.invr, size);
-    cudaMalloc(&ps->d_group.m, size);
-    cudaMalloc(&ps->d_group.sqrtm, size);
-    cudaMalloc(&ps->d_group.invm, size);
-    cudaMalloc(&ps->d_group.k, size);
-    cudaMalloc(&ps->d_group.etaconst, size);
+    cudaMalloc((void**)&ps->d_group.x,  size*DIM);
+    cudaMalloc((void**)&ps->d_group.v,  size*DIM);
+    cudaMalloc((void**)&ps->d_group.a,  size*DIM);
+    cudaMalloc((void**)&ps->d_group.f,  size*DIM);
+    cudaMalloc((void**)&ps->d_group.r,  size);
+    cudaMalloc((void**)&ps->d_group.rsq,  size);
+    cudaMalloc((void**)&ps->d_group.invr, size);
+
+    cudaMalloc((void**)&ps->d_group.m, size);
+    cudaMalloc((void**)&ps->d_group.sqrtm, size);
+    cudaMalloc((void**)&ps->d_group.invm, size);
+    cudaMalloc((void**)&ps->d_group.k, size);
+    cudaMalloc((void**)&ps->d_group.etaconst, size);
+    cudaMalloc((void**)&ps->d_group.g, sizeof(double)*DIM);
+
+    cudaMalloc((void**)&ps->d_group.angv, size*DIM);
+    cudaMalloc((void**)&ps->d_group.anga, size*DIM);
+    cudaMalloc((void**)&ps->d_group.moi, size);
+    cudaMalloc((void**)&ps->d_group.invmoi, size);
+
+    cudaMalloc((void**)&ps->d_group.mom, size*DIM);
+
+    cudaMalloc((void**)&ps->d_group.deltHisx, sizeof(double)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.deltHisy, sizeof(double)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.deltHisz, sizeof(double)*ps->N*ps->MAX_NEI);
+
+    cudaMalloc((void**)&ps->d_group.deltHisxWall, sizeof(double)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.deltHisyWall, sizeof(double)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.deltHiszWall, sizeof(double)*ps->N*ps->MAX_NEI);
+
+    cudaMalloc((void**)&ps->d_group.indHis, sizeof(int)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.numCont, sizeof(int)*ps->N);
+
+    cudaMalloc((void**)&ps->d_group.isContact, sizeof(int)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*ps->MAX_NEI);
+
+    cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.numContWall, sizeof(int)*ps->N);
+
+    cudaMalloc((void**)&ps->d_group.cellId, sizeof(int)*ps->N);
+    cudaMalloc((void**)&ps->d_group.cellx, sizeof(int)*DIM*ps->N);
+
+    cudaMalloc((void**)&ps->d_group.pId, sizeof(int)*ps->N);
+    cudaMalloc((void**)&ps->d_group.mortonKey, sizeof(uint32_t)*ps->N);
+    cudaMalloc((void**)&ps->d_group.mortonOrder, sizeof(int)*ps->N);
+    cudaMalloc((void**)&ps->d_group.tmpMortonKey, sizeof(uint32_t)*ps->N);
+    cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
+    cudaMalloc((void**)&ps->d_group.walls.n, size_walls*DIM);
+    cudaMalloc((void**)&ps->d_group.walls.d, size_walls);
+    
+    /* ======== for sorting ==============*/
+
+    ps->d_group.tmp_storage=NULL;
+    ps->d_group.tmp_bytes=0;
+
+    /* calculate temporarly size */
+
+    cub::DeviceRadixSort::SortPairs(
+            ps->d_group.tmp_storage,
+            ps->d_group.tmp_bytes,
+            ps->d_group.mortonKey,
+            ps->d_group.tmpMortonKey,
+            ps->d_group.mortonOrder,
+            ps->d_group.tmpMortonOrder,
+            ps->N);
+
+    cudaMalloc((void**)&ps->d_group.tmp_storage,ps->d_group.tmp_bytes);
+
+    /* ======== for structs ============*/
+    cudaMalloc((void**)&ps->d_groupPtr,sizeof(DeviceParticleGroup));
+    cudaMalloc((void**)&ps->d_wallsPtr,sizeof(DeviceWallGroup));
 
 
-    cudaMalloc(&ps->d_group.cellId, sizeof(int)*ps->N);
-    cudaMalloc(&ps->d_group.cellx, sizeof(int)*DIM*ps->N);
-
-    cudaMalloc(&ps->d_group.walls.n, size_walls*DIM);
-    cudaMalloc(&ps->d_group.walls.d, size_walls);
-    cudaMalloc(&ps->d_group.g, sizeof(double)*DIM);
     #endif
 
 }

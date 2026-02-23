@@ -244,6 +244,7 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
     cudaMemcpy(box->d_box.pNum,  box->pNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pStart,  box->pStart,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.cellOffset,  box->cellOffset,  sizeof(int)*size, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_boxPtr,  &box->d_box,  sizeof(DeviceBoundingBox), cudaMemcpyHostToDevice);
 }
 
 void free_BoundingBox(BoundingBox *box){
@@ -259,6 +260,7 @@ void free_BoundingBox(BoundingBox *box){
     cudaFree(box->d_box.pNum);
     cudaFree(box->d_box.pStart);
     cudaFree(box->d_box.cellOffset);
+    cudaFree(box->d_boxPtr);
     #endif
 }
 
@@ -323,6 +325,8 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, do
             box->d_box.N);
     cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
 
+    /* for structs*/
+    cudaMalloc(&box->d_boxPtr,sizeof(DeviceBoundingBox));
     #endif
 
 }
@@ -441,42 +445,42 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
    ===================================
  */
 
-__global__ void dk_build_cellCount(DeviceParticleGroup p, DeviceBoundingBox box){
+__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=p.N){
+    if(i>=p->N){
         return;
     }
 
     int cellId = d_calcCellId(p,i,box);
-    p.cellId[i] = cellId;
+    p->cellId[i] = cellId;
 
-    atomicAdd(&box.pNum[cellId],1);
+    atomicAdd(&box->pNum[cellId],1);
 
 }
 
-__global__ void dk_build_pList(DeviceParticleGroup p, DeviceBoundingBox box){
+__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=p.N){
+    if(i>=p->N){
         return;
     }
 
-    int cellId = p.cellId[i];
-    int offset = atomicAdd(&box.cellOffset[cellId],1);
-    int index = box.pStart[cellId] + offset;
-    box.pList[index] = i;
+    int cellId = p->cellId[i];
+    int offset = atomicAdd(&box->cellOffset[cellId],1);
+    int index = box->pStart[cellId] + offset;
+    box->pList[index] = i;
 }
 
-__device__ int d_calcCellId(DeviceParticleGroup p,int i, DeviceBoundingBox box){
-    int dx = floor((p.x[i*DIM+0]-box.minx)*box.invdx)+1; //+1 for ghost cell
-    int dy = floor((p.x[i*DIM+1]-box.miny)*box.invdy)+1; //+1 for ghost cell
-    int dz = floor((p.x[i*DIM+2]-box.minz)*box.invdz)+1; //+1 for ghost cell
-    p.cellx[i*DIM+0] = dx;
-    p.cellx[i*DIM+1] = dy;
-    p.cellx[i*DIM+2] = dz;
+__device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box){
+    int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+    int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+    int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+    p->cellx[i*DIM+0] = dx;
+    p->cellx[i*DIM+1] = dy;
+    p->cellx[i*DIM+2] = dz;
 
-    return (box.sizey*dz+dy)*box.sizex+dx;
+    return (box->sizey*dz+dy)*box->sizex+dx;
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){
@@ -485,7 +489,7 @@ void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockS
     cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
 
-    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_group,box->d_box);
+    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
 
     cub::DeviceScan::ExclusiveSum(box->d_box.tmpExSum,
             box->d_box.scanTmpBytes,
@@ -493,6 +497,6 @@ void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockS
             box->d_box.pStart,
             box->d_box.N);
 
-    dk_build_pList<<<gridSize,blockSize>>>(p->d_group,box->d_box);
+    dk_build_pList<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
 
 }

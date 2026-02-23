@@ -24,22 +24,63 @@ typedef struct DeviceParticleGroup{
     int N;
     double* x;
     double* v;
-    double* a;
-    double* f;
     double* r;
     double* rsq;
     double* invr;
+    double* a;
+    double* f;
+    double* k;
     double* m;
     double* sqrtm;
     double* invm;
-    double* k;
+
+    double* angv; /* angular velocity */
+    double* anga; /* angular accelartion */
+    double* moi; /* moment of intertia */
+    double* invmoi;
+    double* mom; /* torque */
+
     double* etaconst;
     double* g;
-    double dt;
 
-    int MAX_NEIGHBOR;
+    /* ======== tangential force related =========*/
+     /* history of delta tangent */
+    double* deltHisx; 
+    double* deltHisy;
+    double* deltHisz;
+
+    double* deltHisxWall;
+    double* deltHisyWall;
+    double* deltHiszWall;
+
+    int* indHis; /* Index of collided particles */ 
+    int* indHisWall; /* Index of collided particles */ 
+    int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
+    int* isContactWall;
+    int MAX_NEI; //sets maximum number of neighbors
+                 
+    int* numCont; /* number of contact */
+    int* numContWall; /* number of contact with walls */
+
+
+
     int* cellId;
     int* cellx; //coordinate index in structured cell
+    
+                 //
+    double dt;
+    double mu; //friction
+
+    int* pId;
+    uint32_t *mortonKey;
+    int* mortonOrder;
+
+    uint32_t *tmpMortonKey;
+    int* tmpMortonOrder;
+
+    /* for sorting */
+    void* tmp_storage;
+    size_t tmp_bytes;
 
     DeviceWallGroup walls;
 } DeviceParticleGroup;
@@ -129,7 +170,9 @@ typedef struct ParticleSystem{
     WallGroup walls;
 
     DeviceParticleGroup d_group;
+    DeviceParticleGroup *d_groupPtr;
     DeviceWallGroup d_walls;
+    DeviceWallGroup *d_wallsPtr;
 
 } ParticleSystem;
 

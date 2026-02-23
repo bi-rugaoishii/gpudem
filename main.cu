@@ -43,7 +43,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 1000;
+    ps.N = 10;
     tmpPs.N = ps.N;
 
     /*============ Walls ================== */
@@ -120,11 +120,16 @@ int main()
         printf("nondimensionalizing ...\n");
         nondimensionalize(&ps,&box);
         printf("nondimensionalizing done \n");
+        printf("\n");
+        printf("g after nondim is %f %f %f \n",ps.g[0],ps.g[1],ps.g[2]);
+        printf("m[0]:%f r[0]:%f dt:%f \n",ps.m[0],ps.r[0],ps.dt);
+        printf("\n");
     #endif
 
     #if USE_GPU
         printf("copying memory to device\n");
         copyToDevice(&ps);
+        copyToDevice(&tmpPs);
         copyToDeviceBox(&box,&ps);
         printf("copying memory to device done\n");
     #endif
@@ -138,7 +143,7 @@ int main()
     int gridSize = (ps.N + blockSize - 1) / blockSize;
     printf("grid=%d, block=%d\n", gridSize, blockSize);
 
-    check_g_kernel<<<1, 1>>>(ps.d_group);
+    check_g_kernel<<<1, 1>>>(ps.d_groupPtr);
     cudaDeviceSynchronize();
     cudaEvent_t start, stop, now;
     float ms;
@@ -168,9 +173,10 @@ int main()
         /* GPU */
 
         /* if want naive collision*/
-        //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
-         
+            //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
+
             device_dem(&ps, &box, gridSize, blockSize);
+            //device_dem_withSort(&ps, &tmpPs,&box, gridSize, blockSize,step);
             #if OUTPUT
                 if (step % outStep == 0)
                 {
@@ -226,6 +232,7 @@ int main()
     #endif
 
     freeMemory(&ps);
+    freeMemory(&tmpPs);
 
     free_BoundingBox(&box);
 
