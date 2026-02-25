@@ -171,7 +171,6 @@ typedef struct ParticleSystem{
 
     DeviceParticleGroup d_group;
     DeviceParticleGroup *d_groupPtr;
-    DeviceWallGroup d_walls;
     DeviceWallGroup *d_wallsPtr;
 
 } ParticleSystem;

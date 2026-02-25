@@ -310,7 +310,6 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, do
     cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
     cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
     cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
-    cudaMalloc(&box->d_box.tmpExSum, sizeof(int)*sizeBox);
 
     /* for cub */
 
@@ -484,6 +483,8 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){
+   // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
+    
     /* initialize */
     cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);

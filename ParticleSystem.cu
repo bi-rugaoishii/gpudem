@@ -120,11 +120,9 @@ void freeMemory(ParticleSystem* ps)
         cudaFree(ps->d_group.walls.d);
 
         cudaFree(ps->d_group.tmp_storage);
-        cudaFree(ps->d_group.tmp_storage);
 
         /* ==== structs ====*/
         cudaFree(ps->d_groupPtr);
-        cudaFree(ps->d_wallsPtr);
     #endif
 }
 
@@ -142,6 +140,8 @@ void copyToDevice(ParticleSystem *ps)
     ps->d_group.dt = ps->dt;
     ps->d_group.N = ps->N;
     ps->d_group.walls.N = ps->walls.N;
+    ps->d_group.mu = ps->mu;
+    ps->d_group.MAX_NEI = ps->MAX_NEI;
 
     cudaMemcpy(ps->d_group.x,  ps->x,  size*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.v,  ps->v,  size*DIM, cudaMemcpyHostToDevice);
@@ -233,7 +233,6 @@ void copyToDevice(ParticleSystem *ps)
 
     /* ========= structs =========== */
     cudaMemcpy(ps->d_groupPtr, &ps->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_wallsPtr, &ps->walls, sizeof(DeviceWallGroup), cudaMemcpyHostToDevice);
 }
 
 
@@ -383,7 +382,6 @@ void allocateMemory(ParticleSystem* ps)
 
     /* ======== for structs ============*/
     cudaMalloc((void**)&ps->d_groupPtr,sizeof(DeviceParticleGroup));
-    cudaMalloc((void**)&ps->d_wallsPtr,sizeof(DeviceWallGroup));
 
 
     #endif

@@ -19,16 +19,12 @@ typedef struct Vec3{
 
 }Vec3;
 
-#if USE_GPU
 __host__ __device__
-#endif
 inline double vdot(Vec3 a,Vec3 b){
     return a.x*b.x+a.y*b.y+a.z*b.z;
 }
 
-#if USE_GPU
 __host__ __device__
-#endif
 inline Vec3 vscalar(double a,Vec3 b){
     Vec3 c;
     c.x = a*b.x;
@@ -37,9 +33,7 @@ inline Vec3 vscalar(double a,Vec3 b){
     return c;
 }
 
-#if USE_GPU
 __host__ __device__
-#endif
 inline Vec3 vadd(Vec3 a,Vec3 b){
     Vec3 c;
     c.x = a.x+b.x;
@@ -48,9 +42,7 @@ inline Vec3 vadd(Vec3 a,Vec3 b){
     return c;
 }
 
-#if USE_GPU
 __host__ __device__
-#endif
 inline Vec3 vsub(Vec3 a,Vec3 b){
     Vec3 c;
     c.x = a.x-b.x;
@@ -59,9 +51,7 @@ inline Vec3 vsub(Vec3 a,Vec3 b){
     return c;
 }
 
-#if USE_GPU
 __host__ __device__
-#endif
 inline Vec3 vcross(Vec3 a,Vec3 b){
     Vec3 c;
     c.x = a.y*b.z-a.z*b.y;

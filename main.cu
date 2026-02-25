@@ -43,7 +43,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 1000;
+    ps.N = 5000;
     tmpPs.N = ps.N;
 
     /*============ Walls ================== */
@@ -200,12 +200,12 @@ int main()
         #else
 
                 /* CPU */
-            integrateCPU(&ps,&box);
-            //    cpu_dem_sort(&ps, &tmpPs, &box, step);
+            //integrateCPU(&ps,&box);
+                cpu_dem_sort(&ps, &tmpPs, &box, step);
             #if OUTPUT
             if (step % outStep == 0)
             {
-                writeParticlesVTKBinary(&ps, step);
+              //  writeParticlesVTKBinary(&ps, step);
                     #if NONDIM
                         //writeParticlesDimensionalizeVTK(&ps, step);
                         write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);

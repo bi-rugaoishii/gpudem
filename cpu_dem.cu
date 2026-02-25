@@ -75,7 +75,7 @@ void wall_collision_naive(ParticleSystem* ps){
             if (distsq < ps->rsq[i]){
                 double dist = sqrt(distsq);
                 double delmag = ps->r[i]-dist;
-                if (delmag*ps->invr[i]>0.1){
+                if (delmag*ps->invr[i]*0.5>0.1){
                     printf("overlap over 10% with wall!!!!\n");
                 }
 
