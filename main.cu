@@ -8,6 +8,7 @@
 #include "device_dem.h"
 #include "cpu_dem.h"
 #include "output.h"
+#include "TriangleMesh.h"
 #include "solver_output.h"
 #include "Vec3.h"
 #define DIM 3
@@ -43,19 +44,19 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 5000;
+    ps.N = 10000;
     tmpPs.N = ps.N;
 
-    /*============ Walls ================== */
+    /*============ BoundingBox and walls ================== */
     ps.walls.N = 5;
     tmpPs.walls.N = ps.walls.N;
     double minx = 0.;
     double miny = 0.;
     double minz = 0.;
 
-    double maxx = 0.5;
-    double maxy = 3.0;
-    double maxz = 0.5;
+    double maxx = 1.0;
+    double maxy = 7.0;
+    double maxz = 1.0;
        
     printf("allocating memory\n");
     ps.MAX_NEI=MAX_NEIGHBOR;
@@ -71,7 +72,7 @@ int main()
     initializeParticles(&tmpPs,r,m,k,res);
     printf("initalizing particles done\n");
 
-    initialize_BoundingBox(&ps, &box, minx, maxx, miny, maxy, minz, maxz);
+
 
     /* give gravity */
     ps.g[0] = 0.;
@@ -87,6 +88,27 @@ int main()
 
     ps.dt=dt;
     
+    /* read triangles */
+    printf("\n Loading Triangles\n");
+    const char* trianglesDir = "geometry/box.stl";
+    TriangleMesh triangles;
+    load_ascii_stl_double(trianglesDir,&triangles);
+    printf("Loading Triangles done!\n");
+
+    for (int i=0; i<triangles.nTri; i++){
+        printf("%f %f %f\n", triangles.nx[i],triangles.ny[i],triangles.nz[i]);
+    }
+
+    printf("\nInitializing the Bounding Box\n");
+    initialize_BoundingBox(&ps, &box, &triangles, minx, maxx, miny, maxy, minz, maxz);
+    printf("Initializing the Bounding Box Done!!\n");
+
+    printf("\n Updating triangle list\n");
+    update_tList(&box, &triangles);
+    printf("Updating triangle list done!\n");
+
+
+
     /* initialize Walls */
     double walllist[ps.walls.N*DIM]={0.,1.,0.,
     -1.,0.,0.,
@@ -118,7 +140,7 @@ int main()
     /* non dimensionalize */
     #if NONDIM
         printf("nondimensionalizing ...\n");
-        nondimensionalize(&ps,&box);
+        nondimensionalize(&ps,&box,&triangles);
         printf("nondimensionalizing done \n");
         printf("\n");
         printf("g after nondim is %f %f %f \n",ps.g[0],ps.g[1],ps.g[2]);

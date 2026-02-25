@@ -592,11 +592,8 @@ void particle_collision_naive(DeviceParticleGroup* ps, int i){
         }
     }
 }
-    __device__ __forceinline__
-void updateAcceleration(DeviceParticleGroup* p,
-        int i
-        )
-{
+__device__ __forceinline__
+void updateAcceleration(DeviceParticleGroup* p, int i){
     int bi = i*DIM;
     p->a[bi+0] = (p->g[0]+p->f[bi+0]*p->invm[i]) ;
     p->a[bi+1] = (p->g[1]+p->f[bi+1]*p->invm[i]);
@@ -604,10 +601,8 @@ void updateAcceleration(DeviceParticleGroup* p,
 }
 
 /* 速度更新（重力適用） */
-    __device__ __forceinline__
-void updateVelocity(DeviceParticleGroup* p,
-        int i)
-{
+__device__ __forceinline__
+void updateVelocity(DeviceParticleGroup* p,int i){
     int bi = i*DIM;
     p->v[bi+0] += p->a[bi+0] * p->dt;
     p->v[bi+1] += p->a[bi+1] * p->dt;
@@ -616,10 +611,8 @@ void updateVelocity(DeviceParticleGroup* p,
 
 
 /* 位置更新（オイラー法） */
-    __device__ __forceinline__
-void updatePosition(DeviceParticleGroup* p,
-        int i)
-{
+__device__ __forceinline__
+void updatePosition(DeviceParticleGroup* p,int i){
     int bi = i*DIM;
     p->x[bi+0] += p->v[bi+0] * p->dt;
     p->x[bi+1] += p->v[bi+1] * p->dt;

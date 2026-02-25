@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "Vec3.h"
 #include "BoundingBox.h"
+#include "TriangleMesh.h"
 
 /*
 ============================================================
@@ -212,7 +213,7 @@ void allocateMemory(ParticleSystem* ps);
 */
 void initializeParticles(ParticleSystem* ps,double r,double m, double k, double res);
 
-void nondimensionalize(ParticleSystem* ps, BoundingBox* box);
+void nondimensionalize(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh);
 
 
 

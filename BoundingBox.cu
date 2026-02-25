@@ -264,7 +264,7 @@ void free_BoundingBox(BoundingBox *box){
     #endif
 }
 
-void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, double maxx, double miny, double maxy, double minz, double maxz){
+void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, double minx, double maxx, double miny, double maxy, double minz, double maxz){
     /* find maximum radius */
 
     double maxr=0.;
@@ -303,6 +303,12 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, do
     box->pNum = (int*)malloc(sizeof(int)*sizeBox);
     box->pStart = (int*)malloc(sizeof(int)*sizeBox);
     box->cellOffset = (int*)malloc(sizeof(int)*sizeBox);
+
+    /* ==== for triangles ==== */
+
+    box->MAX_TRI = 100;
+    box->tList = (int*)calloc(0,sizeof(int)*sizeBox*box->MAX_TRI);
+    box->tNum = (int*)calloc(0,sizeof(int)*sizeBox);
 
     #if USE_GPU
     box->d_box.N= sizeBox;
@@ -388,6 +394,42 @@ void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox 
         box->cellOffset[cellId] +=1;
     }
 
+}
+
+void update_tList(BoundingBox *box, TriangleMesh *mesh){
+    for (int i=0; i<mesh->nTri; i++){
+        int sx = floor((mesh->minx[i]-box->minx)*box->invdx)+1;
+        int sy = floor((mesh->miny[i]-box->miny)*box->invdy)+1;
+        int sz = floor((mesh->minz[i]-box->minz)*box->invdz)+1;
+
+        int ex = ceil((mesh->maxx[i]-box->minx)*box->invdx)+1;
+        int ey = ceil((mesh->maxy[i]-box->miny)*box->invdy)+1;
+        int ez = ceil((mesh->maxz[i]-box->minz)*box->invdz)+1;
+        printf("%d\n",i);
+
+        for (int dz=sz; dz<=ez; dz++){
+            for (int dy=sy; dy<=ey; dy++){
+                for (int dx=sx; dx<=ex; dx++){
+                    int cellId= (box->sizey*dz+dy)*box->sizex+dx;
+                    if(cellId>=box->N){
+                        printf("Cell Id is FUCKED BRO!");
+                    }
+
+        printf("b\n",i);
+                    if (box->tNum[cellId]>= box->MAX_TRI){
+                        printf("!!!!!!!Too many triangles in a cell!!!!\n");
+                    }
+
+        printf("a\n",i);
+                    int tNum = box->tNum[cellId];
+                    printf("tnum = %d\n",tNum);
+                    box->tList[cellId*box->MAX_TRI+tNum]=i;
+        printf("k\n",i);
+                    box->tNum[cellId]++;
+                }
+            }
+        }
+    }
 }
 
 void update_pList(ParticleSystem *p, BoundingBox *box){
@@ -483,8 +525,8 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){
-   // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
-    
+    // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
+
     /* initialize */
     cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
