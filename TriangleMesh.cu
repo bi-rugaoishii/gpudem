@@ -32,6 +32,15 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
 
     int Nv = mesh->nVert;
     int Nt = mesh->nTri;
+    /* ===== global mesh AABB init ===== */
+
+    mesh->gminx =  1e300;
+    mesh->gminy =  1e300;
+    mesh->gminz =  1e300;
+
+    mesh->gmaxx = -1e300;
+    mesh->gmaxy = -1e300;
+    mesh->gmaxz = -1e300;
 
     /* allocate SoA */
     mesh->mx = (double*)malloc(sizeof(double)*Nv);
@@ -148,6 +157,16 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
 
             mesh->minz[triIndex] = minz;
             mesh->maxz[triIndex] = maxz;
+
+            /* ===== update global mesh AABB ===== */
+
+            if(minx < mesh->gminx) mesh->gminx = minx;
+            if(miny < mesh->gminy) mesh->gminy = miny;
+            if(minz < mesh->gminz) mesh->gminz = minz;
+
+            if(maxx > mesh->gmaxx) mesh->gmaxx = maxx;
+            if(maxy > mesh->gmaxy) mesh->gmaxy = maxy;
+            if(maxz > mesh->gmaxz) mesh->gmaxz = maxz;
 
             vIndex   += 3;
             triIndex += 1;

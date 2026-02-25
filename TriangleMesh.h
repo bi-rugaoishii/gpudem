@@ -33,6 +33,12 @@ typedef struct TriangleMesh {
     int nVert; /* number of vertices */
     int nTri; /* number of triangles */
 
+    /* bounding box as a whole triangle mesh */
+
+    double gminx, gmaxx;
+    double gminy, gmaxy;
+    double gminz, gmaxz;
+
 } TriangleMesh;
 
 static int count_ascii_stl_triangles(FILE* fp);

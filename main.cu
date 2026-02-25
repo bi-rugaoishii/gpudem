@@ -47,16 +47,30 @@ int main()
     ps.N = 10000;
     tmpPs.N = ps.N;
 
+    /* read triangles */
+    printf("\n Loading Triangles\n");
+    const char* trianglesDir = "geometry/box.stl";
+    TriangleMesh triangles;
+    load_ascii_stl_double(trianglesDir,&triangles);
+    printf("Loading Triangles done!\n");
+
+    for (int i=0; i<triangles.nTri; i++){
+        printf("%f %f %f\n", triangles.nx[i],triangles.ny[i],triangles.nz[i]);
+    }
+
     /*============ BoundingBox and walls ================== */
     ps.walls.N = 5;
     tmpPs.walls.N = ps.walls.N;
-    double minx = 0.;
-    double miny = 0.;
-    double minz = 0.;
+    double minx = triangles.gminx;
+    double miny = triangles.gminy;
+    double minz = triangles.gminz;
 
-    double maxx = 1.0;
+    double maxx = triangles.gmaxx;
     double maxy = 7.0;
-    double maxz = 1.0;
+    double maxz = triangles.gmaxz;
+
+    printf("Bounding box min (x,y,z)= %f %f %f\n",minx ,miny, minz);
+    printf("Bounding box max (x,y,z)= %f %f %f\n",maxx ,maxy, maxz);
        
     printf("allocating memory\n");
     ps.MAX_NEI=MAX_NEIGHBOR;
@@ -88,16 +102,6 @@ int main()
 
     ps.dt=dt;
     
-    /* read triangles */
-    printf("\n Loading Triangles\n");
-    const char* trianglesDir = "geometry/box.stl";
-    TriangleMesh triangles;
-    load_ascii_stl_double(trianglesDir,&triangles);
-    printf("Loading Triangles done!\n");
-
-    for (int i=0; i<triangles.nTri; i++){
-        printf("%f %f %f\n", triangles.nx[i],triangles.ny[i],triangles.nz[i]);
-    }
 
     printf("\nInitializing the Bounding Box\n");
     initialize_BoundingBox(&ps, &box, &triangles, minx, maxx, miny, maxy, minz, maxz);

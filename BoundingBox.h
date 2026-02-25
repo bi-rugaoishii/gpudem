@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "TriangleMesh.h"
 struct ParticleSystem;
 struct DeviceParticleGroup;
 
@@ -60,6 +61,11 @@ typedef struct {
     int *pNum; //number of particle in  cell
     int *pStart; //starting index of the cell in pList
     int *cellOffset; 
+
+    /* for triangles */
+    int *tList;  //list of triangles in a cell
+    int *tNum; //number of particle in  cell
+    int MAX_TRI;
     
 } BoundingBox;
 
@@ -78,9 +84,11 @@ void radixSortUint32(
 
 void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
 
+void update_tList(BoundingBox *box, TriangleMesh *mesh);
+
 void update_pList(ParticleSystem *p, BoundingBox *box);
 void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
-void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box, double minx, double maxx, double miny, double maxy, double minz, double maxz);
+void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh* mesh, double minx, double maxx, double miny, double maxy, double minz, double maxz);
 void free_BoundingBox(BoundingBox *box);
 
 /* ============================
