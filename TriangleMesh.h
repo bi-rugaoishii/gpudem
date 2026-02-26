@@ -19,13 +19,29 @@ typedef struct TriangleMesh {
     double* nx;
     double* ny;
     double* nz;
+    double *d;
+
+    /* edges */
+    double* e01x;
+    double* e01y;
+    double* e01z;
+
+    double* e02x;
+    double* e02y;
+    double* e02z;
+
+    /* barycentric */
+    double* d00;
+    double* d01;
+    double* d11;
+    double* denom;
 
     /* used for aabb */
     double *minx, *maxx;
     double *miny, *maxy;
     double *minz, *maxz;
 
-    /* triangle indices */
+    /* triangle vertex indices */
     int* tri_i0;
     int* tri_i1;
     int* tri_i2;
@@ -41,6 +57,7 @@ typedef struct TriangleMesh {
 
 } TriangleMesh;
 
+void free_TriangleMesh(TriangleMesh* mesh);
 static int count_ascii_stl_triangles(FILE* fp);
 int load_ascii_stl_double(const char* filename, TriangleMesh* mesh);
 

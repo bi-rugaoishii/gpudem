@@ -14,7 +14,7 @@ $(PROGRAM)	makefile	/^$(PROGRAM): $(OBJS)$/;"	t
 %.o	makefile	/^%.o : %.cu$/;"	t
 BoundingBox	BoundingBox.h	/^} BoundingBox;$/;"	t	typeref:struct:__anon3d3994da0108
 CC	makefile	/^CC = nvcc$/;"	m
-CFLAGS	makefile	/^CFLAGS = -O3  -DUSE_GPU=0 -arch=sm_86 $/;"	m
+CFLAGS	makefile	/^CFLAGS = -Xcompiler -fsanitize=address -O0  -DUSE_GPU=0 -arch=sm_86  -g  $/;"	m
 ContactCache	ContactCache.h	/^    ContactCache(){}$/;"	f	struct:ContactCache	typeref:typename:__host__ __device__
 ContactCache	ContactCache.h	/^typedef struct ContactCache{$/;"	s
 ContactCache	ContactCache.h	/^}ContactCache;$/;"	t	typeref:struct:ContactCache
@@ -54,6 +54,9 @@ SOLVER_OUTPUT_H	solver_output.h	/^#define SOLVER_OUTPUT_H$/;"	d
 Size	imgui.ini	/^Size=177,134$/;"	k	section:Window
 Size	imgui.ini	/^Size=180,54$/;"	k	section:Window
 Size	imgui.ini	/^Size=400,400$/;"	k	section:Window
+TriangleContactCache	TriangleContactCache.h	/^    TriangleContactCache(){}$/;"	f	struct:TriangleContactCache	typeref:typename:__host__ __device__
+TriangleContactCache	TriangleContactCache.h	/^typedef struct TriangleContactCache{$/;"	s
+TriangleContactCache	TriangleContactCache.h	/^}TriangleContactCache;$/;"	t	typeref:struct:TriangleContactCache
 TriangleMesh	TriangleMesh.h	/^typedef struct TriangleMesh {$/;"	s
 TriangleMesh	TriangleMesh.h	/^} TriangleMesh;$/;"	t	typeref:struct:TriangleMesh
 Vec3	Vec3.h	/^        Vec3(){}$/;"	f	struct:Vec3	typeref:typename:__host__ __device__
@@ -71,6 +74,7 @@ _CPU_DEM_H_	cpu_dem.h	/^#define _CPU_DEM_H_$/;"	d
 _DEVICE_DEM_H_	device_dem.h	/^#define _DEVICE_DEM_H_$/;"	d
 _OUTPUT_H_	output.h	/^#define _OUTPUT_H_$/;"	d
 _PARTICLESYSTEM_H_	ParticleSystem.h	/^#define _PARTICLESYSTEM_H_$/;"	d
+_TRIANGLECONTACTCACHE_H_	TriangleContactCache.h	/^#define _TRIANGLECONTACTCACHE_H_$/;"	d
 _TRIANGLEMESH_H_	TriangleMesh.h	/^#define _TRIANGLEMESH_H_$/;"	d
 _VEC3_H_	Vec3.h	/^#define _VEC3_H_$/;"	d
 __anon3d3994da0108	BoundingBox.h	/^typedef struct {$/;"	s
@@ -100,8 +104,13 @@ copyToDevice	ParticleSystem.cu	/^void copyToDevice(ParticleSystem *ps)$/;"	f	typ
 copyToDeviceBox	BoundingBox.cu	/^void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){$/;"	f	typeref:typename:void
 count_ascii_stl_triangles	TriangleMesh.cu	/^static int count_ascii_stl_triangles(FILE* fp)$/;"	f	typeref:typename:int	file:
 cpu_dem_sort	cpu_dem.cu	/^void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, int step){$/;"	f	typeref:typename:void
+cpu_dem_sort_triangles	cpu_dem.cu	/^void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,Triangle/;"	f	typeref:typename:void
 d	ParticleSystem.h	/^    double *d;$/;"	m	struct:DeviceWallGroup	typeref:typename:double *
 d	ParticleSystem.h	/^    double *d;$/;"	m	struct:WallGroup	typeref:typename:double *
+d	TriangleMesh.h	/^    double *d;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+d00	TriangleMesh.h	/^    double* d00;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+d01	TriangleMesh.h	/^    double* d01;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+d11	TriangleMesh.h	/^    double* d11;$/;"	m	struct:TriangleMesh	typeref:typename:double *
 d_box	BoundingBox.h	/^    DeviceBoundingBox d_box;$/;"	m	struct:__anon3d3994da0108	typeref:typename:DeviceBoundingBox
 d_boxPtr	BoundingBox.h	/^    DeviceBoundingBox* d_boxPtr;$/;"	m	struct:__anon3d3994da0108	typeref:typename:DeviceBoundingBox *
 d_calcCellId	BoundingBox.cu	/^__device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box){$/;"	f	typeref:typename:int
@@ -130,7 +139,10 @@ deltHisz	ParticleSystem.h	/^    double* deltHisz;$/;"	m	struct:DeviceParticleGro
 deltHisz	ParticleSystem.h	/^    double* deltHisz;$/;"	m	struct:ParticleSystem	typeref:typename:double *
 deltHiszWall	ParticleSystem.h	/^    double* deltHiszWall;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 deltHiszWall	ParticleSystem.h	/^    double* deltHiszWall;$/;"	m	struct:ParticleSystem	typeref:typename:double *
+denom	TriangleMesh.h	/^    double* denom;$/;"	m	struct:TriangleMesh	typeref:typename:double *
 device_dem	device_dem.cu	/^void device_dem(ParticleSystem *p, BoundingBox *box, int gridSize, int blockSize){$/;"	f	typeref:typename:void
+dist	TriangleContactCache.h	/^    double dist;$/;"	m	struct:TriangleContactCache	typeref:typename:double
+dist_triangle	cpu_dem.cu	/^TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh, int j){$/;"	f	typeref:typename:TriangleContactCache
 dk_build_cellCount	BoundingBox.cu	/^__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 dk_build_pList	BoundingBox.cu	/^__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 dt	ParticleSystem.h	/^    double dt;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double
@@ -141,6 +153,12 @@ dy	BoundingBox.h	/^    double dx,dy,dz;$/;"	m	struct:DeviceBoundingBox	typeref:t
 dy	BoundingBox.h	/^    double dx,dy,dz;$/;"	m	struct:__anon3d3994da0108	typeref:typename:double
 dz	BoundingBox.h	/^    double dx,dy,dz;$/;"	m	struct:DeviceBoundingBox	typeref:typename:double
 dz	BoundingBox.h	/^    double dx,dy,dz;$/;"	m	struct:__anon3d3994da0108	typeref:typename:double
+e01x	TriangleMesh.h	/^    double* e01x;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+e01y	TriangleMesh.h	/^    double* e01y;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+e01z	TriangleMesh.h	/^    double* e01z;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+e02x	TriangleMesh.h	/^    double* e02x;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+e02y	TriangleMesh.h	/^    double* e02y;$/;"	m	struct:TriangleMesh	typeref:typename:double *
+e02z	TriangleMesh.h	/^    double* e02z;$/;"	m	struct:TriangleMesh	typeref:typename:double *
 eta	ContactCache.h	/^    double eta;$/;"	m	struct:ContactCache	typeref:typename:double
 etaconst	ParticleSystem.h	/^    double* etaconst;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 etaconst	ParticleSystem.h	/^    double* etaconst;$/;"	m	struct:ParticleSystem	typeref:typename:double *
@@ -150,8 +168,15 @@ f	ParticleSystem.h	/^    double* f;$/;"	m	struct:ParticleSystem	typeref:typename
 fn	ContactCache.h	/^    Vec3 fn;$/;"	m	struct:ContactCache	typeref:typename:Vec3
 freeMemory	ParticleSystem.cu	/^void freeMemory(ParticleSystem* ps)$/;"	f	typeref:typename:void
 free_BoundingBox	BoundingBox.cu	/^void free_BoundingBox(BoundingBox *box){$/;"	f	typeref:typename:void
+free_TriangleMesh	TriangleMesh.cu	/^void free_TriangleMesh(TriangleMesh* mesh){$/;"	f	typeref:typename:void
 g	ParticleSystem.h	/^    double* g;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 g	ParticleSystem.h	/^    double* g;$/;"	m	struct:ParticleSystem	typeref:typename:double *
+gmaxx	TriangleMesh.h	/^    double gminx, gmaxx;$/;"	m	struct:TriangleMesh	typeref:typename:double
+gmaxy	TriangleMesh.h	/^    double gminy, gmaxy;$/;"	m	struct:TriangleMesh	typeref:typename:double
+gmaxz	TriangleMesh.h	/^    double gminz, gmaxz;$/;"	m	struct:TriangleMesh	typeref:typename:double
+gminx	TriangleMesh.h	/^    double gminx, gmaxx;$/;"	m	struct:TriangleMesh	typeref:typename:double
+gminy	TriangleMesh.h	/^    double gminy, gmaxy;$/;"	m	struct:TriangleMesh	typeref:typename:double
+gminz	TriangleMesh.h	/^    double gminz, gmaxz;$/;"	m	struct:TriangleMesh	typeref:typename:double
 indHis	ParticleSystem.h	/^    int* indHis; \/* Index of collided particles *\/ $/;"	m	struct:DeviceParticleGroup	typeref:typename:int *
 indHis	ParticleSystem.h	/^    int* indHis; \/* Index of collided particles *\/ $/;"	m	struct:ParticleSystem	typeref:typename:int *
 indHisWall	ParticleSystem.h	/^    int* indHisWall; \/* Index of collided particles *\/ $/;"	m	struct:DeviceParticleGroup	typeref:typename:int *
@@ -221,6 +246,7 @@ mz	TriangleMesh.h	/^    double* mz;$/;"	m	struct:TriangleMesh	typeref:typename:d
 n	ContactCache.h	/^    Vec3 n;$/;"	m	struct:ContactCache	typeref:typename:Vec3
 n	ParticleSystem.h	/^    double *n;$/;"	m	struct:DeviceWallGroup	typeref:typename:double *
 n	ParticleSystem.h	/^    double *n;$/;"	m	struct:WallGroup	typeref:typename:double *
+n	TriangleContactCache.h	/^    Vec3 n;$/;"	m	struct:TriangleContactCache	typeref:typename:Vec3
 nTri	TriangleMesh.h	/^    int nTri; \/* number of triangles *\/$/;"	m	struct:TriangleMesh	typeref:typename:int
 nVert	TriangleMesh.h	/^    int nVert; \/* number of vertices *\/$/;"	m	struct:TriangleMesh	typeref:typename:int
 nondimensionalize	ParticleSystem.cu	/^void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh){$/;"	f	typeref:typename:void
@@ -269,7 +295,6 @@ swapBytes	output.cu	/^void swapBytes(void* data, size_t size)$/;"	f	typeref:type
 swap_ps	BoundingBox.cu	/^void swap_ps(ParticleSystem *p, ParticleSystem *tmp){$/;"	f	typeref:typename:void
 tList	BoundingBox.h	/^    int *tList;  \/\/list of triangles in a cell$/;"	m	struct:__anon3d3994da0108	typeref:typename:int *
 tNum	BoundingBox.h	/^    int *tNum; \/\/number of particle in  cell$/;"	m	struct:__anon3d3994da0108	typeref:typename:int *
-tStart	BoundingBox.h	/^    int *tStart; \/\/starting index of the cell in pList$/;"	m	struct:__anon3d3994da0108	typeref:typename:int *
 time_factor	ParticleSystem.h	/^    double time_factor;$/;"	m	struct:ParticleSystem	typeref:typename:double
 tmpExSum	BoundingBox.h	/^    void *tmpExSum; \/* used for exclusive sum*\/$/;"	m	struct:DeviceBoundingBox	typeref:typename:void *
 tmpMortonKey	ParticleSystem.h	/^    uint32_t *tmpMortonKey;$/;"	m	struct:DeviceParticleGroup	typeref:typename:uint32_t *
@@ -299,6 +324,7 @@ vscalar	Vec3.h	/^inline Vec3 vscalar(double a,Vec3 b){$/;"	f	typeref:typename:__
 vsub	Vec3.h	/^inline Vec3 vsub(Vec3 a,Vec3 b){$/;"	f	typeref:typename:__host__ __device__ Vec3
 vt	ContactCache.h	/^    Vec3 vt;$/;"	m	struct:ContactCache	typeref:typename:Vec3
 wall_collision_naive	cpu_dem.cu	/^void wall_collision_naive(ParticleSystem* ps){$/;"	f	typeref:typename:void
+wall_collision_triangle	cpu_dem.cu	/^void wall_collision_triangle(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){$/;"	f	typeref:typename:void
 walls	ParticleSystem.h	/^    DeviceWallGroup walls;$/;"	m	struct:DeviceParticleGroup	typeref:typename:DeviceWallGroup
 walls	ParticleSystem.h	/^    WallGroup walls;$/;"	m	struct:ParticleSystem	typeref:typename:WallGroup
 writeParticles	output.cu	/^void writeParticles(ParticleSystem* ps, int step)$/;"	f	typeref:typename:void

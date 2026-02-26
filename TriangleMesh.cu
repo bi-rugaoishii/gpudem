@@ -1,5 +1,42 @@
 #include "TriangleMesh.h"
 
+void free_TriangleMesh(TriangleMesh* mesh){
+    free(mesh->mx);
+    free(mesh->my);
+    free(mesh->mz);
+
+    free(mesh->nx);
+    free(mesh->ny);
+    free(mesh->nz);
+
+    free(mesh->e01x);
+    free(mesh->e01y);
+    free(mesh->e01z);
+
+    free(mesh->e02x);
+    free(mesh->e02y);
+    free(mesh->e02z);
+
+    free(mesh->d00);
+    free(mesh->d01);
+    free(mesh->d11);
+    free(mesh->denom);
+
+    free(mesh->minx);
+    free(mesh->miny);
+    free(mesh->minz);
+
+    free(mesh->maxx);
+    free(mesh->maxy);
+    free(mesh->maxz);
+    free(mesh->d);
+
+    
+    free(mesh->tri_i0);
+    free(mesh->tri_i1);
+    free(mesh->tri_i2);
+}
+
 static int count_ascii_stl_triangles(FILE* fp)
 {
     char line[256];
@@ -50,6 +87,21 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     mesh->nx = (double*)malloc(sizeof(double)*Nt);
     mesh->ny = (double*)malloc(sizeof(double)*Nt);
     mesh->nz = (double*)malloc(sizeof(double)*Nt);
+    mesh->d = (double*)malloc(sizeof(double)*Nt);
+
+    
+    mesh->e01x = (double*)malloc(sizeof(double)*Nt);
+    mesh->e01y = (double*)malloc(sizeof(double)*Nt);
+    mesh->e01z = (double*)malloc(sizeof(double)*Nt);
+
+    mesh->e02x = (double*)malloc(sizeof(double)*Nt);
+    mesh->e02y = (double*)malloc(sizeof(double)*Nt);
+    mesh->e02z = (double*)malloc(sizeof(double)*Nt);
+
+    mesh->d00 = (double*)malloc(sizeof(double)*Nt);
+    mesh->d01 = (double*)malloc(sizeof(double)*Nt);
+    mesh->d11 = (double*)malloc(sizeof(double)*Nt);
+    mesh->denom = (double*)malloc(sizeof(double)*Nt);
 
     mesh->tri_i0 = (int*)malloc(sizeof(int)*Nt);
     mesh->tri_i1 = (int*)malloc(sizeof(int)*Nt);
@@ -77,9 +129,14 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
         if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3 ||
                 sscanf(line,"facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
         {
-            mesh->nx[triIndex] = nx;
-            mesh->ny[triIndex] = ny;
-            mesh->nz[triIndex] = nz;
+            /* normalize */
+            double norm = nx*nx+ny*ny+nz*nz;
+            norm=sqrt(norm);
+
+            mesh->nx[triIndex] = nx/norm;
+            mesh->ny[triIndex] = ny/norm;
+            mesh->nz[triIndex] = nz/norm;
+
 
             /* outer loop */
             fgets(line,256,fp);
@@ -104,6 +161,24 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             mesh->mx[vIndex+2]=x;
             mesh->my[vIndex+2]=y;
             mesh->mz[vIndex+2]=z;
+
+            mesh->d[triIndex]=-nx*x-ny*y-nz*z;
+
+            /* calculate edges */
+            mesh->e01x[triIndex] = mesh->mx[vIndex+1]-mesh->mx[vIndex+0];
+            mesh->e01y[triIndex] = mesh->my[vIndex+1]-mesh->my[vIndex+0];
+            mesh->e01z[triIndex] = mesh->mz[vIndex+1]-mesh->mz[vIndex+0];
+
+            mesh->e02x[triIndex] = mesh->mx[vIndex+2]-mesh->mx[vIndex+0];
+            mesh->e02y[triIndex] = mesh->my[vIndex+2]-mesh->my[vIndex+0];
+            mesh->e02z[triIndex] = mesh->mz[vIndex+2]-mesh->mz[vIndex+0];
+
+            mesh->d00[triIndex] = mesh->e01x[triIndex]*mesh->e01x[triIndex]+mesh->e01y[triIndex]*mesh->e01y[triIndex]+mesh->e01z[triIndex]*mesh->e01z[triIndex];
+            mesh->d01[triIndex] = mesh->e01x[triIndex]*mesh->e02x[triIndex]+mesh->e01y[triIndex]*mesh->e02y[triIndex]+mesh->e01z[triIndex]*mesh->e02z[triIndex];
+            mesh->d11[triIndex] = mesh->e02x[triIndex]*mesh->e02x[triIndex]+mesh->e02y[triIndex]*mesh->e02y[triIndex]+mesh->e02z[triIndex]*mesh->e02z[triIndex];
+
+            mesh->denom[triIndex] = mesh->d00[triIndex]*mesh->d11[triIndex]-mesh->d01[triIndex]*mesh->d01[triIndex];
+            mesh->denom[triIndex] = 1./mesh->denom[triIndex];
 
             mesh->tri_i0[triIndex]=vIndex+0;
             mesh->tri_i1[triIndex]=vIndex+1;

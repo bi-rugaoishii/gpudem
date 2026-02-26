@@ -7,6 +7,111 @@ cpu functions
 ============================================================
 */
 
+/* === triangle related === */
+
+TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh, int j){
+    /* check with plane first */
+    double dist = 0.;
+    int bi = i*DIM;
+    TriangleContactCache res;
+    Vec3 ntri;
+    ntri.x = mesh->nx[j];
+    ntri.y = mesh->ny[j];
+    ntri.z = mesh->nz[j];
+
+    res.n.x=0.;
+    res.n.y=0.;
+    res.n.z=0.;
+    res.dist=1.e10;
+
+    double px = ps->x[bi+0];
+    double py = ps->x[bi+1];
+    double pz = ps->x[bi+2];
+
+    dist += ntri.x*px;
+    dist += ntri.y*py;
+    dist += ntri.z*pz;
+    dist += mesh->d[j];
+    double distsq = dist*dist;
+    if(distsq > ps->rsq[i]){
+        /* no collision */
+        return res;
+    }
+
+    /* check if inside the triangle */
+    /* project P onto plane */
+    double vdotn=dist-mesh->d[j];
+    double projx = px - vdotn* ntri.x;
+    double projy = py - vdotn* ntri.y;
+    double projz = pz - vdotn* ntri.z;
+
+    /* get vertex indices */
+    int v0 = mesh->tri_i0[j];
+    int v1 = mesh->tri_i1[j];
+    int v2 = mesh->tri_i2[j];
+
+    Vec3 ap;
+    ap.x = projx - mesh->mx[v0];
+    ap.y = projy - mesh->my[v0];
+    ap.z = projz - mesh->mz[v0];
+
+    double d00 = mesh->d00[j];
+    double d01 = mesh->d01[j];
+    double d11 = mesh->d11[j];
+    double denom = mesh->denom[j];
+
+    double d20 = ap.x*mesh->e01x[j] + ap.y*mesh->e01y[j] + ap.z*mesh->e01z[j];
+    double d21 = ap.x*mesh->e02x[j] + ap.y*mesh->e02y[j] + ap.z*mesh->e02z[j];
+    
+    double v = (d11*d20 - d01*d21)*denom;
+    double w = (d00*d21 - d01*d20)*denom;
+    double u = 1.0 - v - w;
+
+    /* 1) face inside */
+    if (u>=0. &&  v >=0. && w>=0.){
+        double sign= dist<0 ? -1.0 : 1.0;
+        res.n = vscalar(sign,ntri);
+        res.dist = sign*dist;
+        return res;
+    }
+
+    return res;
+}
+
+void wall_collision_triangle(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){
+    for (int i=0; i<p->N; i++){
+        //particle-particle
+        /* cycle through neighbor cells */
+        int bi=i*DIM;
+        int x=p->cellx[bi+0];
+        int y=p->cellx[bi+1];
+        int z=p->cellx[bi+2];
+
+        for (int sx=-1; sx<=1; sx++){
+            for (int sy=-1; sy<=1; sy++){
+                for (int sz=-1; sz<=1; sz++){
+                    int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+                    for(int j=0; j<box->tNum[cellId]; j++){
+                        int indTri = box->tList[cellId*box->MAX_TRI+j];
+                        TriangleContactCache tc;
+                        tc = dist_triangle(p,i,mesh,indTri); 
+                        if(tc.dist<p->r[i]){
+                            double delmag = p->r[i]-tc.dist;
+                            ContactCache c;
+                            c = calc_normal_force_wall(p,i,j,tc.n,delmag,tc.dist);
+                            calc_tangential_force_wall(p,i,j,c);
+
+                        }
+
+                    }
+                }
+            }
+        }
+        update_history_wall(p,i);
+
+    }
+}
+
 inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist){
 
     int bi = i*DIM;
@@ -163,6 +268,9 @@ inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCach
         p->isContactWall[ci+neiInd]=1;
         p->indHisWall[ci+neiInd]=j;
         p->numContWall[i] +=1;
+        if(p->numContWall[i] > p->MAX_NEI){
+            printf("OH MY OH MY\n");
+        }
     }
 
 
@@ -327,7 +435,7 @@ inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c){
     p->deltHisx[ci+neiInd] = delt_new.x;
     p->deltHisy[ci+neiInd] = delt_new.y;
     p->deltHisz[ci+neiInd] = delt_new.z;
-    
+
 }
 
 inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist){
@@ -661,6 +769,63 @@ void particle_collision_naive(ParticleSystem* ps){
                 }
             }
         }
+    }
+}
+
+void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh, int step){
+    /* initialize */
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->f[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->mom[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*ps->MAX_NEI; i++){
+        ps->isContact[i]=0;
+        ps->isContactWall[i]=0;
+    }
+
+    int reorderFreq=100;
+
+    if(step%(reorderFreq)==0){
+        particle_collision_cell_linked_withSort(ps,tmpPs,box);
+    }else{
+        particle_collision_cell_linked(ps,box);
+    }
+
+    wall_collision_triangle(ps,box,mesh);
+
+    /* update */
+    for (int i = 0; i < ps->N; i++)
+    {
+        int bi = i*DIM;
+        // acceleration
+        ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
+        ps->a[bi+1] = ps->f[bi+1]*ps->invm[i]+ps->g[1];
+        ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
+
+        // velocity
+        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
+        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
+        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
+
+        // position
+        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
+        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
+        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
+
+        // angular acceleration
+        ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
+        ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];
+        ps->anga[bi+2] = ps->mom[bi+2]*ps->invmoi[i];
+
+        // angular velocity
+        ps->angv[bi+0] += ps->anga[bi+0] * ps->dt;
+        ps->angv[bi+1] += ps->anga[bi+1] * ps->dt;
+        ps->angv[bi+2] += ps->anga[bi+2] * ps->dt;
+
     }
 }
 

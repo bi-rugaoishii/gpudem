@@ -404,9 +404,9 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         while (trial < max_trials)
         {
             // ランダム配置
-            double x = (double)rand() / RAND_MAX * 0.35 + 0.1;
-            double y = (double)rand() / RAND_MAX * 5.0 + 0.5;
-            double z = (double)rand() / RAND_MAX * 0.35 + 0.1;
+            double x = (double)rand() / RAND_MAX*0.2 - 0.1;
+            double y = (double)rand() / RAND_MAX * 0.2 + 0.7;
+            double z = (double)rand() / RAND_MAX*0.2  - 0.1;
 
             // 既存粒子との距離チェック
             int overlap = 0;
@@ -564,6 +564,30 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh)
     box->rangez*=inv_length_factor;
 
     /* triangles */
+    for (int i=0; i<mesh->nTri; i++){
+        mesh->d[i]*= inv_length_factor;
+
+        mesh->e01x[i]*= inv_length_factor;
+        mesh->e01y[i]*= inv_length_factor;
+        mesh->e01z[i]*= inv_length_factor;
+
+        mesh->e02x[i]*= inv_length_factor;
+        mesh->e02y[i]*= inv_length_factor;
+        mesh->e02z[i]*= inv_length_factor;
+
+        mesh->d00[i]*= inv_length_factor*inv_length_factor;
+        mesh->d01[i]*= inv_length_factor*inv_length_factor;
+        mesh->d11[i]*= inv_length_factor*inv_length_factor;
+
+        mesh->denom[i]*= ps->length_factor*ps->length_factor*ps->length_factor*ps->length_factor;
+
+        mesh->minx[i]*= inv_length_factor;
+        mesh->miny[i]*= inv_length_factor;
+        mesh->minz[i]*= inv_length_factor;
+        mesh->maxx[i]*= inv_length_factor;
+        mesh->maxy[i]*= inv_length_factor;
+        mesh->maxz[i]*= inv_length_factor;
+    }
     for (int i=0; i<mesh->nVert; i++){
         mesh->mx[i]*= inv_length_factor;
         mesh->my[i]*= inv_length_factor;

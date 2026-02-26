@@ -307,8 +307,8 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     /* ==== for triangles ==== */
 
     box->MAX_TRI = 100;
-    box->tList = (int*)calloc(0,sizeof(int)*sizeBox*box->MAX_TRI);
-    box->tNum = (int*)calloc(0,sizeof(int)*sizeBox);
+    box->tList = (int*)calloc(sizeBox*box->MAX_TRI,sizeof(int));
+    box->tNum = (int*)calloc(sizeBox,sizeof(int));
 
     #if USE_GPU
     box->d_box.N= sizeBox;
@@ -415,16 +415,12 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
                         printf("Cell Id is FUCKED BRO!");
                     }
 
-        printf("b\n",i);
                     if (box->tNum[cellId]>= box->MAX_TRI){
                         printf("!!!!!!!Too many triangles in a cell!!!!\n");
                     }
 
-        printf("a\n",i);
                     int tNum = box->tNum[cellId];
-                    printf("tnum = %d\n",tNum);
                     box->tList[cellId*box->MAX_TRI+tNum]=i;
-        printf("k\n",i);
                     box->tNum[cellId]++;
                 }
             }

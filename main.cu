@@ -38,13 +38,13 @@ int main()
 
     /* =========== parameters ============= */
     double r = 0.01;
-    double res = 0.3; //CoR
+    double res = 0.1; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 10000;
+    ps.N = 200;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -96,7 +96,7 @@ int main()
 
     /* set time step */
     double dt = 1e-5;
-    double out_time = 0.05;
+    double out_time = 0.01;
     double end_time = 2.0;
     int outStep = (int)(out_time/dt);
 
@@ -118,13 +118,13 @@ int main()
     -1.,0.,0.,
     1.,0.,0.,
     0.,0.,1.0,
-    0.,0.,-1.};
+    0.,0.,-1.};;;
 
     double wallPoint[ps.walls.N*DIM]={0.,0.,0.,
-    0.5,0.,0.,
-    0.,0.,0.,
-    0.,0.,0.0,
-    0.,0.,0.5};
+    0.2,0.,0.,
+    -0.2,0.,0.,
+    0.,0.,-0.2,
+    0.,0.,0.2};
 
     
     printf("making walls\n");
@@ -213,7 +213,7 @@ int main()
                         //writeParticlesDimensionalizeVTK(&ps, step);
                         write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
                     #else
-                        writeParticlesVTK(&ps, step);
+                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,1.0);
                     #endif
 
                     cudaEventRecord(now);
@@ -227,7 +227,8 @@ int main()
 
                 /* CPU */
             //integrateCPU(&ps,&box);
-                cpu_dem_sort(&ps, &tmpPs, &box, step);
+                //cpu_dem_sort(&ps, &tmpPs, &box, step);
+                cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
             #if OUTPUT
             if (step % outStep == 0)
             {
@@ -236,7 +237,7 @@ int main()
                         //writeParticlesDimensionalizeVTK(&ps, step);
                         write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
                     #else
-                        writeParticlesVTK(&ps, step);
+                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,1.0);
                     #endif
                         end = clock();
                         ms = (double)(end-start)*1000./CLOCKS_PER_SEC;;
@@ -260,6 +261,7 @@ int main()
     freeMemory(&ps);
     freeMemory(&tmpPs);
 
+    free_TriangleMesh(&triangles);
     free_BoundingBox(&box);
 
     #if USE_GPU
