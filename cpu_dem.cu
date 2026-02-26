@@ -40,10 +40,9 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
 
     /* check if inside the triangle */
     /* project P onto plane */
-    double vdotn=dist-mesh->d[j];
-    double projx = px - vdotn* ntri.x;
-    double projy = py - vdotn* ntri.y;
-    double projz = pz - vdotn* ntri.z;
+    double projx = px - dist* ntri.x;
+    double projy = py - dist* ntri.y;
+    double projz = pz - dist* ntri.z;
 
     /* get vertex indices */
     int v0 = mesh->tri_i0[j];
