@@ -116,6 +116,7 @@ int main()
 
 
     /* initialize Walls */
+    /*
     double walllist[ps.walls.N*DIM]={0.,1.,0.,
     -1.,0.,0.,
     1.,0.,0.,
@@ -142,6 +143,7 @@ int main()
         ps.walls.d[i] -= (ps.walls.n[i*DIM+2]*wallPoint[i*DIM+2]);
     }
     printf("making walls done\n");
+    */
 
     /* non dimensionalize */
     #if NONDIM
@@ -210,9 +212,7 @@ int main()
                 {
                     cudaDeviceSynchronize();
                     copyFromDevice(&ps);
-                    //writeParticlesVTKBinary(&ps, step);
                     #if NONDIM
-                        //writeParticlesDimensionalizeVTK(&ps, step);
                         write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
                     #else
                         write_frame_bin(outdir,step,ps.N,ps.x,ps.r,1.0);
@@ -229,8 +229,8 @@ int main()
 
                 /* CPU */
                 //cpu_dem_nosort(&ps, &tmpPs, &box);
-                cpu_dem_sort(&ps, &tmpPs, &box, step);
-                //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
+                //cpu_dem_sort(&ps, &tmpPs, &box, step);
+                cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
             #if OUTPUT
             if (step % outStep == 0)
             {

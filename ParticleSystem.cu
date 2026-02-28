@@ -411,7 +411,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         {
             // ランダム配置
             double x = (double)rand() / RAND_MAX*0.2 - 0.1;
-            double y = (double)rand() / RAND_MAX * 0.2 + 0.1;
+            double y = (double)rand() / RAND_MAX * 1.0 + 0.5;
             double z = (double)rand() / RAND_MAX*0.2  - 0.1;
 
             // 既存粒子との距離チェック

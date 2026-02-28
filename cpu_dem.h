@@ -25,7 +25,7 @@ void integrateCPU(ParticleSystem *ps, BoundingBox *box);
 void particle_collision_naive(ParticleSystem* ps);
 void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box);
 void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *box);
-void particle_collision_cell_linked_withSort_fastupdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
+void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
 
 
 

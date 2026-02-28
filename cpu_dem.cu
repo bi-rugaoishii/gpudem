@@ -64,9 +64,6 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     /* 1) face inside */
     if (u>=0. &&  v >=0. && w>=0.){
         double sign= dist<0 ? -1.0 : 1.0;
-        printf("dist=%e  r=%e\n", dist, ps->r[i]);
-        printf("u=%e v=%e w=%e  sum=%e\n", u, v, w, u+v+w);
-        printf("nx=%e ny=%e nz=%e \n", ntri.x,ntri.y,ntri.z);
         res.n = vscalar(sign,ntri);
         res.dist = sign*dist;
         return res;
@@ -91,17 +88,18 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
                     for(int j=0; j<box->tNum[cellId]; j++){
                         int indTri = box->tList[cellId*box->MAX_TRI+j];
 
-                        int wasHit = 0;
+                        int wasHitBefore = 0;
                         /* check if the triangle was already hit */
                         for (int k=0; k<p->numContWallNow[i]; k++){
                             if (indTri == p->indHisWallNow[i*p->MAX_NEI+k]){
-                                wasHit =1;
+                                wasHitBefore =1;
                                 continue;
                             }
                         }
-                        if (wasHit == 1){
+                        if (wasHitBefore == 1){
                             continue;
                         }
+
 
                         TriangleContactCache tc;
                         tc = dist_triangle(p,i,mesh,indTri); 
@@ -505,7 +503,7 @@ inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,doubl
     return result;
 }
 
-void particle_collision_cell_linked_withSort_fastupdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
+void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
     update_pList_withSort_fast(p, tmpPs, box);
     for (int i=0; i<p->N; i++){
         //particle-particle
@@ -937,12 +935,16 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
         ps->isContactWall[i]=0;
     }
 
+    for (int i=0; i<ps->N; i++){
+        ps->numContWallNow[i]=0;
+    }
+
     int reorderFreq=100;
 
     if(step%(reorderFreq)==0){
-        particle_collision_cell_linked_withSort_fast(ps,tmpPs,box);
+        particle_collision_cell_linked_withSort_fastUpdate(ps,tmpPs,box);
     }else{
-        particle_collision_cell_linked_fast(ps,box);
+        particle_collision_cell_linked_fastUpdate(ps,box);
     }
 
     wall_collision_triangles(ps,box,mesh);
@@ -1057,7 +1059,7 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
     int reorderFreq=100;
 
     if(step%(reorderFreq)==0){
-        particle_collision_cell_linked_withSort_fastupdate(ps,tmpPs,box);
+        particle_collision_cell_linked_withSort_fastUpdate(ps,tmpPs,box);
     }else{
         particle_collision_cell_linked_fastUpdate(ps,box);
     }
