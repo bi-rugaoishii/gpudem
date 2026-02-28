@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "ParticleSystem.h"
 #include "TriangleMesh.h"
 struct ParticleSystem;
 struct DeviceParticleGroup;
@@ -45,7 +46,7 @@ typedef struct DeviceBoundingBox{
  */
 
 
-typedef struct {
+typedef struct BoundingBox{
 
     DeviceBoundingBox d_box;
     DeviceBoundingBox* d_boxPtr;
@@ -57,8 +58,10 @@ typedef struct {
     double rangex,rangey,rangez;
     int sizex,sizey,sizez,N;
 
-    int *pList;  //list of particle in cell CSR formal
+    int *pList;  //list of particle in cell CSR format
     int *pNum; //number of particle in  cell
+    int *usedCells; //id of cells with particles
+    int numUsedCells; //number of cells with particles
     int *pStart; //starting index of the cell in pList
     int *cellOffset; 
 
@@ -75,6 +78,8 @@ typedef struct {
  * =====================
  */
 
+int compare_int(const void *a, const void *b);
+
 void radixSortUint32(
     uint32_t** keyPtr,
     int**      indexPtr,
@@ -87,7 +92,10 @@ void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
 
 void update_pList(ParticleSystem *p, BoundingBox *box);
+void update_pList_fast(ParticleSystem *p, BoundingBox *box);
 void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
+void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
+
 void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh* mesh, double minx, double maxx, double miny, double maxy, double minz, double maxz);
 void free_BoundingBox(BoundingBox *box);
 

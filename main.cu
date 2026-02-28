@@ -61,6 +61,7 @@ int main()
     /*============ BoundingBox and walls ================== */
     ps.walls.N = 5;
     tmpPs.walls.N = ps.walls.N;
+
     double minx = triangles.gminx;
     double miny = triangles.gminy;
     double minz = triangles.gminz;
@@ -98,7 +99,8 @@ int main()
     double dt = 1e-5;
     double out_time = 0.01;
     double end_time = 2.0;
-    int outStep = (int)(out_time/dt);
+    int outStep = round(out_time/dt);
+    printf("Outstep = %d\n",outStep);
 
     ps.dt=dt;
     
@@ -193,7 +195,7 @@ int main()
     #endif
 
     printf("starting \n");
-    for (int step = 0; step < steps; step++)
+    for (int step = 1; step < steps; step++)
     {
         #if USE_GPU
         /* GPU */
@@ -220,15 +222,15 @@ int main()
                     cudaEventSynchronize(now);
 
                     cudaEventElapsedTime(&ms, start, now);
-                    printf("Output step %d, current time: %f, GPU time: %f s\n", step, step*dt,ms/1000.0f);
+                    printf("Output step %d, current time: %f, GPU time: %f s\n", step, (step)*dt,ms/1000.0f);
                 }
             #endif
         #else
 
                 /* CPU */
-            //integrateCPU(&ps,&box);
-                //cpu_dem_sort(&ps, &tmpPs, &box, step);
-                cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
+                //cpu_dem_nosort(&ps, &tmpPs, &box);
+                cpu_dem_sort(&ps, &tmpPs, &box, step);
+                //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
             #if OUTPUT
             if (step % outStep == 0)
             {
@@ -241,7 +243,7 @@ int main()
                     #endif
                         end = clock();
                         ms = (double)(end-start)*1000./CLOCKS_PER_SEC;;
-                        printf("Output step %d,current time: %f s, CPU time: %f s\n", step,step*dt,ms/1000.);
+                        printf("Output step %d,current time: %f s, CPU time: %f s\n", step,(step)*dt,ms/1000.);
             }
             #endif
         #endif

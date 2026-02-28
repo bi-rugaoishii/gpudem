@@ -6,6 +6,8 @@
 #include "Vec3.h"
 #include "BoundingBox.h"
 #include "TriangleMesh.h"
+struct BoundingBox;
+
 
 /*
 ============================================================
@@ -139,13 +141,15 @@ typedef struct ParticleSystem{
     double* deltHiszWall;
 
     int* indHis; /* Index of collided particles */ 
-    int* indHisWall; /* Index of collided particles */ 
+    int* indHisWall; /* Index of collided walls */ 
+    int* indHisWallNow; /* Index of collided walls in the current step*/ 
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
     int MAX_NEI; //sets maximum number of neighbors
                  
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
+    int* numContWallNow; /* number of contact with walls in the current step */
 
 
 

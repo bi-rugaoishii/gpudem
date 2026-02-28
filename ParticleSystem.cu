@@ -51,6 +51,9 @@ void freeMemory(ParticleSystem* ps)
     free(ps->indHisWall);
     free(ps->numContWall);
 
+    free(ps->indHisWallNow);
+    free(ps->numContWallNow);
+
     free(ps->cellId);
     free(ps->cellx);
 
@@ -298,6 +301,9 @@ void allocateMemory(ParticleSystem* ps)
     ps->indHisWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
     ps->numContWall = (int*)malloc(sizeof(int)*ps->N);
 
+    ps->indHisWallNow = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->numContWallNow = (int*)malloc(sizeof(int)*ps->N);
+
     ps->cellId = (int*)malloc(sizeof(int)*ps->N);
     ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
 
@@ -405,7 +411,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         {
             // ランダム配置
             double x = (double)rand() / RAND_MAX*0.2 - 0.1;
-            double y = (double)rand() / RAND_MAX * 0.2 + 0.7;
+            double y = (double)rand() / RAND_MAX * 0.2 + 0.1;
             double z = (double)rand() / RAND_MAX*0.2  - 0.1;
 
             // 既存粒子との距離チェック
@@ -481,6 +487,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         for (int j=0; j<ps->MAX_NEI; j++){
             ps->indHis[i*ps->MAX_NEI+j] = -1;
             ps->indHisWall[i*ps->MAX_NEI+j] = -1;
+            ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
 
             ps->isContact[i*ps->MAX_NEI+j] = -1;
             ps->isContactWall[i*ps->MAX_NEI+j] = -1;

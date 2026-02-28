@@ -1,6 +1,17 @@
-#include "ParticleSystem.h"
 #include "BoundingBox.h"
-#include <stdint.h>
+#include "ParticleSystem.h"
+
+/* =========== used for sort =========== */
+
+
+int compare_int(const void *a, const void *b){
+    int ia = *(const int*)a;
+    int ib = *(const int*)b;
+
+    if (ia < ib) return -1;
+    if (ia > ib) return  1;
+    return 0;
+}
 
 /* ============ Morton key related ================ */
 
@@ -253,6 +264,7 @@ void free_BoundingBox(BoundingBox *box){
     free(box->pNum);
     free(box->pStart);
     free(box->cellOffset);
+    free(box->usedCells);
 
     #if USE_GPU
     cudaFree(box->d_box.pList);
@@ -300,9 +312,12 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     box->N= sizeBox;
 
     box->pList = (int*)malloc(sizeof(int)*p->N);
-    box->pNum = (int*)malloc(sizeof(int)*sizeBox);
-    box->pStart = (int*)malloc(sizeof(int)*sizeBox);
-    box->cellOffset = (int*)malloc(sizeof(int)*sizeBox);
+    box->pNum = (int*)calloc(sizeBox,sizeof(int));
+    box->pStart = (int*)calloc(sizeBox,sizeof(int));
+    box->cellOffset = (int*)calloc(sizeBox,sizeof(int));
+
+    box->usedCells = (int*)malloc(sizeof(int)*sizeBox);
+    box->numUsedCells = 0;
 
     /* ==== for triangles ==== */
 
@@ -334,6 +349,71 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     cudaMalloc(&box->d_boxPtr,sizeof(DeviceBoundingBox));
     #endif
 
+}
+
+void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box){
+    /* initialize */
+    for (int i=0; i<box->numUsedCells; i++){
+        int cid = box->usedCells[i];
+        box->pNum[cid] = 0;
+        box->pStart[cid] = 0;
+        box->cellOffset[cid] = 0;
+    }
+
+    for(int i=0;i<p->N;i++){
+        p->mortonOrder[i] = i;
+    }
+    /* get cellId and get mortonkey*/
+    for (int i=0; i<p->N; i++){
+        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[i*DIM+0] = dx;
+        p->cellx[i*DIM+1] = dy;
+        p->cellx[i*DIM+2] = dz;
+        p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
+        p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
+    }
+
+    /* ========= sort and reorder ========= */
+    radixSortUint32(&p->mortonKey,&p->mortonOrder,p->N,p->tmpMortonKey,p->tmpMortonOrder);
+
+    swap_ps(p, tmpPs);
+
+
+
+    /* count number of particle in cell */
+
+    box->numUsedCells = 0;
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+
+        if (box->pNum[cellId]==0){
+            box->usedCells[box->numUsedCells] = cellId;
+            box->numUsedCells += 1;
+        }
+
+        box->pNum[cellId] +=1;
+    }
+
+
+    int runningSum = 0;
+    for (int i=0; i<box->numUsedCells; i++){
+        int cid = box->usedCells[i];
+        box->pStart[cid]=runningSum;
+        runningSum += box->pNum[cid];
+    }
+
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+        int startId = box->pStart[cellId];
+        int offset = box->cellOffset[cellId];
+
+        box->pList[startId+offset] = i;  
+        box->cellOffset[cellId] +=1;
+    }
 }
 
 void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box){
@@ -426,6 +506,65 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
             }
         }
     }
+}
+
+void update_pList_fast(ParticleSystem *p, BoundingBox *box){
+
+    /* initialize */
+    for (int i=0; i<box->numUsedCells; i++){
+        int cid = box->usedCells[i];
+        box->pNum[cid] = 0;
+        box->pStart[cid] = 0;
+        box->cellOffset[cid] = 0;
+    }
+
+
+    /* get cellId*/
+    for (int i=0; i<p->N; i++){
+        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[i*DIM+0] = dx;
+        p->cellx[i*DIM+1] = dy;
+        p->cellx[i*DIM+2] = dz;
+        p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
+
+    }
+
+    /* count number of particle in cell */
+
+    box->numUsedCells = 0;
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+
+        if (box->pNum[cellId]==0){
+            box->usedCells[box->numUsedCells] = cellId;
+            box->numUsedCells += 1;
+        }
+
+        box->pNum[cellId] +=1;
+    }
+
+    //qsort(box->usedCells, box->numUsedCells,sizeof(int), compare_int );
+
+    int runningSum = 0;
+    for (int i=0; i<box->numUsedCells; i++){
+        int cid = box->usedCells[i];
+        box->pStart[cid]=runningSum;
+        runningSum += box->pNum[cid];
+    }
+
+
+    for (int i=0; i<p->N; i++){
+        int cellId = p->cellId[i];
+        int startId = box->pStart[cellId];
+        int offset = box->cellOffset[cellId];
+
+        box->pList[startId+offset] = i;  
+        box->cellOffset[cellId] +=1;
+    }
+
 }
 
 void update_pList(ParticleSystem *p, BoundingBox *box){

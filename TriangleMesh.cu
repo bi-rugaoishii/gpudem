@@ -126,59 +126,72 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
 
     while(fgets(line,256,fp))
     {
-        if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3 ||
-                sscanf(line,"facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
+        //if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3 ||       sscanf(line,"facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
+        /* need better scan */
+        if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
         {
-            /* normalize */
-            double norm = nx*nx+ny*ny+nz*nz;
-            norm=sqrt(norm);
-
-            mesh->nx[triIndex] = nx/norm;
-            mesh->ny[triIndex] = ny/norm;
-            mesh->nz[triIndex] = nz/norm;
 
 
             /* outer loop */
-            fgets(line,256,fp);
+            if(!fgets(line,256,fp)) break;
 
             /* v0 */
-            fgets(line,256,fp);
+            if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
             mesh->mx[vIndex+0]=x;
             mesh->my[vIndex+0]=y;
             mesh->mz[vIndex+0]=z;
 
             /* v1 */
-            fgets(line,256,fp);
+            if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
             mesh->mx[vIndex+1]=x;
             mesh->my[vIndex+1]=y;
             mesh->mz[vIndex+1]=z;
 
             /* v2 */
-            fgets(line,256,fp);
+            if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
             mesh->mx[vIndex+2]=x;
             mesh->my[vIndex+2]=y;
             mesh->mz[vIndex+2]=z;
+            
+            Vec3 e01;
 
-            mesh->d[triIndex]=-nx*x-ny*y-nz*z;
+            e01.x = mesh->mx[vIndex+1]-mesh->mx[vIndex+0];
+            e01.y = mesh->my[vIndex+1]-mesh->my[vIndex+0];
+            e01.z = mesh->mz[vIndex+1]-mesh->mz[vIndex+0];
+
+            Vec3 e02;
+            e02.x = mesh->mx[vIndex+2]-mesh->mx[vIndex+0];
+            e02.y = mesh->my[vIndex+2]-mesh->my[vIndex+0];
+            e02.z = mesh->mz[vIndex+2]-mesh->mz[vIndex+0];
+
 
             /* calculate edges */
-            mesh->e01x[triIndex] = mesh->mx[vIndex+1]-mesh->mx[vIndex+0];
-            mesh->e01y[triIndex] = mesh->my[vIndex+1]-mesh->my[vIndex+0];
-            mesh->e01z[triIndex] = mesh->mz[vIndex+1]-mesh->mz[vIndex+0];
+            mesh->e01x[triIndex] = e01.x;
+            mesh->e01y[triIndex] = e01.y;
+            mesh->e01z[triIndex] = e01.z;
 
-            mesh->e02x[triIndex] = mesh->mx[vIndex+2]-mesh->mx[vIndex+0];
-            mesh->e02y[triIndex] = mesh->my[vIndex+2]-mesh->my[vIndex+0];
-            mesh->e02z[triIndex] = mesh->mz[vIndex+2]-mesh->mz[vIndex+0];
+            mesh->e02x[triIndex] = e02.x;
+            mesh->e02y[triIndex] = e02.y;
+            mesh->e02z[triIndex] = e02.z;
 
-            mesh->d00[triIndex] = mesh->e01x[triIndex]*mesh->e01x[triIndex]+mesh->e01y[triIndex]*mesh->e01y[triIndex]+mesh->e01z[triIndex]*mesh->e01z[triIndex];
-            mesh->d01[triIndex] = mesh->e01x[triIndex]*mesh->e02x[triIndex]+mesh->e01y[triIndex]*mesh->e02y[triIndex]+mesh->e01z[triIndex]*mesh->e02z[triIndex];
-            mesh->d11[triIndex] = mesh->e02x[triIndex]*mesh->e02x[triIndex]+mesh->e02y[triIndex]*mesh->e02y[triIndex]+mesh->e02z[triIndex]*mesh->e02z[triIndex];
+            mesh->d00[triIndex] = vdot(e01,e01);
+            mesh->d01[triIndex] = vdot(e01,e02);
+            mesh->d11[triIndex] = vdot(e02,e02);
 
             mesh->denom[triIndex] = mesh->d00[triIndex]*mesh->d11[triIndex]-mesh->d01[triIndex]*mesh->d01[triIndex];
             mesh->denom[triIndex] = 1./mesh->denom[triIndex];
+
+            /* calculate normals */
+            Vec3 n;
+            n = vcross(e01,e02);
+            n = vscalar(1./sqrt(vdot(n,n)),n);
+            mesh->nx[triIndex] = n.x;
+            mesh->ny[triIndex] = n.y;
+            mesh->nz[triIndex] = n.z;
+            mesh->d[triIndex]=-n.x*x-n.y*y-n.z*z;
 
             mesh->tri_i0[triIndex]=vIndex+0;
             mesh->tri_i1[triIndex]=vIndex+1;
@@ -246,8 +259,8 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             vIndex   += 3;
             triIndex += 1;
 
-            fgets(line,256,fp);
-            fgets(line,256,fp);
+            if(!fgets(line,256,fp)) break;
+            if(!fgets(line,256,fp)) break;
         }
     }
 

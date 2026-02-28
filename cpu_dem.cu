@@ -39,10 +39,6 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     }
 
     /* check if inside the triangle */
-    /* project P onto plane */
-    double projx = px - dist* ntri.x;
-    double projy = py - dist* ntri.y;
-    double projz = pz - dist* ntri.z;
 
     /* get vertex indices */
     int v0 = mesh->tri_i0[j];
@@ -50,9 +46,9 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     int v2 = mesh->tri_i2[j];
 
     Vec3 ap;
-    ap.x = projx - mesh->mx[v0];
-    ap.y = projy - mesh->my[v0];
-    ap.z = projz - mesh->mz[v0];
+    ap.x = px - mesh->mx[v0];
+    ap.y = py - mesh->my[v0];
+    ap.z = pz - mesh->mz[v0];
 
     double d00 = mesh->d00[j];
     double d01 = mesh->d01[j];
@@ -65,10 +61,12 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     double v = (d11*d20 - d01*d21)*denom;
     double w = (d00*d21 - d01*d20)*denom;
     double u = 1.0 - v - w;
-
     /* 1) face inside */
     if (u>=0. &&  v >=0. && w>=0.){
         double sign= dist<0 ? -1.0 : 1.0;
+        printf("dist=%e  r=%e\n", dist, ps->r[i]);
+        printf("u=%e v=%e w=%e  sum=%e\n", u, v, w, u+v+w);
+        printf("nx=%e ny=%e nz=%e \n", ntri.x,ntri.y,ntri.z);
         res.n = vscalar(sign,ntri);
         res.dist = sign*dist;
         return res;
@@ -77,7 +75,7 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     return res;
 }
 
-void wall_collision_triangle(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){
+void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){
     for (int i=0; i<p->N; i++){
         //particle-particle
         /* cycle through neighbor cells */
@@ -92,14 +90,32 @@ void wall_collision_triangle(ParticleSystem* p,BoundingBox *box, TriangleMesh* m
                     int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
                     for(int j=0; j<box->tNum[cellId]; j++){
                         int indTri = box->tList[cellId*box->MAX_TRI+j];
+
+                        int wasHit = 0;
+                        /* check if the triangle was already hit */
+                        for (int k=0; k<p->numContWallNow[i]; k++){
+                            if (indTri == p->indHisWallNow[i*p->MAX_NEI+k]){
+                                wasHit =1;
+                                continue;
+                            }
+                        }
+                        if (wasHit == 1){
+                            continue;
+                        }
+
                         TriangleContactCache tc;
                         tc = dist_triangle(p,i,mesh,indTri); 
                         if(tc.dist<p->r[i]){
                             double delmag = p->r[i]-tc.dist;
+                            if (delmag*p->invr[i]*0.5>0.1){
+                                printf("overlap over 10%% with wall!!!!\n");
+                            }
                             ContactCache c;
                             c = calc_normal_force_wall(p,i,j,tc.n,delmag,tc.dist);
                             calc_tangential_force_wall(p,i,j,c);
-
+                            int numWall = p->numContWallNow[i];
+                            p->indHisWallNow[i*p->MAX_NEI+numWall] = indTri;
+                            p->numContWallNow[i]+=1;
                         }
 
                     }
@@ -180,7 +196,7 @@ void wall_collision_naive(ParticleSystem* ps){
                 double dist = sqrt(distsq);
                 double delmag = ps->r[i]-dist;
                 if (delmag*ps->invr[i]*0.5>0.1){
-                    printf("overlap over 10% with wall!!!!\n");
+                    printf("overlap over 10%% with wall!!!!\n");
                 }
 
                 Vec3 n;
@@ -489,6 +505,73 @@ inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,doubl
     return result;
 }
 
+void particle_collision_cell_linked_withSort_fastupdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
+    update_pList_withSort_fast(p, tmpPs, box);
+    for (int i=0; i<p->N; i++){
+        //particle-particle
+        /* cycle through neighbor cells */
+        int bi=i*DIM;
+        int x=p->cellx[bi+0];
+        int y=p->cellx[bi+1];
+        int z=p->cellx[bi+2];
+
+        for (int sx=-1; sx<=1; sx++){
+            for (int sy=-1; sy<=1; sy++){
+                for (int sz=-1; sz<=1; sz++){
+                    int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+                    int start = box->pStart[cellId];
+                    int end = start+box->pNum[cellId];
+                    for (int k=box->pStart[cellId]; k<end; k++){
+                        int j = box->pList[k];
+                        if (i==j){
+                            continue;
+                        }else{
+                            int bj=j*DIM;
+
+                            Vec3 del;
+                            /* normal points toward particle i */
+                            del.x = p->x[bi+0]- p->x[bj+0];
+                            del.y = p->x[bi+1]- p->x[bj+1];
+                            del.z = p->x[bi+2]- p->x[bj+2];
+                            double distsq = vdot(del,del);
+                            double R = p->r[i]+p->r[j];
+
+                            if (distsq<R*R){
+                                double dist = sqrt(distsq);
+                                double delMag = R-dist;
+                                if (delMag*p->invr[i]*0.5>0.05){
+                                    printf("overlap over 5%% with pair %d %d!!!!\n",i,j);
+                                    printf("overlap is %f %% with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
+                                }
+
+                                /* ======================================================
+                                   Force Calculation
+                                   ======================================================*/
+                                /* get normal direction */
+                                Vec3 n;
+                                n.x = del.x/dist;
+                                n.y = del.y/dist;
+                                n.z = del.z/dist;
+
+
+                                ContactCache c;
+                                c = calc_normal_force(p,i,j,n,delMag,dist);
+
+
+                                calc_tangential_force(p,i,j,c);
+
+                            }
+                        }
+                    }
+                }
+            }
+        }/* neighbor cell search done */
+
+        /* update contact history */
+        update_history(p,i);
+
+    }
+}
 void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
     update_pList_withSort(p, tmpPs, box);
     for (int i=0; i<p->N; i++){
@@ -524,8 +607,8 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
                                 double dist = sqrt(distsq);
                                 double delMag = R-dist;
                                 if (delMag*p->invr[i]*0.5>0.05){
-                                    printf("overlap over 5% with pair %d %d!!!!\n",i,j);
-                                    printf("overlap is %f % with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
+                                    printf("overlap over 5%% with pair %d %d!!!!\n",i,j);
+                                    printf("overlap is %f %% with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
                                 }
 
                                 /* ======================================================
@@ -538,6 +621,74 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
                                 n.z = del.z/dist;
 
 
+                                ContactCache c;
+                                c = calc_normal_force(p,i,j,n,delMag,dist);
+
+
+                                calc_tangential_force(p,i,j,c);
+
+                            }
+                        }
+                    }
+                }
+            }
+        }/* neighbor cell search done */
+
+        /* update contact history */
+        update_history(p,i);
+
+    }
+}
+
+void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *box){
+    //update_pList(p,box);
+    update_pList_fast(p,box);
+
+    for (int i=0; i<p->N; i++){
+        //particle-particle
+        /* cycle through neighbor cells */
+        int bi=i*DIM;
+        int x=p->cellx[bi+0];
+        int y=p->cellx[bi+1];
+        int z=p->cellx[bi+2];
+
+        for (int sx=-1; sx<=1; sx++){
+            for (int sy=-1; sy<=1; sy++){
+                for (int sz=-1; sz<=1; sz++){
+                    int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+
+                    int start = box->pStart[cellId];
+                    int end = start+box->pNum[cellId];
+                    for (int k=box->pStart[cellId]; k<end; k++){
+                        int j = box->pList[k];
+                        if (i==j){
+                            continue;
+                        }else{
+                            int bj=j*DIM;
+
+                            Vec3 del;
+                            /* normal points toward particle i */
+                            del.x = p->x[bi+0]- p->x[bj+0];
+                            del.y = p->x[bi+1]- p->x[bj+1];
+                            del.z = p->x[bi+2]- p->x[bj+2];
+                            double distsq = vdot(del,del);
+                            double R = p->r[i]+p->r[j];
+
+                            if (distsq<R*R){
+                                double dist = sqrt(distsq);
+                                double delMag = R-dist;
+                                if (delMag*p->invr[i]*0.5>0.05){
+                                    printf("overlap over %%!!!!\n");
+                                    printf("overlap is %f %%\n",delMag*p->invr[i]*0.5*100.);
+                                }
+                                /* ======================================================
+                                   Force Calculation
+                                   ======================================================*/
+                                /* get normal direction */
+                                Vec3 n;
+                                n.x = del.x/dist;
+                                n.y = del.y/dist;
+                                n.z = del.z/dist;
                                 ContactCache c;
                                 c = calc_normal_force(p,i,j,n,delMag,dist);
 
@@ -594,8 +745,8 @@ void particle_collision_cell_linked(ParticleSystem* p, BoundingBox *box){
                                 double dist = sqrt(distsq);
                                 double delMag = R-dist;
                                 if (delMag*p->invr[i]*0.5>0.05){
-                                    printf("overlap over %!!!!\n");
-                                    printf("overlap is %f %\n",delMag*p->invr[i]*0.5*100.);
+                                    printf("overlap over %%!!!!\n");
+                                    printf("overlap is %f %%\n",delMag*p->invr[i]*0.5*100.);
                                 }
                                 /* ======================================================
                                    Force Calculation
@@ -659,7 +810,7 @@ void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box)
                                 double dist = sqrt(distsq);
                                 double delta = R-dist;
                                 if (delta*ps->invr[i]*0.5>0.01){
-                                    printf("overlap over 10%!!!!\n");
+                                    printf("overlap over 10%%!!!!\n");
                                     printf("delta is %f, dist is %f\n",delta,dist);
                                 }
                                 /* ======================================================
@@ -727,7 +878,7 @@ void particle_collision_naive(ParticleSystem* ps){
                     double dist = sqrt(distsq);
                     double delta = R-dist;
                     if (delta*ps->invr[i]*0.5>0.01){
-                        printf("overlap over 10%!!!!\n");
+                        printf("overlap over 10%%!!!!\n");
                         printf("delta is %f, dist is %f\n",delta,dist);
                     }
 
@@ -789,12 +940,68 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
     int reorderFreq=100;
 
     if(step%(reorderFreq)==0){
-        particle_collision_cell_linked_withSort(ps,tmpPs,box);
+        particle_collision_cell_linked_withSort_fast(ps,tmpPs,box);
     }else{
-        particle_collision_cell_linked(ps,box);
+        particle_collision_cell_linked_fast(ps,box);
     }
 
-    wall_collision_triangle(ps,box,mesh);
+    wall_collision_triangles(ps,box,mesh);
+
+    /* update */
+    for (int i = 0; i < ps->N; i++)
+    {
+        int bi = i*DIM;
+        // acceleration
+        ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
+        ps->a[bi+1] = ps->f[bi+1]*ps->invm[i]+ps->g[1];
+        ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
+
+        // velocity
+        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
+        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
+        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
+
+        // position
+        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
+        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
+        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
+
+        // angular acceleration
+        ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
+        ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];
+        ps->anga[bi+2] = ps->mom[bi+2]*ps->invmoi[i];
+
+        // angular velocity
+        ps->angv[bi+0] += ps->anga[bi+0] * ps->dt;
+        ps->angv[bi+1] += ps->anga[bi+1] * ps->dt;
+        ps->angv[bi+2] += ps->anga[bi+2] * ps->dt;
+
+    }
+}
+
+void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box){
+    /* initialize */
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->f[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->mom[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*ps->MAX_NEI; i++){
+        ps->isContact[i]=0;
+        ps->isContactWall[i]=0;
+    }
+
+    for (int i=0; i<ps->N; i++){
+        ps->numContWallNow[i]=0;
+    }
+
+
+    particle_collision_cell_linked_fastUpdate(ps,box);
+
+    wall_collision_naive(ps);
 
     /* update */
     for (int i = 0; i < ps->N; i++)
@@ -843,12 +1050,16 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
         ps->isContactWall[i]=0;
     }
 
+    for (int i=0; i<ps->N; i++){
+        ps->numContWallNow[i]=0;
+    }
+
     int reorderFreq=100;
 
     if(step%(reorderFreq)==0){
-        particle_collision_cell_linked_withSort(ps,tmpPs,box);
+        particle_collision_cell_linked_withSort_fastupdate(ps,tmpPs,box);
     }else{
-        particle_collision_cell_linked(ps,box);
+        particle_collision_cell_linked_fastUpdate(ps,box);
     }
 
     wall_collision_naive(ps);
@@ -885,55 +1096,3 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
     }
 }
 
-void integrateCPU(ParticleSystem* ps, BoundingBox* box)
-{
-    /* initialize */
-    for (int i=0; i<ps->N*DIM; i++){
-        ps->f[i]=0.;
-    }
-
-    for (int i=0; i<ps->N*DIM; i++){
-        ps->mom[i]=0.;
-    }
-
-    for (int i=0; i<ps->N*ps->MAX_NEI; i++){
-        ps->isContact[i]=0;
-        ps->isContactWall[i]=0;
-    }
-
-    //particle_collision_naive(ps);
-    particle_collision_cell_linked(ps,box);
-    //particle_collision_cell_linked_noVec3(ps,box);
-    wall_collision_naive(ps);
-
-    /* update */
-    for (int i = 0; i < ps->N; i++)
-    {
-        int bi = i*DIM;
-        // acceleration
-        ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
-        ps->a[bi+1] = ps->f[bi+1]*ps->invm[i]+ps->g[1];
-        ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
-
-        // velocity
-        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
-        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
-        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
-
-        // position
-        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
-        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
-        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
-
-        // angular acceleration
-        ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
-        ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];
-        ps->anga[bi+2] = ps->mom[bi+2]*ps->invmoi[i];
-
-        // angular velocity
-        ps->angv[bi+0] += ps->anga[bi+0] * ps->dt;
-        ps->angv[bi+1] += ps->anga[bi+1] * ps->dt;
-        ps->angv[bi+2] += ps->anga[bi+2] * ps->dt;
-
-    }
-}
