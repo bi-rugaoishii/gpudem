@@ -28,6 +28,7 @@ void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *b
 void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
 
 
+void checkOoB(ParticleSystem *p, BoundingBox* box);
 
 void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box);
 void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);

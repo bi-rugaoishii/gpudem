@@ -107,7 +107,6 @@ void radixSortUint32(
 void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     int N = p->N;
 
-    /* create inverse morton */
 
     for (int i=0; i<N; i++){
         int src = p->mortonOrder[i];
@@ -138,6 +137,8 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
         tmp->moi[i] = p->moi[src];
         tmp->invmoi[i] = p->invmoi[src];
         tmp->etaconst[i] = p->etaconst[src];
+
+        tmp->isActive[i] = p->isActive[src];
 
         int bi = i*p->MAX_NEI;
         int bsrc = src*p->MAX_NEI;
@@ -217,6 +218,7 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     // ---- particle id ----
     ti=p->pId;          p->pId=tmp->pId;             tmp->pId=ti;
 
+    ti=p->isActive;       p->isActive=tmp->isActive;       tmp->isActive=ti;
     // ---- morton key ----
     tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
 
@@ -387,6 +389,9 @@ void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,Boundin
     box->numUsedCells = 0;
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
 
         if (box->pNum[cellId]==0){
@@ -407,6 +412,10 @@ void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,Boundin
 
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
+
         int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
@@ -451,6 +460,9 @@ void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox 
     /* count number of particle in cell */
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
         box->pNum[cellId] +=1;
     }
@@ -465,6 +477,9 @@ void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox 
     }
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
@@ -521,6 +536,9 @@ void update_pList_fast(ParticleSystem *p, BoundingBox *box){
 
     /* get cellId*/
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
         int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
         int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
@@ -536,6 +554,9 @@ void update_pList_fast(ParticleSystem *p, BoundingBox *box){
     box->numUsedCells = 0;
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
 
         if (box->pNum[cellId]==0){
@@ -557,6 +578,9 @@ void update_pList_fast(ParticleSystem *p, BoundingBox *box){
 
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
@@ -579,6 +603,9 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
 
     /* get cellId*/
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
         int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
         int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
@@ -591,6 +618,9 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
     /* count number of particle in cell */
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
         box->pNum[cellId] +=1;
     }
@@ -605,6 +635,9 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
     }
 
     for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
+            continue;
+        }
         int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];

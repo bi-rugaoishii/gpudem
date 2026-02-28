@@ -1,9 +1,8 @@
 #ifndef SOLVER_OUTPUT_H
 #define SOLVER_OUTPUT_H
 
-#ifdef __cplusplus
-extern "C"{
-#endif
+#include "ParticleSystem.h"
+
 
 /*
 ============================================================
@@ -27,14 +26,9 @@ solver_output_init が呼ばれていること
 void write_frame_bin(
     const char* dir,
     int step,
-    int N,
-    const double* x,
-    const double* r,
-    double length_factor
+    ParticleSystem *p,
+    const double length_factor
 );
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -121,6 +121,7 @@ typedef struct ParticleSystem{
     double* sqrtm;
     double* invm;
 
+
     double* angv; /* angular velocity */
     double* anga; /* angular accelartion */
     double* moi; /* moment of intertia */
@@ -129,6 +130,7 @@ typedef struct ParticleSystem{
 
     double* etaconst;
     double* g;
+    int* isActive; /* flag if particle is OoB */ 
 
     /* ======== tangential force related =========*/
      /* history of delta tangent */

@@ -205,6 +205,9 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
 
 void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){
     for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
@@ -340,6 +343,9 @@ inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,
 
 void wall_collision_naive(ParticleSystem* ps){
     for (int i=0; i<ps->N; i++){
+        if(ps->isActive[i]!=1){
+            continue;
+        }
         //particle-wall
         for (int j=0; j<ps->walls.N; j++){
             double distsq = 0.;
@@ -666,6 +672,9 @@ inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,doubl
 void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
     update_pList_withSort_fast(p, tmpPs, box);
     for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
@@ -733,6 +742,9 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
     update_pList_withSort(p, tmpPs, box);
     for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
@@ -803,6 +815,9 @@ void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *b
     update_pList_fast(p,box);
 
     for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
@@ -870,6 +885,9 @@ void particle_collision_cell_linked(ParticleSystem* p, BoundingBox *box){
     update_pList(p,box);
 
     for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
@@ -1080,6 +1098,19 @@ void particle_collision_naive(ParticleSystem* ps){
     }
 }
 
+/* ============== check Out of Bounds ============  */
+
+void checkOoB(ParticleSystem *p, BoundingBox* box){
+    for(int i=0; i<p->N; i++){
+        double x=p->x[i*DIM+0];
+        double y=p->x[i*DIM+1];
+        double z=p->x[i*DIM+2];
+        if( x<box->minx || x>box->maxx ||y<box->miny || y>box->maxy || z<box->minz || z>box->maxz){
+            p->isActive[i]=0;
+            continue;
+        }       
+    }
+}
 
 /* ============== dem mains ================= */
 
@@ -1112,6 +1143,9 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
     /* update */
     for (int i = 0; i < ps->N; i++)
     {
+        if (ps->isActive[i]!=1){
+            continue;
+        }
         int bi = i*DIM;
         // acceleration
         ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
@@ -1165,6 +1199,9 @@ void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box)
     /* update */
     for (int i = 0; i < ps->N; i++)
     {
+        if (ps->isActive[i]!=1){
+            continue;
+        }
         int bi = i*DIM;
         // acceleration
         ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
@@ -1223,6 +1260,9 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
     /* update */
     for (int i = 0; i < ps->N; i++)
     {
+        if (ps->isActive[i]!=1){
+            continue;
+        }
         int bi = i*DIM;
         // acceleration
         ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];

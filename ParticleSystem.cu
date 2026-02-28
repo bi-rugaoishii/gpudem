@@ -26,6 +26,7 @@ void freeMemory(ParticleSystem* ps)
     free(ps->etaconst);
     free(ps->g);
 
+    free(ps->isActive);
 
     free(ps->angv);
     free(ps->anga);
@@ -278,6 +279,8 @@ void allocateMemory(ParticleSystem* ps)
     ps->etaconst = (double*)malloc(size);
     ps->g = (double*)malloc(sizeof(double)*DIM);
 
+    ps->isActive = (int*)malloc(sizeof(int)*ps->N);
+
     ps->angv = (double*)malloc(size*DIM);
     ps->anga = (double*)malloc(size*DIM);
     ps->moi = (double*)malloc(size);
@@ -469,6 +472,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         ps->invm[i] = 1./m;
         ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
         ps->cellId[i] = -1;
+        ps->isActive[i] = 1;
 
 
         ps->numCont[i] = 0;

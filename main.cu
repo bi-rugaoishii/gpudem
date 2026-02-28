@@ -44,7 +44,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 200;
+    ps.N = 2000;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -213,9 +213,9 @@ int main()
                     cudaDeviceSynchronize();
                     copyFromDevice(&ps);
                     #if NONDIM
-                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
+                        write_frame_bin(outdir,step,&ps,ps.length_factor);
                     #else
-                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,1.0);
+                        write_frame_bin(outdir,step,&ps,1.0);
                     #endif
 
                     cudaEventRecord(now);
@@ -231,15 +231,17 @@ int main()
                 //cpu_dem_nosort(&ps, &tmpPs, &box);
                 //cpu_dem_sort(&ps, &tmpPs, &box, step);
                 cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
+                checkOoB(&ps,&box);
+
             #if OUTPUT
             if (step % outStep == 0)
             {
               //  writeParticlesVTKBinary(&ps, step);
                     #if NONDIM
                         //writeParticlesDimensionalizeVTK(&ps, step);
-                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,ps.length_factor);
+                        write_frame_bin(outdir,step,&ps,ps.length_factor);
                     #else
-                        write_frame_bin(outdir,step,ps.N,ps.x,ps.r,1.0);
+                        write_frame_bin(outdir,step,&ps,1.0);
                     #endif
                         end = clock();
                         ms = (double)(end-start)*1000./CLOCKS_PER_SEC;;
