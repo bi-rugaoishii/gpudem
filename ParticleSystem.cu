@@ -52,7 +52,8 @@ void freeMemory(ParticleSystem* ps)
     free(ps->numContWall);
 
     free(ps->indHisWallNow);
-    free(ps->numContWallNow);
+
+    free(ps->indHisVorENow);
 
     free(ps->cellId);
     free(ps->cellx);
@@ -302,7 +303,8 @@ void allocateMemory(ParticleSystem* ps)
     ps->numContWall = (int*)malloc(sizeof(int)*ps->N);
 
     ps->indHisWallNow = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
-    ps->numContWallNow = (int*)malloc(sizeof(int)*ps->N);
+
+    ps->indHisVorENow = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
 
     ps->cellId = (int*)malloc(sizeof(int)*ps->N);
     ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
@@ -413,6 +415,12 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
             double x = (double)rand() / RAND_MAX*0.2 - 0.1;
             double y = (double)rand() / RAND_MAX * 1.0 + 0.5;
             double z = (double)rand() / RAND_MAX*0.2  - 0.1;
+
+            /*
+            double x = 0.;
+            double y = 0.5;
+            double z = 0.0;
+            */
 
             // 既存粒子との距離チェック
             int overlap = 0;
@@ -582,9 +590,17 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh)
         mesh->e02y[i]*= inv_length_factor;
         mesh->e02z[i]*= inv_length_factor;
 
+        mesh->e12x[i]*= inv_length_factor;
+        mesh->e12y[i]*= inv_length_factor;
+        mesh->e12z[i]*= inv_length_factor;
+
         mesh->d00[i]*= inv_length_factor*inv_length_factor;
+        mesh->d00inv[i]*= ps->length_factor*ps->length_factor;
         mesh->d01[i]*= inv_length_factor*inv_length_factor;
         mesh->d11[i]*= inv_length_factor*inv_length_factor;
+        mesh->d11inv[i]*= ps->length_factor*ps->length_factor;
+        mesh->d22[i]*= inv_length_factor*inv_length_factor;
+        mesh->d22inv[i]*= ps->length_factor*ps->length_factor;
 
         mesh->denom[i]*= ps->length_factor*ps->length_factor*ps->length_factor*ps->length_factor;
 

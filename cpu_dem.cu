@@ -24,13 +24,14 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     res.n.z=0.;
     res.dist=1.e10;
 
-    double px = ps->x[bi+0];
-    double py = ps->x[bi+1];
-    double pz = ps->x[bi+2];
+    Vec3 pos;
+    pos.x = ps->x[bi+0];
+    pos.y = ps->x[bi+1];
+    pos.z = ps->x[bi+2];
 
-    dist += ntri.x*px;
-    dist += ntri.y*py;
-    dist += ntri.z*pz;
+    dist += ntri.x*pos.x;
+    dist += ntri.y*pos.y;
+    dist += ntri.z*pos.z;
     dist += mesh->d[j];
     double distsq = dist*dist;
     if(distsq > ps->rsq[i]){
@@ -46,9 +47,9 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     int v2 = mesh->tri_i2[j];
 
     Vec3 ap;
-    ap.x = px - mesh->mx[v0];
-    ap.y = py - mesh->my[v0];
-    ap.z = pz - mesh->mz[v0];
+    ap.x = pos.x - mesh->mx[v0];
+    ap.y = pos.y - mesh->my[v0];
+    ap.z = pos.z - mesh->mz[v0];
 
     double d00 = mesh->d00[j];
     double d01 = mesh->d01[j];
@@ -62,13 +63,143 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     double w = (d00*d21 - d01*d20)*denom;
     double u = 1.0 - v - w;
     /* 1) face inside */
-    if (u>=0. &&  v >=0. && w>=0.){
+    if (u>0. &&  v >0. && w>0.){
         double sign= dist<0 ? -1.0 : 1.0;
         res.n = vscalar(sign,ntri);
         res.dist = sign*dist;
+        res.hitAt = -1;
         return res;
     }
 
+    /* ========== vertices ========== */
+
+    if (v<=0. && w<=0.0){
+        Vec3 tx;
+        tx.x = mesh->mx[v0];
+        tx.y = mesh->my[v0];
+        tx.z = mesh->mz[v0];
+
+        res.n = vsub(pos,tx);
+       distsq = vdot(res.n,res.n);
+       if(distsq < ps->rsq[i]){
+           res.dist = sqrt(distsq);
+           res.n = vscalar(1./res.dist,res.n);
+       }
+       res.hitAt = v0; 
+       return res;
+    }
+
+    if (u<=0. && w<=0.0){
+        Vec3 tx;
+        tx.x = mesh->mx[v1];
+        tx.y = mesh->my[v1];
+        tx.z = mesh->mz[v1];
+
+        res.n = vsub(pos,tx);
+        distsq = vdot(res.n,res.n);
+       if(distsq < ps->rsq[i]){
+           res.dist = sqrt(distsq);
+           res.n = vscalar(1./res.dist,res.n);
+       }
+
+       res.hitAt = v1; 
+       return res;
+    }
+
+    if (u<=0. && v<=0.0){
+        Vec3 tx;
+        tx.x = mesh->mx[v2];
+        tx.y = mesh->my[v2];
+        tx.z = mesh->mz[v2];
+
+        res.n = vsub(pos,tx);
+        distsq = vdot(res.n,res.n);
+        if(distsq < ps->rsq[i]){
+            res.dist = sqrt(distsq); 
+            res.n = vscalar(1./res.dist,res.n);
+        }
+
+        res.hitAt = v2; 
+        return res;
+    }
+
+    /* ========== edge ========== */
+    if (u<=0.0){
+        Vec3 bp;
+
+        Vec3 tmpv;
+        tmpv.x = mesh->mx[v1];
+        tmpv.y = mesh->my[v1];
+        tmpv.z = mesh->mz[v1];
+
+        Vec3 tmpE;
+        tmpE.x = mesh->e12x[j];
+        tmpE.y = mesh->e12y[j];
+        tmpE.z = mesh->e12z[j];
+
+        bp = vsub(pos,tmpv);
+
+        double t = vdot(bp,tmpE)*mesh->d22inv[j];
+        t = fmax(0., fmin(1.0,t));
+
+        Vec3 hitPoint = vadd(tmpv,vscalar(t,tmpE));
+        res.n = vsub(pos,hitPoint);
+        distsq = vdot(res.n,res.n);
+        if(distsq < ps->rsq[i]){
+            res.dist = sqrt(distsq);
+            res.n = vscalar(1./res.dist,res.n);
+        }
+        res.hitAt = mesh->tri_e1[j]; 
+        return res;
+    }
+
+    if (v<=0.0){
+        Vec3 tmpE;
+        tmpE.x = mesh->e02x[j];
+        tmpE.y = mesh->e02y[j];
+        tmpE.z = mesh->e02z[j];
+
+        double t = d21*mesh->d11inv[j];
+        t = fmax(0., fmin(1.0,t));
+        Vec3 tmpv;
+        tmpv.x = mesh->mx[v0];
+        tmpv.y = mesh->my[v0];
+        tmpv.z = mesh->mz[v0];
+
+        Vec3 hitPoint = vadd(tmpv,vscalar(t,tmpE));
+        res.n = vsub(pos,hitPoint);
+        distsq = vdot(res.n,res.n);
+
+        if(distsq < ps->rsq[i]){
+            res.dist = sqrt(distsq);
+            res.n = vscalar(1./res.dist,res.n);
+        }
+        res.hitAt = mesh->tri_e2[j]; 
+        return res;
+    }
+
+    /* w=<0.0 or 0.,0.,0. */
+    Vec3 tmpE;
+    tmpE.x = mesh->e01x[j];
+    tmpE.y = mesh->e01y[j];
+    tmpE.z = mesh->e01z[j];
+
+
+    double t = d20*mesh->d00inv[j];
+    t = fmax(0., fmin(1.0,t));
+    Vec3 tmpv;
+    tmpv.x = mesh->mx[v0];
+    tmpv.y = mesh->my[v0];
+    tmpv.z = mesh->mz[v0];
+
+    Vec3 hitPoint = vadd(tmpv,vscalar(t,tmpE));
+    res.n = vsub(pos,hitPoint);
+    distsq = vdot(res.n,res.n);
+    if(distsq < ps->rsq[i]){
+        res.dist = sqrt(distsq);
+        res.n = vscalar(1./res.dist,res.n);
+    }
+    res.hitAt = mesh->tri_e0[j]; 
     return res;
 }
 
@@ -81,6 +212,8 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
         int y=p->cellx[bi+1];
         int z=p->cellx[bi+2];
 
+        int numContVorENow = 0;
+        int numContWallNow = 0;
         for (int sx=-1; sx<=1; sx++){
             for (int sy=-1; sy<=1; sy++){
                 for (int sz=-1; sz<=1; sz++){
@@ -90,7 +223,7 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
 
                         int wasHitBefore = 0;
                         /* check if the triangle was already hit */
-                        for (int k=0; k<p->numContWallNow[i]; k++){
+                        for (int k=0; k<numContWallNow; k++){
                             if (indTri == p->indHisWallNow[i*p->MAX_NEI+k]){
                                 wasHitBefore =1;
                                 continue;
@@ -103,17 +236,44 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
 
                         TriangleContactCache tc;
                         tc = dist_triangle(p,i,mesh,indTri); 
+
                         if(tc.dist<p->r[i]){
-                            double delmag = p->r[i]-tc.dist;
+                            double delmag;
+                            if(tc.hitAt==-1){ //hit at face
+                                delmag = p->r[i]-tc.dist;
+                            }else{ //hit as face or edge
+                                int end = numContVorENow;
+                                int hadDuplicate=0;
+
+                                for (int k=0; k<end; k++){
+                                    if(p->indHisVorENow[k]==tc.hitAt){
+                                        printf("duplicate collision of vertex or edge!!\n");
+                                        hadDuplicate=1;
+                                        break;
+                                    }
+                                }
+
+                                if(hadDuplicate ==1){
+                                    continue;
+
+                                }
+
+                                delmag = p->r[i]-tc.dist;
+
+
+                                p->indHisVorENow[end] = tc.hitAt;
+                                numContVorENow+=1;
+                            }
                             if (delmag*p->invr[i]*0.5>0.1){
                                 printf("overlap over 10%% with wall!!!!\n");
                             }
+
                             ContactCache c;
-                            c = calc_normal_force_wall(p,i,j,tc.n,delmag,tc.dist);
+                            c = calc_normal_force_wall(p,i,j,tc.n,delmag);
                             calc_tangential_force_wall(p,i,j,c);
-                            int numWall = p->numContWallNow[i];
+                            int numWall = numContWallNow;
                             p->indHisWallNow[i*p->MAX_NEI+numWall] = indTri;
-                            p->numContWallNow[i]+=1;
+                            numContWallNow+=1;
                         }
 
                     }
@@ -125,7 +285,7 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
     }
 }
 
-inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist){
+inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag){
 
     int bi = i*DIM;
     int bj = j*DIM;
@@ -203,7 +363,7 @@ void wall_collision_naive(ParticleSystem* ps){
                 n.z = ps->walls.n[bj+2];
 
                 ContactCache c;
-                c = calc_normal_force_wall(ps,i,j,n,delmag,dist);
+                c = calc_normal_force_wall(ps,i,j,n,delmag);
                 calc_tangential_force_wall(ps,i,j,c);
 
             }
@@ -451,7 +611,7 @@ inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c){
 
 }
 
-inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist){
+inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag){
 
     int bi = i*DIM;
     int bj = j*DIM;
@@ -553,7 +713,7 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 
 
                                 ContactCache c;
-                                c = calc_normal_force(p,i,j,n,delMag,dist);
+                                c = calc_normal_force(p,i,j,n,delMag);
 
 
                                 calc_tangential_force(p,i,j,c);
@@ -620,7 +780,7 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
 
 
                                 ContactCache c;
-                                c = calc_normal_force(p,i,j,n,delMag,dist);
+                                c = calc_normal_force(p,i,j,n,delMag);
 
 
                                 calc_tangential_force(p,i,j,c);
@@ -688,7 +848,7 @@ void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *b
                                 n.y = del.y/dist;
                                 n.z = del.z/dist;
                                 ContactCache c;
-                                c = calc_normal_force(p,i,j,n,delMag,dist);
+                                c = calc_normal_force(p,i,j,n,delMag);
 
 
                                 calc_tangential_force(p,i,j,c);
@@ -755,7 +915,7 @@ void particle_collision_cell_linked(ParticleSystem* p, BoundingBox *box){
                                 n.y = del.y/dist;
                                 n.z = del.z/dist;
                                 ContactCache c;
-                                c = calc_normal_force(p,i,j,n,delMag,dist);
+                                c = calc_normal_force(p,i,j,n,delMag);
 
 
                                 calc_tangential_force(p,i,j,c);
@@ -920,6 +1080,9 @@ void particle_collision_naive(ParticleSystem* ps){
     }
 }
 
+
+/* ============== dem mains ================= */
+
 void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh, int step){
     /* initialize */
     for (int i=0; i<ps->N*DIM; i++){
@@ -935,9 +1098,6 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
         ps->isContactWall[i]=0;
     }
 
-    for (int i=0; i<ps->N; i++){
-        ps->numContWallNow[i]=0;
-    }
 
     int reorderFreq=100;
 
@@ -996,9 +1156,6 @@ void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box)
         ps->isContactWall[i]=0;
     }
 
-    for (int i=0; i<ps->N; i++){
-        ps->numContWallNow[i]=0;
-    }
 
 
     particle_collision_cell_linked_fastUpdate(ps,box);
@@ -1052,9 +1209,6 @@ void cpu_dem_sort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, i
         ps->isContactWall[i]=0;
     }
 
-    for (int i=0; i<ps->N; i++){
-        ps->numContWallNow[i]=0;
-    }
 
     int reorderFreq=100;
 

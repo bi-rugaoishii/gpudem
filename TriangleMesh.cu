@@ -1,5 +1,88 @@
 #include "TriangleMesh.h"
 
+/* ========== hash key related functions used for merging ===========*/
+static inline unsigned long long hash_func(long long x,long long y,long long z){
+    unsigned long long h = 1469598103934665603ULL;
+    h ^= (unsigned long long)x; h *= 1099511628211ULL;
+    h ^= (unsigned long long)y; h *= 1099511628211ULL;
+    h ^= (unsigned long long)z; h *= 1099511628211ULL;
+    return h;
+}
+
+void vertex_hash_init(VertexHash* h, size_t size){
+    h->size = size;
+    h->table = (HashEntry*)calloc(size, sizeof(HashEntry));
+}
+
+int vertex_hash_get_or_insert(VertexHash* h,
+                              double x, double y, double z,
+                              double eps,
+                              int vIndex){
+    long long ix = llround(x / eps);
+    long long iy = llround(y / eps);
+    long long iz = llround(z / eps);
+
+    unsigned long long hash = hash_func(ix,iy,iz);
+    size_t pos = hash % h->size;
+
+    while(1){
+        if(!h->table[pos].used){
+            /* 新規登録 */
+            h->table[pos].used  = 1;
+            h->table[pos].ix    = ix;
+            h->table[pos].iy    = iy;
+            h->table[pos].iz    = iz;
+            h->table[pos].index = vIndex;
+
+            return h->table[pos].index;
+        }
+
+        /* 一致チェック */
+        if(h->table[pos].ix == ix &&
+           h->table[pos].iy == iy &&
+           h->table[pos].iz == iz)
+        {
+            return h->table[pos].index;
+        }
+
+        /* 線形探索 */
+        pos = (pos + 1) % h->size;
+    }
+}
+
+int get_edge_index(int v0, int v1, int* edge,int eIndex){
+
+    int tv0 = (v0<v1) ? v0:v1;
+    int tv1 = (v0>v1) ? v0:v1;
+    for (int k=0; k<eIndex; k++){
+        if (edge[k*2+0]==v0 && edge[k*2+1]==v1){
+            return k;
+            break;
+        }
+    }
+    edge[eIndex*2+0]= tv0;
+    edge[eIndex*2+1]= tv1;
+    return eIndex;
+
+}
+
+void sort3(int *x, int *y, int *z){
+    int tmp;
+
+    if (*x > *y){
+        tmp = *x; *x = *y; *y = tmp;
+    }
+
+    if (*y > *z){
+        tmp = *y; *y = *z; *z = tmp;
+    }
+
+    if (*x > *y){
+        tmp = *x; *x = *y; *y = tmp;
+    }
+}
+
+/* ========== triangle mesh ===============*/
 void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->mx);
     free(mesh->my);
@@ -8,6 +91,10 @@ void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->nx);
     free(mesh->ny);
     free(mesh->nz);
+    free(mesh->d);
+
+    free(mesh->edge);
+
 
     free(mesh->e01x);
     free(mesh->e01y);
@@ -17,9 +104,17 @@ void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->e02y);
     free(mesh->e02z);
 
+    free(mesh->e12x);
+    free(mesh->e12y);
+    free(mesh->e12z);
+
     free(mesh->d00);
+    free(mesh->d00inv);
     free(mesh->d01);
     free(mesh->d11);
+    free(mesh->d11inv);
+    free(mesh->d22);
+    free(mesh->d22inv);
     free(mesh->denom);
 
     free(mesh->minx);
@@ -29,23 +124,25 @@ void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->maxx);
     free(mesh->maxy);
     free(mesh->maxz);
-    free(mesh->d);
 
-    
+
     free(mesh->tri_i0);
     free(mesh->tri_i1);
     free(mesh->tri_i2);
+
+    free(mesh->tri_e0);
+    free(mesh->tri_e1);
+    free(mesh->tri_e2);
 }
 
-static int count_ascii_stl_triangles(FILE* fp)
-{
+static int count_ascii_stl_triangles(FILE* fp){
     char line[256];
     int count = 0;
 
     while(fgets(line,256,fp))
     {
         if(strncmp(line,"facet normal",12)==0 ||
-           strncmp(line," facet normal",13)==0)
+                strncmp(line," facet normal",13)==0)
         {
             count++;
         }
@@ -89,7 +186,8 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     mesh->nz = (double*)malloc(sizeof(double)*Nt);
     mesh->d = (double*)malloc(sizeof(double)*Nt);
 
-    
+    mesh->edge = (int*)malloc(sizeof(int)*Nv*2);
+
     mesh->e01x = (double*)malloc(sizeof(double)*Nt);
     mesh->e01y = (double*)malloc(sizeof(double)*Nt);
     mesh->e01z = (double*)malloc(sizeof(double)*Nt);
@@ -98,14 +196,27 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     mesh->e02y = (double*)malloc(sizeof(double)*Nt);
     mesh->e02z = (double*)malloc(sizeof(double)*Nt);
 
+    mesh->e12x = (double*)malloc(sizeof(double)*Nt);
+    mesh->e12y = (double*)malloc(sizeof(double)*Nt);
+    mesh->e12z = (double*)malloc(sizeof(double)*Nt);
+
     mesh->d00 = (double*)malloc(sizeof(double)*Nt);
+    mesh->d00inv = (double*)malloc(sizeof(double)*Nt);
     mesh->d01 = (double*)malloc(sizeof(double)*Nt);
     mesh->d11 = (double*)malloc(sizeof(double)*Nt);
+    mesh->d11inv = (double*)malloc(sizeof(double)*Nt);
+    mesh->d22 = (double*)malloc(sizeof(double)*Nt);
+    mesh->d22inv = (double*)malloc(sizeof(double)*Nt);
     mesh->denom = (double*)malloc(sizeof(double)*Nt);
+
 
     mesh->tri_i0 = (int*)malloc(sizeof(int)*Nt);
     mesh->tri_i1 = (int*)malloc(sizeof(int)*Nt);
     mesh->tri_i2 = (int*)malloc(sizeof(int)*Nt);
+
+    mesh->tri_e0 = (int*)malloc(sizeof(int)*Nt);
+    mesh->tri_e1 = (int*)malloc(sizeof(int)*Nt);
+    mesh->tri_e2 = (int*)malloc(sizeof(int)*Nt);
 
     mesh->minx = (double*)malloc(sizeof(double)*Nt);
     mesh->maxx = (double*)malloc(sizeof(double)*Nt);
@@ -120,55 +231,104 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
 
     int triIndex = 0;
     int vIndex   = 0;
+    int eIndex = 0;
+    mesh->nShift   = Nv;
 
     double nx,ny,nz;
     double x,y,z;
+
+    /* ========= for merging ============= */
+    VertexHash vh;
+    vertex_hash_init(&vh,mesh->nVert*3);
 
     while(fgets(line,256,fp))
     {
         //if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3 ||       sscanf(line,"facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
         /* need better scan */
-        if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3)
-        {
+        if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3){
 
 
             /* outer loop */
             if(!fgets(line,256,fp)) break;
+            int v0,v1,v2;
 
             /* v0 */
             if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
-            mesh->mx[vIndex+0]=x;
-            mesh->my[vIndex+0]=y;
-            mesh->mz[vIndex+0]=z;
+            mesh->mx[vIndex]=x;
+            mesh->my[vIndex]=y;
+            mesh->mz[vIndex]=z;
+            v0=vertex_hash_get_or_insert(&vh,x,y,z,1e-9,vIndex);
+            if (v0==vIndex){
+                vIndex   += 1; //was new  
+            }
+
+
 
             /* v1 */
             if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
-            mesh->mx[vIndex+1]=x;
-            mesh->my[vIndex+1]=y;
-            mesh->mz[vIndex+1]=z;
+            mesh->mx[vIndex]=x;
+            mesh->my[vIndex]=y;
+            mesh->mz[vIndex]=z;
+            v1=vertex_hash_get_or_insert(&vh,x,y,z,1e-9,vIndex);
+            if (v1==vIndex){
+                vIndex   += 1; //was new  
+            }
 
             /* v2 */
             if(!fgets(line,256,fp)) break;
             sscanf(line," vertex %lf %lf %lf",&x,&y,&z);
-            mesh->mx[vIndex+2]=x;
-            mesh->my[vIndex+2]=y;
-            mesh->mz[vIndex+2]=z;
-            
+            mesh->mx[vIndex]=x;
+            mesh->my[vIndex]=y;
+            mesh->mz[vIndex]=z;
+            v2=vertex_hash_get_or_insert(&vh,x,y,z,1e-9,vIndex);
+            if (v2==vIndex){
+                vIndex   += 1; //was new  
+            }
+
+            /* reorder vertices in ascending order */
+            sort3(&v0,&v1,&v2);
+
+            /* make edge */
+            int tmpEdge;
+            tmpEdge = get_edge_index(v0,v1,mesh->edge,eIndex);
+            if(tmpEdge==eIndex){ //new index
+                eIndex += 1;
+            }
+            mesh->tri_e0[triIndex] = tmpEdge+mesh->nShift;
+
+            tmpEdge = get_edge_index(v1,v2,mesh->edge,eIndex);
+            if(tmpEdge==eIndex){ //new index
+                eIndex += 1;
+            }
+            mesh->tri_e1[triIndex] = tmpEdge+mesh->nShift;
+
+            tmpEdge = get_edge_index(v0,v2,mesh->edge,eIndex);
+            if(tmpEdge==eIndex){ //new index
+                eIndex += 1;
+            }
+            mesh->tri_e2[triIndex] = tmpEdge+mesh->nShift;
+
+
+
+            /* calculate edge vectors */
             Vec3 e01;
 
-            e01.x = mesh->mx[vIndex+1]-mesh->mx[vIndex+0];
-            e01.y = mesh->my[vIndex+1]-mesh->my[vIndex+0];
-            e01.z = mesh->mz[vIndex+1]-mesh->mz[vIndex+0];
+            e01.x = mesh->mx[v1]-mesh->mx[v0];
+            e01.y = mesh->my[v1]-mesh->my[v0];
+            e01.z = mesh->mz[v1]-mesh->mz[v0];
 
             Vec3 e02;
-            e02.x = mesh->mx[vIndex+2]-mesh->mx[vIndex+0];
-            e02.y = mesh->my[vIndex+2]-mesh->my[vIndex+0];
-            e02.z = mesh->mz[vIndex+2]-mesh->mz[vIndex+0];
+            e02.x = mesh->mx[v2]-mesh->mx[v0];
+            e02.y = mesh->my[v2]-mesh->my[v0];
+            e02.z = mesh->mz[v2]-mesh->mz[v0];
 
+            Vec3 e12;
+            e12.x = mesh->mx[v2]-mesh->mx[v1];
+            e12.y = mesh->my[v2]-mesh->my[v1];
+            e12.z = mesh->mz[v2]-mesh->mz[v1];
 
-            /* calculate edges */
             mesh->e01x[triIndex] = e01.x;
             mesh->e01y[triIndex] = e01.y;
             mesh->e01z[triIndex] = e01.z;
@@ -177,9 +337,17 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             mesh->e02y[triIndex] = e02.y;
             mesh->e02z[triIndex] = e02.z;
 
+            mesh->e12x[triIndex] = e12.x;
+            mesh->e12y[triIndex] = e12.y;
+            mesh->e12z[triIndex] = e12.z;
+
             mesh->d00[triIndex] = vdot(e01,e01);
+            mesh->d00inv[triIndex] = 1./mesh->d00[triIndex];
             mesh->d01[triIndex] = vdot(e01,e02);
             mesh->d11[triIndex] = vdot(e02,e02);
+            mesh->d11inv[triIndex] = 1./mesh->d11[triIndex];
+            mesh->d22[triIndex] = vdot(e12,e12);
+            mesh->d22inv[triIndex] = 1./mesh->d22[triIndex];
 
             mesh->denom[triIndex] = mesh->d00[triIndex]*mesh->d11[triIndex]-mesh->d01[triIndex]*mesh->d01[triIndex];
             mesh->denom[triIndex] = 1./mesh->denom[triIndex];
@@ -193,23 +361,23 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             mesh->nz[triIndex] = n.z;
             mesh->d[triIndex]=-n.x*x-n.y*y-n.z*z;
 
-            mesh->tri_i0[triIndex]=vIndex+0;
-            mesh->tri_i1[triIndex]=vIndex+1;
-            mesh->tri_i2[triIndex]=vIndex+2;
+            mesh->tri_i0[triIndex]=v0;
+            mesh->tri_i1[triIndex]=v1;
+            mesh->tri_i2[triIndex]=v2;
 
             /* ===== compute triangle AABB ===== */
 
-            double x0 = mesh->mx[vIndex+0];
-            double y0 = mesh->my[vIndex+0];
-            double z0 = mesh->mz[vIndex+0];
+            double x0 = mesh->mx[v0];
+            double y0 = mesh->my[v0];
+            double z0 = mesh->mz[v0];
 
-            double x1 = mesh->mx[vIndex+1];
-            double y1 = mesh->my[vIndex+1];
-            double z1 = mesh->mz[vIndex+1];
+            double x1 = mesh->mx[v1];
+            double y1 = mesh->my[v1];
+            double z1 = mesh->mz[v1];
 
-            double x2 = mesh->mx[vIndex+2];
-            double y2 = mesh->my[vIndex+2];
-            double z2 = mesh->mz[vIndex+2];
+            double x2 = mesh->mx[v2];
+            double y2 = mesh->my[v2];
+            double z2 = mesh->mz[v2];
 
             /* min */
             double minx = x0;
@@ -256,13 +424,15 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             if(maxy > mesh->gmaxy) mesh->gmaxy = maxy;
             if(maxz > mesh->gmaxz) mesh->gmaxz = maxz;
 
-            vIndex   += 3;
             triIndex += 1;
 
             if(!fgets(line,256,fp)) break;
             if(!fgets(line,256,fp)) break;
         }
     }
+
+    mesh->nVert = vIndex; /* number of vertices after merge */
+    printf(" final number of edges are %d \n", eIndex);
 
     fclose(fp);
 

@@ -149,8 +149,8 @@ typedef struct ParticleSystem{
                  
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
-    int* numContWallNow; /* number of contact with walls in the current step */
 
+    int* indHisVorENow; /* number of contact with edge or vertex*/
 
 
     int* cellId;

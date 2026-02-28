@@ -34,10 +34,10 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
 
 void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box);
 
-inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist);
+inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag);
 
 
-inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag,double dist);
+inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag);
 
 inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCache c);
 

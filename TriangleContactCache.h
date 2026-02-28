@@ -7,6 +7,7 @@
 typedef struct TriangleContactCache{
     Vec3 n;
     double dist;
+    int hitAt; //-1 = face, else either at face or vertices with its ID
 
 
     #if USE_GPU

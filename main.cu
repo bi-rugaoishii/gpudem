@@ -38,7 +38,7 @@ int main()
 
     /* =========== parameters ============= */
     double r = 0.01;
-    double res = 0.1; //CoR
+    double res = 0.3; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
     double k = 1e6;
@@ -54,8 +54,8 @@ int main()
     load_ascii_stl_double(trianglesDir,&triangles);
     printf("Loading Triangles done!\n");
 
-    for (int i=0; i<triangles.nTri; i++){
-        printf("%f %f %f\n", triangles.nx[i],triangles.ny[i],triangles.nz[i]);
+    for (int i=0; i<triangles.nVert; i++){
+        printf("vertices %f %f %f\n", triangles.mx[i],triangles.my[i],triangles.mz[i]);
     }
 
     /*============ BoundingBox and walls ================== */
