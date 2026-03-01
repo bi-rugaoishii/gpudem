@@ -86,6 +86,7 @@ void freeMemory(ParticleSystem* ps)
         cudaFree(ps->d_group.etaconst);
         cudaFree(ps->d_group.g);
 
+        cudaFree(ps->d_group.isActive);
 
         cudaFree(ps->d_group.angv);
         cudaFree(ps->d_group.anga);
@@ -109,7 +110,11 @@ void freeMemory(ParticleSystem* ps)
         cudaFree(ps->d_group.isContactWall);
 
         cudaFree(ps->d_group.indHisWall);
+        cudaFree(ps->d_group.indHisWallNow);
+        cudaFree(ps->d_group.indHisVorENow);
+
         cudaFree(ps->d_group.numContWall);
+
 
         cudaFree(ps->d_group.cellId);
         cudaFree(ps->d_group.cellx);
@@ -128,7 +133,7 @@ void freeMemory(ParticleSystem* ps)
 
         /* ==== structs ====*/
         cudaFree(ps->d_groupPtr);
-    #endif
+        #endif
 }
 
 
@@ -162,6 +167,8 @@ void copyToDevice(ParticleSystem *ps)
     cudaMemcpy(ps->d_group.k, ps->k, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.etaconst, ps->etaconst, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.g, ps->g, sizeof(double)*DIM, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.isActive, ps->isActive,sizeof(int)*ps->N, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.angv, ps->angv, size*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.anga, ps->anga, size*DIM, cudaMemcpyHostToDevice);
@@ -204,6 +211,12 @@ void copyToDevice(ParticleSystem *ps)
             sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.indHisWall, ps->indHisWall,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.indHisWallNow, ps->indHisWallNow,
+            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.indHisVorENow, ps->indHisVorENow,
             sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.numContWall, ps->numContWall,
@@ -251,6 +264,8 @@ void copyFromDevice(ParticleSystem* ps)
     size_t size = ps->N * sizeof(double);
 
     cudaMemcpy(ps->x, ps->d_group.x, size*DIM, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ps->r, ps->d_group.r, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ps->isActive, ps->d_group.isActive, ps->N*sizeof(int), cudaMemcpyDeviceToHost);
 }
 
 /*
@@ -278,6 +293,7 @@ void allocateMemory(ParticleSystem* ps)
     ps->k = (double*)malloc(size);
     ps->etaconst = (double*)malloc(size);
     ps->g = (double*)malloc(sizeof(double)*DIM);
+
 
     ps->isActive = (int*)malloc(sizeof(int)*ps->N);
 
@@ -338,6 +354,8 @@ void allocateMemory(ParticleSystem* ps)
     cudaMalloc((void**)&ps->d_group.etaconst, size);
     cudaMalloc((void**)&ps->d_group.g, sizeof(double)*DIM);
 
+    cudaMalloc((void**)&ps->d_group.isActive, sizeof(int)*ps->N);
+
     cudaMalloc((void**)&ps->d_group.angv, size*DIM);
     cudaMalloc((void**)&ps->d_group.anga, size*DIM);
     cudaMalloc((void**)&ps->d_group.moi, size);
@@ -360,6 +378,9 @@ void allocateMemory(ParticleSystem* ps)
     cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*ps->MAX_NEI);
 
     cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.indHisWallNow, sizeof(int)*ps->N*ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.indHisVorENow, sizeof(int)*ps->N*ps->MAX_NEI);
+
     cudaMalloc((void**)&ps->d_group.numContWall, sizeof(int)*ps->N);
 
     cudaMalloc((void**)&ps->d_group.cellId, sizeof(int)*ps->N);
@@ -372,7 +393,7 @@ void allocateMemory(ParticleSystem* ps)
     cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
     cudaMalloc((void**)&ps->d_group.walls.n, size_walls*DIM);
     cudaMalloc((void**)&ps->d_group.walls.d, size_walls);
-    
+
     /* ======== for sorting ==============*/
 
     ps->d_group.tmp_storage=NULL;
@@ -411,19 +432,18 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
 
     for (int i = 0; i < ps->N; i++){
         int trial = 0;
-        int success = 0;
         while (trial < max_trials)
         {
             // ランダム配置
             double x = (double)rand() / RAND_MAX*0.2 - 0.1;
-            double y = (double)rand() / RAND_MAX * 1.0 + 0.5;
+            double y = (double)rand() / RAND_MAX * 4.0 + 0.5;
             double z = (double)rand() / RAND_MAX*0.2  - 0.1;
 
             /*
-            double x = 0.;
-            double y = 0.5;
-            double z = 0.0;
-            */
+               double x = 0.;
+               double y = 0.5;
+               double z = 0.0;
+             */
 
             // 既存粒子との距離チェック
             int overlap = 0;
@@ -445,7 +465,6 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
                 ps->x[i*DIM+0] = x;
                 ps->x[i*DIM+1] = y;
                 ps->x[i*DIM+2] = z;
-                success = 1;
                 break;
             }
 

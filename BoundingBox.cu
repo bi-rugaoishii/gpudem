@@ -257,6 +257,8 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
     cudaMemcpy(box->d_box.pNum,  box->pNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pStart,  box->pStart,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.cellOffset,  box->cellOffset,  sizeof(int)*size, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_box.tList,  box->tList,  sizeof(int)*size*box->MAX_TRI, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_box.tNum,  box->tNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_boxPtr,  &box->d_box,  sizeof(DeviceBoundingBox), cudaMemcpyHostToDevice);
 }
 
@@ -274,6 +276,8 @@ void free_BoundingBox(BoundingBox *box){
     cudaFree(box->d_box.pNum);
     cudaFree(box->d_box.pStart);
     cudaFree(box->d_box.cellOffset);
+    cudaFree(box->d_box.tList);
+    cudaFree(box->d_box.tNum);
     cudaFree(box->d_boxPtr);
     #endif
 }
@@ -329,9 +333,12 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
 
     #if USE_GPU
     box->d_box.N= sizeBox;
+    box->d_box.MAX_TRI = box->MAX_TRI;
     cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
     cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
     cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
+    cudaMalloc(&box->d_box.tList, sizeof(int)*sizeBox*box->MAX_TRI);
+    cudaMalloc(&box->d_box.tNum, sizeof(int)*sizeBox);
     cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
 
     /* for cub */
@@ -438,6 +445,7 @@ void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox 
     for(int i=0;i<p->N;i++){
         p->mortonOrder[i] = i;
     }
+
     /* get cellId and get mortonkey*/
     for (int i=0; i<p->N; i++){
         int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
@@ -657,7 +665,7 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=p->N){
+    if(i>=p->N || p->isActive[i]!=1){
         return;
     }
 
@@ -671,7 +679,7 @@ __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* bo
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=p->N){
+    if(i>=p->N || p->isActive[i]!=1){
         return;
     }
 

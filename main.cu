@@ -44,31 +44,28 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 2000;
+    ps.N = 1000;
     tmpPs.N = ps.N;
 
     /* read triangles */
     printf("\n Loading Triangles\n");
     const char* trianglesDir = "geometry/box.stl";
-    TriangleMesh triangles;
-    load_ascii_stl_double(trianglesDir,&triangles);
+    TriangleMesh mesh;
+    load_ascii_stl_double(trianglesDir,&mesh);
     printf("Loading Triangles done!\n");
 
-    for (int i=0; i<triangles.nVert; i++){
-        printf("vertices %f %f %f\n", triangles.mx[i],triangles.my[i],triangles.mz[i]);
-    }
 
     /*============ BoundingBox and walls ================== */
     ps.walls.N = 5;
     tmpPs.walls.N = ps.walls.N;
 
-    double minx = triangles.gminx;
-    double miny = triangles.gminy;
-    double minz = triangles.gminz;
+    double minx = mesh.gminx;
+    double miny = mesh.gminy;
+    double minz = mesh.gminz;
 
-    double maxx = triangles.gmaxx;
+    double maxx = mesh.gmaxx;
     double maxy = 7.0;
-    double maxz = triangles.gmaxz;
+    double maxz = mesh.gmaxz;
 
     printf("Bounding box min (x,y,z)= %f %f %f\n",minx ,miny, minz);
     printf("Bounding box max (x,y,z)= %f %f %f\n",maxx ,maxy, maxz);
@@ -106,11 +103,11 @@ int main()
     
 
     printf("\nInitializing the Bounding Box\n");
-    initialize_BoundingBox(&ps, &box, &triangles, minx, maxx, miny, maxy, minz, maxz);
+    initialize_BoundingBox(&ps, &box, &mesh, minx, maxx, miny, maxy, minz, maxz);
     printf("Initializing the Bounding Box Done!!\n");
 
     printf("\n Updating triangle list\n");
-    update_tList(&box, &triangles);
+    update_tList(&box, &mesh);
     printf("Updating triangle list done!\n");
 
 
@@ -148,7 +145,7 @@ int main()
     /* non dimensionalize */
     #if NONDIM
         printf("nondimensionalizing ...\n");
-        nondimensionalize(&ps,&box,&triangles);
+        nondimensionalize(&ps,&box,&mesh);
         printf("nondimensionalizing done \n");
         printf("\n");
         printf("g after nondim is %f %f %f \n",ps.g[0],ps.g[1],ps.g[2]);
@@ -161,6 +158,7 @@ int main()
         copyToDevice(&ps);
         copyToDevice(&tmpPs);
         copyToDeviceBox(&box,&ps);
+        deviceMallocCopyTriangleMesh(&mesh);
         printf("copying memory to device done\n");
     #endif
 
@@ -173,7 +171,7 @@ int main()
     int gridSize = (ps.N + blockSize - 1) / blockSize;
     printf("grid=%d, block=%d\n", gridSize, blockSize);
 
-    check_g_kernel<<<1, 1>>>(ps.d_groupPtr);
+    check_g_kernel<<<1, 1>>>(ps.d_groupPtr,mesh.d_meshPtr);
     cudaDeviceSynchronize();
     cudaEvent_t start, stop, now;
     float ms;
@@ -205,7 +203,8 @@ int main()
         /* if want naive collision*/
             //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
 
-            device_dem(&ps, &box, gridSize, blockSize);
+            //device_dem(&ps, &box, gridSize, blockSize);
+            device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
             //device_dem_withSort(&ps, &tmpPs,&box, gridSize, blockSize,step);
             #if OUTPUT
                 if (step % outStep == 0)
@@ -230,7 +229,7 @@ int main()
                 /* CPU */
                 //cpu_dem_nosort(&ps, &tmpPs, &box);
                 //cpu_dem_sort(&ps, &tmpPs, &box, step);
-                cpu_dem_sort_triangles(&ps, &tmpPs, &box,&triangles, step);
+                cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
                 checkOoB(&ps,&box);
 
             #if OUTPUT
@@ -265,7 +264,7 @@ int main()
     freeMemory(&ps);
     freeMemory(&tmpPs);
 
-    free_TriangleMesh(&triangles);
+    free_TriangleMesh(&mesh);
     free_BoundingBox(&box);
 
     #if USE_GPU

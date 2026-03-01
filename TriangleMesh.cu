@@ -82,6 +82,135 @@ void sort3(int *x, int *y, int *z){
     }
 }
 
+/* ========== Device Related===============*/
+#if USE_GPU
+void deviceMallocCopyTriangleMesh(TriangleMesh *mesh){
+    int Nv = mesh->nVert;
+    int Nt = mesh->nTri;
+
+    mesh->d_mesh.nVert = mesh->nVert;
+    mesh->d_mesh.nTri = mesh->nTri;
+    mesh->d_mesh.nShift = mesh->nShift;
+
+
+    cudaMalloc(&mesh->d_mesh.mx, sizeof(double)*Nv);
+    cudaMalloc(&mesh->d_mesh.my, sizeof(double)*Nv);
+    cudaMalloc(&mesh->d_mesh.mz, sizeof(double)*Nv);
+
+    cudaMalloc(&mesh->d_mesh.nx, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.ny, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.nz, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d,  sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.edge, sizeof(int)*Nv*2);
+
+    cudaMalloc(&mesh->d_mesh.e01x, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e01y, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e01z, sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.e02x, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e02y, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e02z, sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.e12x, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e12y, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.e12z, sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.d00,    sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d00inv, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d01,    sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d11,    sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d11inv, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d22,    sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.d22inv, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.denom,  sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.tri_i0, sizeof(int)*Nt);
+    cudaMalloc(&mesh->d_mesh.tri_i1, sizeof(int)*Nt);
+    cudaMalloc(&mesh->d_mesh.tri_i2, sizeof(int)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.tri_e0, sizeof(int)*Nt);
+    cudaMalloc(&mesh->d_mesh.tri_e1, sizeof(int)*Nt);
+    cudaMalloc(&mesh->d_mesh.tri_e2, sizeof(int)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.minx, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.maxx, sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.miny, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.maxy, sizeof(double)*Nt);
+
+    cudaMalloc(&mesh->d_mesh.minz, sizeof(double)*Nt);
+    cudaMalloc(&mesh->d_mesh.maxz, sizeof(double)*Nt);
+
+    /* ================= malloc struct =============*/
+    cudaMalloc(&mesh->d_meshPtr, sizeof(DeviceTriangleMesh));
+
+
+    /* ================ memcpy ================= */
+
+    /* ---- vertex ---- */
+    cudaMemcpy(mesh->d_mesh.mx, mesh->mx, sizeof(double)*Nv, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.my, mesh->my, sizeof(double)*Nv, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.mz, mesh->mz, sizeof(double)*Nv, cudaMemcpyHostToDevice);
+
+    /* ---- normal & plane ---- */
+    cudaMemcpy(mesh->d_mesh.nx, mesh->nx, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.ny, mesh->ny, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.nz, mesh->nz, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d,  mesh->d,  sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    /* ---- edges (index) ---- */
+    cudaMemcpy(mesh->d_mesh.edge, mesh->edge, sizeof(int)*Nv*2, cudaMemcpyHostToDevice);
+
+    /* ---- triangle edge vectors ---- */
+    cudaMemcpy(mesh->d_mesh.e01x, mesh->e01x, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e01y, mesh->e01y, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e01z, mesh->e01z, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(mesh->d_mesh.e02x, mesh->e02x, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e02y, mesh->e02y, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e02z, mesh->e02z, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(mesh->d_mesh.e12x, mesh->e12x, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e12y, mesh->e12y, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.e12z, mesh->e12z, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    /* ---- barycentric precompute ---- */
+    cudaMemcpy(mesh->d_mesh.d00,    mesh->d00,    sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d00inv, mesh->d00inv, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d01,    mesh->d01,    sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d11,    mesh->d11,    sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d11inv, mesh->d11inv, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d22,    mesh->d22,    sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.d22inv, mesh->d22inv, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.denom,  mesh->denom,  sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    /* ---- triangle vertex index ---- */
+    cudaMemcpy(mesh->d_mesh.tri_i0, mesh->tri_i0, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.tri_i1, mesh->tri_i1, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.tri_i2, mesh->tri_i2, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+
+    /* ---- triangle edge index ---- */
+    cudaMemcpy(mesh->d_mesh.tri_e0, mesh->tri_e0, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.tri_e1, mesh->tri_e1, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.tri_e2, mesh->tri_e2, sizeof(int)*Nt, cudaMemcpyHostToDevice);
+
+    /* ---- triangle AABB ---- */
+    cudaMemcpy(mesh->d_mesh.minx, mesh->minx, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.maxx, mesh->maxx, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.miny, mesh->miny, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.maxy, mesh->maxy, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.minz, mesh->minz, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+    cudaMemcpy(mesh->d_mesh.maxz, mesh->maxz, sizeof(double)*Nt, cudaMemcpyHostToDevice);
+
+    /* --- copy struct ----*/
+    cudaMemcpy(mesh->d_meshPtr,  &mesh->d_mesh,  sizeof(DeviceTriangleMesh), cudaMemcpyHostToDevice);
+
+}
+
+
+#endif
+
 /* ========== triangle mesh ===============*/
 void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->mx);
@@ -133,6 +262,57 @@ void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->tri_e0);
     free(mesh->tri_e1);
     free(mesh->tri_e2);
+
+    #if USE_GPU
+    cudaFree(mesh->d_mesh.mx);
+    cudaFree(mesh->d_mesh.my);
+    cudaFree(mesh->d_mesh.mz);
+
+    cudaFree(mesh->d_mesh.nx);
+    cudaFree(mesh->d_mesh.ny);
+    cudaFree(mesh->d_mesh.nz);
+    cudaFree(mesh->d_mesh.d);
+
+    cudaFree(mesh->d_mesh.edge);
+
+    cudaFree(mesh->d_mesh.e01x);
+    cudaFree(mesh->d_mesh.e01y);
+    cudaFree(mesh->d_mesh.e01z);
+
+    cudaFree(mesh->d_mesh.e02x);
+    cudaFree(mesh->d_mesh.e02y);
+    cudaFree(mesh->d_mesh.e02z);
+
+    cudaFree(mesh->d_mesh.e12x);
+    cudaFree(mesh->d_mesh.e12y);
+    cudaFree(mesh->d_mesh.e12z);
+
+    cudaFree(mesh->d_mesh.d00);
+    cudaFree(mesh->d_mesh.d00inv);
+    cudaFree(mesh->d_mesh.d01);
+    cudaFree(mesh->d_mesh.d11);
+    cudaFree(mesh->d_mesh.d11inv);
+    cudaFree(mesh->d_mesh.d22);
+    cudaFree(mesh->d_mesh.d22inv);
+    cudaFree(mesh->d_mesh.denom);
+
+    cudaFree(mesh->d_mesh.tri_i0);
+    cudaFree(mesh->d_mesh.tri_i1);
+    cudaFree(mesh->d_mesh.tri_i2);
+
+    cudaFree(mesh->d_mesh.tri_e0);
+    cudaFree(mesh->d_mesh.tri_e1);
+    cudaFree(mesh->d_mesh.tri_e2);
+
+    cudaFree(mesh->d_mesh.minx);
+    cudaFree(mesh->d_mesh.maxx);
+    cudaFree(mesh->d_mesh.miny);
+    cudaFree(mesh->d_mesh.maxy);
+    cudaFree(mesh->d_mesh.minz);
+    cudaFree(mesh->d_mesh.maxz);
+
+    cudaFree(mesh->d_meshPtr);
+    #endif
 }
 
 static int count_ascii_stl_triangles(FILE* fp){
@@ -431,7 +611,6 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
         }
     }
 
-    mesh->nVert = vIndex; /* number of vertices after merge */
     printf(" final number of edges are %d \n", eIndex);
 
     fclose(fp);
@@ -439,3 +618,4 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     printf("ASCII STL (double) loaded : %d triangles\n",triCount);
     return 1;
 }
+

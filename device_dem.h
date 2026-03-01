@@ -11,7 +11,15 @@
 #include "BoundingBox.h"
 #include "Vec3.h"
 #include "ContactCache.h"
+#include "TriangleContactCache.h"
 
+
+/* =========== triangle related ====== */
+__device__ __forceinline__
+TriangleContactCache d_dist_triangle(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j);
+
+__device__ __forceinline__
+void d_wall_collision_triangles(DeviceParticleGroup* p,int i,DeviceBoundingBox *box, DeviceTriangleMesh* mesh);
 
 __device__ __forceinline__
 void updateAcceleration(DeviceParticleGroup* p,int i);
@@ -33,10 +41,10 @@ void resolveFloorCollision(DeviceParticleGroup* p,
                            double restitution);
 
 __device__ __forceinline__
-ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,double delMag,double dist);
+ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,double delMag);
 
 __device__ __forceinline__
-ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,double delMag,double dist);
+ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,double delMag);
 
 __device__ __forceinline__
 void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCache c);
@@ -63,6 +71,9 @@ void d_particle_collision_cell_linked_noVec(DeviceParticleGroup* p, int i, Devic
 
 __device__ __forceinline__
 void particle_collision_naive(DeviceParticleGroup* ps, int i);
+/* ============== check Out of Bounds ============  */
+__global__ void dk_checkOoB(DeviceParticleGroup *p, DeviceBoundingBox* box);
+
 
 /*
 ============================================================
@@ -71,9 +82,11 @@ void particle_collision_naive(DeviceParticleGroup* ps, int i);
 */
 __global__ void integrateKernel(DeviceParticleGroup* p);
 
-__global__ void check_g_kernel(DeviceParticleGroup* p);
+__global__ void check_g_kernel(DeviceParticleGroup* p,DeviceTriangleMesh *mesh);
 
 __global__ void k_integrate(DeviceParticleGroup* p);
+
+__global__ void k_collision_triangle(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
 
 __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
 /*
@@ -82,6 +95,8 @@ __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
    ======================================================
 */
 
+
+void device_dem_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
 
 void device_dem(ParticleSystem *p, BoundingBox *box, int gridSize, int blockSize);
 #endif

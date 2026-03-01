@@ -36,6 +36,11 @@ typedef struct DeviceBoundingBox{
     void *tmpExSum; /* used for exclusive sum*/
     size_t scanTmpBytes;
 
+    /* for triangles */
+    int *tList;  //list of triangles in a cell
+    int *tNum; //number of particle in  cell
+    int MAX_TRI;
+
 } DeviceBoundingBox;
 
 

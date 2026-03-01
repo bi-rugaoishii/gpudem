@@ -249,7 +249,7 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
                                 int hadDuplicate=0;
 
                                 for (int k=0; k<end; k++){
-                                    if(p->indHisVorENow[k]==tc.hitAt){
+                                    if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
                                         printf("duplicate collision of vertex or edge!!\n");
                                         hadDuplicate=1;
                                         break;
@@ -264,7 +264,7 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
                                 delmag = p->r[i]-tc.dist;
 
 
-                                p->indHisVorENow[end] = tc.hitAt;
+                                p->indHisVorENow[i*p->MAX_NEI+end] = tc.hitAt;
                                 numContVorENow+=1;
                             }
                             if (delmag*p->invr[i]*0.5>0.1){
@@ -291,7 +291,6 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
 inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag){
 
     int bi = i*DIM;
-    int bj = j*DIM;
 
     /* get deltas */
     Vec3 del;

@@ -46,6 +46,8 @@ typedef struct DeviceParticleGroup{
     double* etaconst;
     double* g;
 
+    int* isActive; /* flag if particle is OoB */ 
+
     /* ======== tangential force related =========*/
      /* history of delta tangent */
     double* deltHisx; 
@@ -58,6 +60,10 @@ typedef struct DeviceParticleGroup{
 
     int* indHis; /* Index of collided particles */ 
     int* indHisWall; /* Index of collided particles */ 
+    int* indHisWallNow; /* Index of collided walls in the current step*/ 
+
+    int* indHisVorENow; /* number of contact with edge or vertex*/
+
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
     int MAX_NEI; //sets maximum number of neighbors
