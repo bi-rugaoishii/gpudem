@@ -22,7 +22,11 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
 TriangleContactCache dist_triangle(ParticleSystem* ps,int i, TriangleMesh* mesh, int j);
 
 void integrateCPU(ParticleSystem *ps, BoundingBox *box);
+void cpu_dem_naive_triangle(ParticleSystem *ps, BoundingBox *box, TriangleMesh *mesh);
 void particle_collision_naive(ParticleSystem* ps);
+
+void particle_collision_verlet(ParticleSystem* p, BoundingBox *box);
+
 void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box);
 void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *box);
 void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
@@ -30,7 +34,8 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 
 void checkOoB(ParticleSystem *p, BoundingBox* box);
 
-void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box);
+void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh, int step);
+void cpu_dem_nosort_triangle(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, TriangleMesh* mesh);
 void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box);
 
 void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box);

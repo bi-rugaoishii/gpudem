@@ -179,6 +179,13 @@ typedef struct ParticleSystem{
     double length_factor;
     double mass_factor;
 
+    /* ========== verlet list related ========= */
+    double* refx;
+    double* refy;
+    double* refz; 
+    int *neiList; /* neighbor list */
+    int *numNei; /* neighbor list */
+
 
     WallGroup walls;
 

@@ -70,7 +70,7 @@ __device__ __forceinline__
 void d_particle_collision_cell_linked_noVec(DeviceParticleGroup* p, int i, DeviceBoundingBox* box);
 
 __device__ __forceinline__
-void particle_collision_naive(DeviceParticleGroup* ps, int i);
+void d_particle_collision_naive(DeviceParticleGroup* ps, int i);
 /* ============== check Out of Bounds ============  */
 __global__ void dk_checkOoB(DeviceParticleGroup *p, DeviceBoundingBox* box);
 

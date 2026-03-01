@@ -459,11 +459,11 @@ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c){
 
     if(isInHis == 0){
         neiInd=p->numCont[i];
+        p->isContact[ci+neiInd]=1;
+        p->indHis[ci+neiInd]=pId;
+        p->numCont[i] +=1;
     }
 
-    p->isContact[ci+neiInd]=1;
-    p->indHis[ci+neiInd]=pId;
-    p->numCont[i] +=1;
 
 
 
@@ -604,7 +604,7 @@ ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,doubl
     result.vn_rel = vscalar(v_reldotn,n);
 
 
-    double m_eff = (p->m[i]*p->m[j])/(p->m[i]+p->m[j]);
+    double m_eff = 1./(p->invm[i]+p->invm[j]);
     double eta = p->etaconst[i]*sqrt(m_eff);
     result.eta = eta;
 
@@ -668,83 +668,6 @@ void d_wall_collision_naive(DeviceParticleGroup* ps,int i){
     d_update_history_wall(ps,i);
 }
 
-__device__ __forceinline__
-void d_particle_collision_cell_linked_noVec3(DeviceParticleGroup* p, int i, DeviceBoundingBox* box){
-    //particle-particle
-
-    /* cycle through neighbor cells */
-    int bi = i*DIM;
-    int x=p->cellx[bi+0];
-    int y=p->cellx[bi+1];
-    int z=p->cellx[bi+2];
-
-    for (int sx=-1; sx<=1; sx++){
-        for (int sy=-1; sy<=1; sy++){
-            for (int sz=-1; sz<=1; sz++){
-                int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
-                int start = box->pStart[cellId];
-                int end = start+box->pNum[cellId];
-                for (int k=start; k<end; k++){
-                    int j = box->pList[k];
-                    if (i==j){
-                        continue;
-                    }else{
-                        int bj = j*DIM;
-                        /* normal points toward particle i */
-                        double dx = p->x[bi+0]- p->x[bj+0];
-                        double dy = p->x[bi+1]- p->x[bj+1];
-                        double dz = p->x[bi+2]- p->x[bj+2];
-                        double distsq =dx*dx+dy*dy+dz*dz;
-                        double R = p->r[i]+p->r[j];
-
-                        if (distsq<R*R){
-                            double dist = sqrt(distsq);
-                            double delta = R-dist;
-                            if(delta*p->invr[i]*0.5>0.05){
-                                printf("overlap over 5%%!!!!\n");
-                                printf("delta is %f %%, dist is %f\n",delta*p->invr[i]+0.5*100.,dist);
-                            }
-
-                            /* get normal direction */
-                            double nx,ny,nz;
-                            nx = dx/dist;
-                            ny = dy/dist;
-                            nz = dz/dist;
-
-                            /* get deltas */
-                            double delx,dely,delz;
-                            delx = nx*delta;
-                            dely = ny*delta;
-                            delz = nz*delta;
-
-                            /* get relative velocity */
-                            double v_relx,v_rely,v_relz;
-                            v_relx = p->v[bi+0] - p->v[bj+0];
-                            v_rely = p->v[bi+1] - p->v[bj+1];
-                            v_relz = p->v[bi+2] - p->v[bj+2];
-
-                            double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
-
-                            /* get normal relative velocity*/
-                            double vn_relx,vn_rely,vn_relz;
-                            vn_relx = v_reldotn*nx;
-                            vn_rely = v_reldotn*ny;
-                            vn_relz = v_reldotn*nz;
-
-                            double m_eff = 1./(p->invm[i]+p->invm[j]);
-                            double eta = p->etaconst[i]*sqrt(m_eff);
-
-                            p->f[bi+0]+= p->k[i]*delx - eta*vn_relx;
-                            p->f[bi+1] += p->k[i]*dely - eta*vn_rely;
-                            p->f[bi+2] += p->k[i]*delz - eta*vn_relz;
-                        }
-                    }
-                }
-
-            }
-        }
-    }
-}
 
 __device__ __forceinline__
 void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBoundingBox* box){
@@ -799,7 +722,7 @@ void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBound
                             c = d_calc_normal_force(p,i,j,n,delMag);
 
 
-                            d_calc_tangential_force(p,i,j,c);
+                             d_calc_tangential_force(p,i,j,c);
 
                         }
                     }
@@ -813,62 +736,50 @@ void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBound
 }
 
 __device__ __forceinline__
-void particle_collision_naive(DeviceParticleGroup* ps, int i){
+void d_particle_collision_naive(DeviceParticleGroup* p, int i){
     //particle-particle
-    for (int j=0; j<ps->N; j++){
-        if (i==j || ps->isActive[j]!=1){
+    for (int j=0; j<p->N; j++){
+        if (i==j || p->isActive[j]!=1){
             continue;
         }else{
             int bi = i*DIM;
             int bj = j*DIM;
+
+            Vec3 del;
             /* normal points toward particle i */
-            double dx = ps->x[bi+0]- ps->x[bj+0];
-            double dy = ps->x[bi+1]- ps->x[bj+1];
-            double dz = ps->x[bi+2]- ps->x[bj+2];
-            double distsq =dx*dx+dy*dy+dz*dz;
-            double R = ps->r[i]+ps->r[j];
+            del.x = p->x[bi+0]- p->x[bj+0];
+            del.y = p->x[bi+1]- p->x[bj+1];
+            del.z = p->x[bi+2]- p->x[bj+2];
+            double distsq = vdot(del,del);
+            double R = p->r[i]+p->r[j];
 
             if (distsq<R*R){
                 double dist = sqrt(distsq);
-                double delta = R-dist;
+                double delMag = R-dist;
+                if(delMag*p->invr[i]*0.5>0.05){
+                    printf("overlap over 5%%!!!!\n");
+                    printf("delta is %f %%, dist is %f\n",delMag*p->invr[i]+0.5*100.,dist);
+                }
 
+                /* ======================================================
+                   Force Calculation
+                   ======================================================*/
                 /* get normal direction */
-                double nx,ny,nz;
-                nx = dx/dist;
-                ny = dy/dist;
-                nz = dz/dist;
+                Vec3 n;
+                n.x = del.x/dist;
+                n.y = del.y/dist;
+                n.z = del.z/dist;
+                ContactCache c;
+                c = d_calc_normal_force(p,i,j,n,delMag);
 
-                /* get deltas */
-                double delx,dely,delz;
-                delx = nx*delta;
-                dely = ny*delta;
-                delz = nz*delta;
 
-                /* get relative velocity */
-                double v_relx,v_rely,v_relz;
-                v_relx = ps->v[bi+0] - ps->v[bj+0];
-                v_rely = ps->v[bi+1] - ps->v[bj+1];
-                v_relz = ps->v[bi+2] - ps->v[bj+2];
-
-                double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
-
-                /* get normal relative velocity*/
-                double vn_relx,vn_rely,vn_relz;
-                vn_relx = v_reldotn*nx;
-                vn_rely = v_reldotn*ny;
-                vn_relz = v_reldotn*nz;
-
-                double m_eff = (ps->m[i]*ps->m[j])/(ps->m[i]+ps->m[j]);
-                double eta = ps->etaconst[i]*sqrt(m_eff);
-
-                ps->f[bi+0]+= ps->k[i]*delx - eta*vn_relx;
-                ps->f[bi+1] += ps->k[i]*dely - eta*vn_rely;
-                ps->f[bi+2] += ps->k[i]*delz - eta*vn_relz;
-
+                d_calc_tangential_force(p,i,j,c);
 
             }
         }
     }
+    /* update contact history */
+    d_update_history(p,i);
 }
 __device__ __forceinline__
 void updateAcceleration(DeviceParticleGroup* p, int i){
@@ -910,9 +821,9 @@ __global__ void check_g_kernel(DeviceParticleGroup* ps,DeviceTriangleMesh *mesh)
     printf("mesh in kernel: %f %f %f\n",mesh->mx[0],mesh->my[0],mesh->mz[0]);
     printf("mesh in kernel: %d\n",mesh->nVert);
     /*
-    printf("wall 0 in kernel: %f %f %f\n",ps->walls.n[0],ps->walls.n[1],ps->walls.n[2]);
-    printf("wall 1 in kernel: %f %f %f\n",ps->walls.n[1*DIM+0],ps->walls.n[1*DIM+1],ps->walls.n[1*DIM+2]);
-    */
+       printf("wall 0 in kernel: %f %f %f\n",ps->walls.n[0],ps->walls.n[1],ps->walls.n[2]);
+       printf("wall 1 in kernel: %f %f %f\n",ps->walls.n[1*DIM+0],ps->walls.n[1*DIM+1],ps->walls.n[1*DIM+2]);
+     */
     printf("value in kernel: %f %f %f\n",ps->r[0],ps->m[0],ps->invm[0]);
     printf("value in kernel: dt = %f, etaconst = %f\n",ps->dt,ps->etaconst[0]);
 }
@@ -921,7 +832,8 @@ __global__ void k_collision_triangle(DeviceParticleGroup* p, DeviceBoundingBox* 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= p->N || p->isActive[i]!=1) return;
 
-    d_particle_collision_cell_linked(p,i,box);
+   // d_particle_collision_cell_linked(p,i,box);
+    d_particle_collision_naive(p,i);
     // d_particle_collision_cell_linked_noVec3(p,i,box);
     d_wall_collision_triangles(p,i,box,mesh);
 
@@ -946,7 +858,7 @@ __global__ void integrateKernel(DeviceParticleGroup* p){
     p->f[bi+1]=0.;
     p->f[bi+2]=0.;
 
-    particle_collision_naive(p,i);
+    d_particle_collision_naive(p,i);
     d_wall_collision_naive(p,i);
     updateAcceleration(p,i);
     // 処理A

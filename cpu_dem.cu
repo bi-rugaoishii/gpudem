@@ -638,7 +638,7 @@ inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,doubl
     result.vn_rel = vscalar(v_reldotn,n);
 
 
-    double m_eff = (p->m[i]*p->m[j])/(p->m[i]+p->m[j]);
+    double m_eff = 1./(p->invm[i]+p->invm[j]);
     double eta = p->etaconst[i]*sqrt(m_eff);
     result.eta = eta;
 
@@ -738,6 +738,60 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 
     }
 }
+
+void particle_collision_verlet(ParticleSystem* p, BoundingBox *box){
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+        //particle-particle
+        /* cycle through neighbor list */
+
+        int bi=i*DIM;
+        int end = p->numNei[i];
+        int ci = i*p->MAX_NEI;
+        for (int k=0; k<end; k++){
+            int j = p->neiList[ci+k];
+            int bj=j*DIM;
+
+            Vec3 del;
+            /* normal points toward particle i */
+            del.x = p->x[bi+0]- p->x[bj+0];
+            del.y = p->x[bi+1]- p->x[bj+1];
+            del.z = p->x[bi+2]- p->x[bj+2];
+            double distsq = vdot(del,del);
+            double R = p->r[i]+p->r[j];
+
+            if (distsq<R*R){
+                double dist = sqrt(distsq);
+                double delMag = R-dist;
+                if (delMag*p->invr[i]*0.5>0.05){
+                    printf("overlap over 5%% with pair %d %d!!!!\n",i,j);
+                    printf("overlap is %f %% with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
+                }
+
+                /* ======================================================
+                   Force Calculation
+                   ======================================================*/
+                /* get normal direction */
+                Vec3 n;
+                n.x = del.x/dist;
+                n.y = del.y/dist;
+                n.z = del.z/dist;
+                ContactCache c;
+                c = calc_normal_force(p,i,j,n,delMag);
+
+
+                 calc_tangential_force(p,i,j,c);
+
+            }
+        }/* neighbor search done */
+
+        /* update contact history */
+        update_history(p,i);
+    }
+}
+
 void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* tmpPs, BoundingBox *box){
     update_pList_withSort(p, tmpPs, box);
     for (int i=0; i<p->N; i++){
@@ -850,7 +904,7 @@ void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *b
                                 double dist = sqrt(distsq);
                                 double delMag = R-dist;
                                 if (delMag*p->invr[i]*0.5>0.05){
-                                    printf("overlap over %%!!!!\n");
+                                    printf("overlap over 5%%!!!!\n");
                                     printf("overlap is %f %%\n",delMag*p->invr[i]*0.5*100.);
                                 }
                                 /* ======================================================
@@ -1033,68 +1087,76 @@ void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box)
     }
 }
 
-void particle_collision_naive(ParticleSystem* ps){
-    for (int i=0; i<ps->N; i++){
+void particle_collision_naive(ParticleSystem* p){
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
         //particle-particle
-        for (int j=0; j<ps->N; j++){
+        int bi=i*DIM;
+        for (int j=0; j<p->N; j++){
             if (i==j){
                 continue;
             }else{
-                int bi = i*DIM;
-                int bj = j*DIM;
+                int bj=j*DIM;
+
+                Vec3 del;
                 /* normal points toward particle i */
-                double dx = ps->x[bi+0]- ps->x[bj+0];
-                double dy = ps->x[bi+1]- ps->x[bj+1];
-                double dz = ps->x[bi+2]- ps->x[bj+2];
-                double distsq =dx*dx+dy*dy+dz*dz;
-                double R = ps->r[i]+ps->r[j];
+                del.x = p->x[bi+0]- p->x[bj+0];
+                del.y = p->x[bi+1]- p->x[bj+1];
+                del.z = p->x[bi+2]- p->x[bj+2];
+                double distsq = vdot(del,del);
+                double R = p->r[i]+p->r[j];
 
                 if (distsq<R*R){
                     double dist = sqrt(distsq);
-                    double delta = R-dist;
-                    if (delta*ps->invr[i]*0.5>0.01){
-                        printf("overlap over 10%%!!!!\n");
-                        printf("delta is %f, dist is %f\n",delta,dist);
+                    double delMag = R-dist;
+                    if (delMag*p->invr[i]*0.5>0.05){
+                        printf("overlap over 5%%!!!!\n");
+                        printf("overlap is %f %%\n",delMag*p->invr[i]*0.5*100.);
                     }
-
+                    /* ======================================================
+                       Force Calculation
+                       ======================================================*/
                     /* get normal direction */
-                    double nx,ny,nz;
-                    nx = dx/dist;
-                    ny = dy/dist;
-                    nz = dz/dist;
-
-                    /* get deltas */
-                    double delx,dely,delz;
-                    delx = nx*delta;
-                    dely = ny*delta;
-                    delz = nz*delta;
-
-                    /* get relative velocity */
-                    double v_relx,v_rely,v_relz;
-                    v_relx = ps->v[bi+0] - ps->v[bj+0];
-                    v_rely = ps->v[bi+1] - ps->v[bj+1];
-                    v_relz = ps->v[bi+2] - ps->v[bj+2];
-
-                    double v_reldotn = v_relx*nx+v_rely*ny+v_relz*nz;
-
-                    /* get normal relative velocity*/
-                    double vn_relx,vn_rely,vn_relz;
-                    vn_relx = v_reldotn*nx;
-                    vn_rely = v_reldotn*ny;
-                    vn_relz = v_reldotn*nz;
-
-                    double m_eff = (ps->m[i]*ps->m[j])/(ps->m[i]+ps->m[j]);
-                    double eta = ps->etaconst[i]*sqrt(m_eff);
-
-                    ps->f[bi+0]+= ps->k[i]*delx - eta*vn_relx;
-                    ps->f[bi+1] += ps->k[i]*dely - eta*vn_rely;
-                    ps->f[bi+2] += ps->k[i]*delz - eta*vn_relz;
-
+                    Vec3 n;
+                    n.x = del.x/dist;
+                    n.y = del.y/dist;
+                    n.z = del.z/dist;
+                    ContactCache c;
+                    c = calc_normal_force(p,i,j,n,delMag);
+                    calc_tangential_force(p,i,j,c);
 
                 }
             }
         }
+        update_history(p,i);
     }
+}
+
+/* =========== verlet list related =============== */
+
+int shouldRefresh(ParticleSystem *p, BoundingBox* box){
+    int flag = 0;
+    double threshSq = box->refreshThreshSq;
+    for(int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+        int bi = i*DIM;
+        Vec3 del;
+
+        del.x = p->x[bi+0]- p->refx[i];
+        del.y = p->x[bi+1]- p->refy[i];
+        del.z = p->x[bi+2]- p->refz[i];
+
+        double distsq=vdot(del,del);
+        if(distsq>threshSq){
+            flag=1;
+            break;
+        }
+    }
+    return flag;
 }
 
 /* ============== check Out of Bounds ============  */
@@ -1112,6 +1174,65 @@ void checkOoB(ParticleSystem *p, BoundingBox* box){
 }
 
 /* ============== dem mains ================= */
+
+void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh, int step){
+    /* initialize */
+    for (int i=0; i<p->N*DIM; i++){
+        p->f[i]=0.;
+    }
+
+    for (int i=0; i<p->N*DIM; i++){
+        p->mom[i]=0.;
+    }
+
+    for (int i=0; i<p->N*p->MAX_NEI; i++){
+        p->isContact[i]=0;
+        p->isContactWall[i]=0;
+    }
+
+
+
+    particle_collision_verlet(p,box);
+
+    wall_collision_triangles(p,box,mesh);
+
+    /* update */
+    for (int i = 0; i < p->N; i++)
+    {
+        if (p->isActive[i]!=1){
+            continue;
+        }
+        int bi = i*DIM;
+        // acceleration
+        p->a[bi+0] = p->f[bi+0]*p->invm[i]+p->g[0];
+        p->a[bi+1] = p->f[bi+1]*p->invm[i]+p->g[1];
+        p->a[bi+2] = p->f[bi+2]*p->invm[i]+p->g[2];
+
+        // velocity
+        p->v[bi+0] += p->a[bi+0] * p->dt;
+        p->v[bi+1] += p->a[bi+1] * p->dt;
+        p->v[bi+2] += p->a[bi+2] * p->dt;
+
+        // position
+        p->x[bi+0] += p->v[bi+0] * p->dt;
+        p->x[bi+1] += p->v[bi+1] * p->dt;
+        p->x[bi+2] += p->v[bi+2] * p->dt;
+
+        // angular acceleration
+        p->anga[bi+0] = p->mom[bi+0]*p->invmoi[i];
+        p->anga[bi+1] = p->mom[bi+1]*p->invmoi[i];
+        p->anga[bi+2] = p->mom[bi+2]*p->invmoi[i];
+
+        // angular velocity
+        p->angv[bi+0] += p->anga[bi+0] * p->dt;
+        p->angv[bi+1] += p->anga[bi+1] * p->dt;
+        p->angv[bi+2] += p->anga[bi+2] * p->dt;
+    }
+    int flag = shouldRefresh(p,box);
+    if (flag ==1){
+        update_neighborlist(p,tmpP,box);
+    }
+}
 
 void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh, int step){
     /* initialize */
@@ -1174,7 +1295,64 @@ void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingB
     }
 }
 
-void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box){
+void cpu_dem_naive_triangle(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh){
+    /* initialize */
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->f[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*DIM; i++){
+        ps->mom[i]=0.;
+    }
+
+    for (int i=0; i<ps->N*ps->MAX_NEI; i++){
+        ps->isContact[i]=0;
+        ps->isContactWall[i]=0;
+    }
+
+
+
+    update_pList_fast(ps,box);
+    particle_collision_naive(ps);
+
+    wall_collision_triangles(ps,box,mesh);
+
+    /* update */
+    for (int i = 0; i < ps->N; i++)
+    {
+        if (ps->isActive[i]!=1){
+            continue;
+        }
+        int bi = i*DIM;
+        // acceleration
+        ps->a[bi+0] = ps->f[bi+0]*ps->invm[i]+ps->g[0];
+        ps->a[bi+1] = ps->f[bi+1]*ps->invm[i]+ps->g[1];
+        ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
+
+        // velocity
+        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
+        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
+        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
+
+        // position
+        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
+        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
+        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
+
+        // angular acceleration
+        ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
+        ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];
+        ps->anga[bi+2] = ps->mom[bi+2]*ps->invmoi[i];
+
+        // angular velocity
+        ps->angv[bi+0] += ps->anga[bi+0] * ps->dt;
+        ps->angv[bi+1] += ps->anga[bi+1] * ps->dt;
+        ps->angv[bi+2] += ps->anga[bi+2] * ps->dt;
+
+    }
+}
+
+void cpu_dem_nosort_triangle(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh){
     /* initialize */
     for (int i=0; i<ps->N*DIM; i++){
         ps->f[i]=0.;
@@ -1193,7 +1371,7 @@ void cpu_dem_nosort(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box)
 
     particle_collision_cell_linked_fastUpdate(ps,box);
 
-    wall_collision_naive(ps);
+    wall_collision_triangles(ps,box,mesh);
 
     /* update */
     for (int i = 0; i < ps->N; i++)

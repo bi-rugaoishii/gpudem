@@ -44,7 +44,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 200;
+    ps.N = 1000;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -230,11 +230,11 @@ int main()
         #else
 
                 /* CPU */
-                //cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
+                //cpu_dem_nosort(&ps, &tmpPs, &box);
                 //cpu_dem_sort(&ps, &tmpPs, &box, step);
-              //  cpu_dem_naive_triangle(&ps, &box, &mesh);
-              // cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
-                cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
+                cpu_dem_naive_triangle(&ps, &box, &mesh);
+                //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
+                //cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
                 checkOoB(&ps,&box);
 
             #if OUTPUT

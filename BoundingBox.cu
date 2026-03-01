@@ -306,6 +306,11 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     box->dy = maxr*4. ;
     box->dz = maxr*4. ;
 
+    /* verlet list related */
+    box->skinR = maxr;
+    box->refreshThresh = maxr*0.5;
+    box->refreshThreshSq = box->refreshThresh*box->refreshThresh;
+
     box->invdx = 1./box->dx;
     box->invdy = 1./box->dy;
     box->invdz = 1./box->dz;
@@ -359,6 +364,65 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     #endif
 
 }
+
+void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box){
+    //update_pList_withSort_fast(p,tmpPs,box);
+    update_pList_fast(p,box);
+    int skinR = box->skinR;
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+        //particle-particle
+        /* cycle through neighbor cells */
+        int bi=i*DIM;
+        int x=p->cellx[bi+0];
+        int y=p->cellx[bi+1];
+        int z=p->cellx[bi+2];
+        int numNei = 0;
+
+        for (int sx=-1; sx<=1; sx++){
+            for (int sy=-1; sy<=1; sy++){
+                for (int sz=-1; sz<=1; sz++){
+                    int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+
+                    int start = box->pStart[cellId];
+                    int end = start+box->pNum[cellId];
+                    for (int k=box->pStart[cellId]; k<end; k++){
+                        int j = box->pList[k];
+                        if (i==j){
+                            continue;
+                        }else{
+                            int bj=j*DIM;
+
+                            Vec3 del;
+                            /* normal points toward particle i */
+                            del.x = p->x[bi+0]- p->x[bj+0];
+                            del.y = p->x[bi+1]- p->x[bj+1];
+                            del.z = p->x[bi+2]- p->x[bj+2];
+                            double distsq = vdot(del,del);
+                            double R = p->r[i]+p->r[j]+skinR;
+                            if (distsq<R*R){
+                                p->neiList[i*p->MAX_NEI+numNei]=j;
+                                numNei+=1;
+                                if(numNei >= p->MAX_NEI){
+                                    printf("Neighbor over flow!!!!\n");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }/* neighbor cell search done */
+        p->numNei[i]=numNei;
+
+        /* set reference position */
+        p->refx[i]=p->x[bi+0];
+        p->refy[i]=p->x[bi+1];
+        p->refz[i]=p->x[bi+2];
+    }
+}
+
 
 void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box){
     /* initialize */

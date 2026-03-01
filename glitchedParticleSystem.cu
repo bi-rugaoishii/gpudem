@@ -449,10 +449,10 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         while (trial < max_trials)
         {
             // ランダム配置
-            double x = (double)rand() / RAND_MAX*0.1-0.05;
-            double y = (double)rand() / RAND_MAX * 3.0 + 0.5;
+            double x = (double)rand() / RAND_MAX*0.2 - 0.1;
+            double y = (double)rand() / RAND_MAX * 4.0 + 0.5;
             //double y = -0.97;
-            double z = (double)rand() / RAND_MAX*0.1-0.05;
+            double z = (double)rand() / RAND_MAX*0.2  - 0.1;
 
             /*
                double x = 0.;

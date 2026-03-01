@@ -60,6 +60,10 @@ typedef struct BoundingBox{
     double dx,dy,dz;
     double invdx,invdy,invdz;
 
+    double skinR;
+    double refreshThresh;
+    double refreshThreshSq;
+
     double rangex,rangey,rangez;
     int sizex,sizey,sizez,N;
 
@@ -95,6 +99,8 @@ void radixSortUint32(
 void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
+
+void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpP, BoundingBox *box);
 
 void update_pList(ParticleSystem *p, BoundingBox *box);
 void update_pList_fast(ParticleSystem *p, BoundingBox *box);
