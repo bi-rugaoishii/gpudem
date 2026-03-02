@@ -2,6 +2,7 @@
 #ifndef _TRIANGLEMESH_H_
 #define _TRIANGLEMESH_H_
 #include "Vec3.h"
+#include "BoundingBox.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@ void sort3(int *x, int *y, int *z);
 ===================================== */
 
 typedef struct DeviceTriangleMesh {
+
     /* vertices */
     double* mx; 
     double* my;
@@ -97,6 +99,16 @@ typedef struct DeviceTriangleMesh {
    double precision triangle mesh
 ===================================== */
 typedef struct TriangleMesh {
+    int *sortedIndex;
+
+    /* center coord */
+    double* cx; 
+    double* cy;
+    double* cz;
+
+    /* morton key */
+    uint32_t *mortonKey;
+
     /* vertices */
     double* mx; 
     double* my;

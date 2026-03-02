@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "ParticleSystem.h"
-#include "TriangleMesh.h"
 struct ParticleSystem;
 struct DeviceParticleGroup;
+struct TriangleMesh;
 
 /*
  * ==============================
@@ -88,6 +88,20 @@ typedef struct BoundingBox{
  */
 
 int compare_int(const void *a, const void *b);
+
+/* ============ Morton key related ================ */
+
+inline uint32_t expandBits(uint32_t v){
+    v &= 0x000003ff;                 // 10bit
+    v = (v | (v << 16)) & 0x030000FF;
+    v = (v | (v <<  8)) & 0x0300F00F;
+    v = (v | (v <<  4)) & 0x030C30C3;
+    v = (v | (v <<  2)) & 0x09249249;
+    return v;
+}
+inline uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){
+    return (expandBits(ix) << 2)| (expandBits(iy) << 1)| (expandBits(iz));
+}
 
 void radixSortUint32(
     uint32_t** keyPtr,

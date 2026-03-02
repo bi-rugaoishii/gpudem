@@ -6,6 +6,7 @@
 #include "Vec3.h"
 #include "BoundingBox.h"
 #include "TriangleMesh.h"
+struct TriangleMesh;
 struct BoundingBox;
 
 

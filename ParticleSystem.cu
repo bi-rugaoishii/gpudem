@@ -450,7 +450,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         {
             // ランダム配置
             double x = (double)rand() / RAND_MAX*0.1-0.05;
-            double y = (double)rand() / RAND_MAX * 3.0 + 0.5;
+            double y = (double)rand() / RAND_MAX * 2.0 + 0.5;
             //double y = -0.97;
             double z = (double)rand() / RAND_MAX*0.1-0.05;
 
@@ -621,6 +621,10 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh)
 
     /* triangles */
     for (int i=0; i<mesh->nTri; i++){
+        mesh->cx[i]*= inv_length_factor;
+        mesh->cy[i]*= inv_length_factor;
+        mesh->cz[i]*= inv_length_factor;
+
         mesh->d[i]*= inv_length_factor;
 
         mesh->e01x[i]*= inv_length_factor;

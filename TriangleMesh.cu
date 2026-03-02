@@ -1,5 +1,25 @@
 #include "TriangleMesh.h"
 
+/* ========= morton key related functions ================== */
+static void mortonKeyGen(TriangleMesh* mesh)
+{
+    const int BITS  = 10;
+    const int SCALE = (1<<BITS) - 1;
+
+    double invRangeX = SCALE / (mesh->gmaxx - mesh->gminx);
+    double invRangeY = SCALE / (mesh->gmaxy - mesh->gminy);
+    double invRangeZ = SCALE / (mesh->gmaxz - mesh->gminz);
+
+    for (int i=0; i<mesh->nTri; i++)
+    {
+        uint32_t ix = (uint32_t)((mesh->cx[i] - mesh->gminx) * invRangeX);
+        uint32_t iy = (uint32_t)((mesh->cy[i] - mesh->gminy) * invRangeY);
+        uint32_t iz = (uint32_t)((mesh->cz[i] - mesh->gminz) * invRangeZ);
+
+        mesh->mortonKey[i] = morton3D(ix,iy,iz);
+    }
+}
+
 /* ========== hash key related functions used for merging ===========*/
 static inline unsigned long long hash_func(long long x,long long y,long long z){
     unsigned long long h = 1469598103934665603ULL;
@@ -15,9 +35,9 @@ void vertex_hash_init(VertexHash* h, size_t size){
 }
 
 int vertex_hash_get_or_insert(VertexHash* h,
-                              double x, double y, double z,
-                              double eps,
-                              int vIndex){
+        double x, double y, double z,
+        double eps,
+        int vIndex){
     long long ix = llround(x / eps);
     long long iy = llround(y / eps);
     long long iz = llround(z / eps);
@@ -39,8 +59,8 @@ int vertex_hash_get_or_insert(VertexHash* h,
 
         /* 一致チェック */
         if(h->table[pos].ix == ix &&
-           h->table[pos].iy == iy &&
-           h->table[pos].iz == iz)
+                h->table[pos].iy == iy &&
+                h->table[pos].iz == iz)
         {
             return h->table[pos].index;
         }
@@ -213,6 +233,13 @@ void deviceMallocCopyTriangleMesh(TriangleMesh *mesh){
 
 /* ========== triangle mesh ===============*/
 void free_TriangleMesh(TriangleMesh* mesh){
+    free(mesh->sortedIndex);
+
+    free(mesh->cx);
+    free(mesh->cy);
+    free(mesh->cz);
+    free(mesh->mortonKey);
+
     free(mesh->mx);
     free(mesh->my);
     free(mesh->mz);
@@ -356,7 +383,14 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     mesh->gmaxy = -1e300;
     mesh->gmaxz = -1e300;
 
+    mesh->sortedIndex = (int*)malloc(sizeof(int)*Nt);
+
     /* allocate SoA */
+    mesh->cx = (double*)malloc(sizeof(double)*Nt);
+    mesh->cy = (double*)malloc(sizeof(double)*Nt);
+    mesh->cz = (double*)malloc(sizeof(double)*Nt);
+    mesh->mortonKey = (uint32_t*)malloc(sizeof(uint32_t)*Nt);
+
     mesh->mx = (double*)malloc(sizeof(double)*Nv);
     mesh->my = (double*)malloc(sizeof(double)*Nv);
     mesh->mz = (double*)malloc(sizeof(double)*Nv);
@@ -427,6 +461,8 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
         /* need better scan */
         if(sscanf(line," facet normal %lf %lf %lf",&nx,&ny,&nz)==3){
 
+
+            mesh->sortedIndex[triIndex] = triIndex; /* will be sorted later */
 
             /* outer loop */
             if(!fgets(line,256,fp)) break;
@@ -559,6 +595,13 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             double y2 = mesh->my[v2];
             double z2 = mesh->mz[v2];
 
+            /* ==== compute center coord ===== */
+            mesh->cx[triIndex] = (x0+x1+x2)/3.0;
+            mesh->cy[triIndex] = (y0+y1+y2)/3.0;
+            mesh->cz[triIndex] = (z0+z1+z2)/3.0;
+
+            /* ===== compute morton key ========== */
+
             /* min */
             double minx = x0;
             if(x1 < minx) minx = x1;
@@ -610,6 +653,56 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
             if(!fgets(line,256,fp)) break;
         }
     }
+
+    /* ============ generate morton key and check presort index ========*/
+
+    printf("Triangle center coordinates\n");
+    for (int i=0; i<mesh->nTri; i++){
+        printf("%f %f %f\n",mesh->cx[i],mesh->cy[i],mesh->cz[i]);
+    }
+    mortonKeyGen(mesh);
+    printf("Generated triangle mortonkey and pre sort index\n");
+    for (int i=0; i<mesh->nTri; i++){
+        printf("%lld %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+    }
+
+    double checkDistance=0.;
+    for (int i=1; i<mesh->nTri; i++){
+        Vec3 x1;
+        x1.x=mesh->cx[i]-mesh->cx[i-1];
+        x1.y=mesh->cy[i]-mesh->cy[i-1];
+        x1.z=mesh->cz[i]-mesh->cz[i-1];
+        checkDistance+=sqrt(vdot(x1,x1));
+    }
+    checkDistance/=(double)mesh->nTri;
+    printf("Avg distance is %f\n",checkDistance);
+
+
+    /* =========== sort index by morton key ======== */
+    uint32_t *tmpMortonKey = (uint32_t*)malloc(sizeof(uint32_t)*mesh->nTri);
+    int *tmpSortedIndex = (int*)malloc(sizeof(int)*mesh->nTri);
+    radixSortUint32(&mesh->mortonKey,&mesh->sortedIndex,mesh->nTri,tmpMortonKey,tmpSortedIndex);
+    printf("Sorted triangle mortonkey and pre sort index\n");
+    for (int i=0; i<mesh->nTri; i++){
+        printf("%lld %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+    }
+
+    checkDistance=0.;
+    for (int i=1; i<mesh->nTri; i++){
+        Vec3 x1;
+        int ind1 = mesh->sortedIndex[i];
+        int ind0 = mesh->sortedIndex[i-1];
+        x1.x=mesh->cx[ind1]-mesh->cx[ind0];
+        x1.y=mesh->cy[ind1]-mesh->cy[ind0];
+        x1.z=mesh->cz[ind1]-mesh->cz[ind0];
+        checkDistance+=sqrt(vdot(x1,x1));
+    }
+    checkDistance/=(double)mesh->nTri;
+    printf("Avg distance is %f\n",checkDistance);
+
+    free(tmpMortonKey);
+    free(tmpSortedIndex);
+
 
     printf(" final number of edges are %d \n", eIndex);
 
