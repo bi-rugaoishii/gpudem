@@ -559,7 +559,6 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
         int ex = ceil((mesh->maxx[i]-box->minx)*box->invdx)+1;
         int ey = ceil((mesh->maxy[i]-box->miny)*box->invdy)+1;
         int ez = ceil((mesh->maxz[i]-box->minz)*box->invdz)+1;
-        printf("%d\n",i);
 
         for (int dz=sz; dz<=ez; dz++){
             for (int dy=sy; dy<=ey; dy++){

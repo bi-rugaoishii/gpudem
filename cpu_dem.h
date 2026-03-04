@@ -10,6 +10,7 @@
 #include "Vec3.h"
 #include "ContactCache.h"
 #include "TriangleContactCache.h"
+#include "BVH.h"
 #define DIM 3
 
 /* === triangle related === */
@@ -24,6 +25,10 @@ TriangleContactCache dist_triangle(ParticleSystem* ps,int i, TriangleMesh* mesh,
 void integrateCPU(ParticleSystem *ps, BoundingBox *box);
 void cpu_dem_naive_triangle(ParticleSystem *ps, BoundingBox *box, TriangleMesh *mesh);
 void particle_collision_naive(ParticleSystem* ps);
+
+void wall_collision_BVH(ParticleSystem* p,BVH* bvh);
+
+void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
 
 void particle_collision_verlet(ParticleSystem* p, BoundingBox *box);
 

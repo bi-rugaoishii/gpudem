@@ -203,6 +203,110 @@ TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh
     return res;
 }
 
+static inline int sphereAABBOverlap(ParticleSystem* p,int i,BVH *bvh, int j){
+    double minx = bvh->minx[j];
+    double miny = bvh->miny[j];
+    double minz = bvh->minz[j];
+
+    double maxx = bvh->maxx[j];
+    double maxy = bvh->maxy[j];
+    double maxz = bvh->maxz[j];
+
+
+    int bi=i*DIM;
+
+    double px = p->x[bi+0];
+    double py = p->x[bi+1];
+    double pz = p->x[bi+2];
+
+    double dx = 0.0;
+    if(px < minx) dx = minx - px;
+    else if(px > maxx) dx = px - maxx;
+
+    double dy = 0.0;
+    if(py < miny) dy = miny - py;
+    else if(py > maxy) dy = py - maxy;
+
+    double dz = 0.0;
+    if(pz < minz) dz = minz - pz;
+    else if(pz > maxz) dz = pz - maxz;
+
+    return (dx*dx + dy*dy + dz*dz) <= p->rsq[i];
+}
+
+void wall_collision_BVH(ParticleSystem* p,TriangleMesh* mesh,BVH* bvh){
+    for(int i=0; i<p->N; i++){
+
+        if(p->isActive[i]!=1){
+            continue;
+        }
+
+        int stack[128];
+        int sp = 0;
+
+        stack[sp++] = 0;   // root
+
+        int numContVorENow = 0;
+
+        while(sp > 0){
+            int node = stack[--sp];
+
+            if(!sphereAABBOverlap(p,i,bvh,node)){
+                continue;
+            }
+
+            if(bvh->tri[node] >= 0){
+                int indTri = bvh->tri[node];
+
+                // ここで球 vs 三角形の精密判定
+                TriangleContactCache tc;
+                tc = dist_triangle(p,i,mesh,indTri); 
+
+                if(tc.dist<p->r[i]){
+                    double delmag;
+                    if(tc.hitAt==-1){ //hit at face
+                        delmag = p->r[i]-tc.dist;
+                    }else{ //hit as face or edge
+                        int end = numContVorENow;
+                        int hadDuplicate=0;
+
+                        for (int k=0; k<end; k++){
+                            if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
+                                printf("duplicate collision of vertex or edge!!\n");
+                                hadDuplicate=1;
+                                break;
+                            }
+                        }
+
+                        if(hadDuplicate ==1){
+                            continue;
+
+                        }
+
+                        delmag = p->r[i]-tc.dist;
+
+
+                        p->indHisVorENow[i*p->MAX_NEI+end] = tc.hitAt;
+                        numContVorENow+=1;
+                    }
+                    if (delmag*p->invr[i]*0.5>0.1){
+                        printf("overlap over 10%% with wall!!!!\n");
+                    }
+
+                    ContactCache c;
+                    c = calc_normal_force_wall(p,i,indTri,tc.n,delmag);
+                    calc_tangential_force_wall(p,i,indTri,c);
+                }
+            }else{
+                stack[sp++] = bvh->left[node];
+                stack[sp++] = bvh->right[node];
+            }
+        }
+        update_history_wall(p,i);
+    }
+}
+
+
 void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* mesh){
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
@@ -782,7 +886,7 @@ void particle_collision_verlet(ParticleSystem* p, BoundingBox *box){
                 c = calc_normal_force(p,i,j,n,delMag);
 
 
-                 calc_tangential_force(p,i,j,c);
+                calc_tangential_force(p,i,j,c);
 
             }
         }/* neighbor search done */
@@ -1174,6 +1278,65 @@ void checkOoB(ParticleSystem *p, BoundingBox* box){
 }
 
 /* ============== dem mains ================= */
+
+void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step){
+    /* initialize */
+    for (int i=0; i<p->N*DIM; i++){
+        p->f[i]=0.;
+    }
+
+    for (int i=0; i<p->N*DIM; i++){
+        p->mom[i]=0.;
+    }
+
+    for (int i=0; i<p->N*p->MAX_NEI; i++){
+        p->isContact[i]=0;
+        p->isContactWall[i]=0;
+    }
+
+
+
+    particle_collision_verlet(p,box);
+
+    wall_collision_BVH(p,mesh,bvh);
+
+    /* update */
+    for (int i = 0; i < p->N; i++)
+    {
+        if (p->isActive[i]!=1){
+            continue;
+        }
+        int bi = i*DIM;
+        // acceleration
+        p->a[bi+0] = p->f[bi+0]*p->invm[i]+p->g[0];
+        p->a[bi+1] = p->f[bi+1]*p->invm[i]+p->g[1];
+        p->a[bi+2] = p->f[bi+2]*p->invm[i]+p->g[2];
+
+        // velocity
+        p->v[bi+0] += p->a[bi+0] * p->dt;
+        p->v[bi+1] += p->a[bi+1] * p->dt;
+        p->v[bi+2] += p->a[bi+2] * p->dt;
+
+        // position
+        p->x[bi+0] += p->v[bi+0] * p->dt;
+        p->x[bi+1] += p->v[bi+1] * p->dt;
+        p->x[bi+2] += p->v[bi+2] * p->dt;
+
+        // angular acceleration
+        p->anga[bi+0] = p->mom[bi+0]*p->invmoi[i];
+        p->anga[bi+1] = p->mom[bi+1]*p->invmoi[i];
+        p->anga[bi+2] = p->mom[bi+2]*p->invmoi[i];
+
+        // angular velocity
+        p->angv[bi+0] += p->anga[bi+0] * p->dt;
+        p->angv[bi+1] += p->anga[bi+1] * p->dt;
+        p->angv[bi+2] += p->anga[bi+2] * p->dt;
+    }
+    int flag = shouldRefresh(p,box);
+    if (flag ==1){
+        update_neighborlist(p,tmpP,box);
+    }
+}
 
 void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh, int step){
     /* initialize */

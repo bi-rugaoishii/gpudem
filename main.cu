@@ -9,6 +9,7 @@
 #include "cpu_dem.h"
 #include "output.h"
 #include "TriangleMesh.h"
+#include "BVH.h"
 #include "solver_output.h"
 #include "Vec3.h"
 #define DIM 3
@@ -44,7 +45,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 200;
+    ps.N = 10;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -110,9 +111,12 @@ int main()
     update_tList(&box, &mesh);
     printf("Updating triangle list done!\n");
 
-    printf("\n Updating neighbor list\n");
+    printf("\nUpdating neighbor list\n");
     update_neighborlist(&ps,&tmpPs,&box);
     printf("Updating neighbor list done!\n");
+
+
+
 
 
     /* initialize Walls */
@@ -155,6 +159,18 @@ int main()
         printf("m[0]:%f r[0]:%f dt:%f \n",ps.m[0],ps.r[0],ps.dt);
         printf("\n");
     #endif
+
+    /* create BVH */
+    printf("\nCreating BVH\n");
+
+    BVH bvh;
+
+    initializeBVH(&bvh, mesh.nTri);
+    buildBVH(&bvh, &mesh);
+    printf("BVH built\n");
+    for (int i=0; i<mesh.nTri; i++){
+        printf("%d %d %d %f %f %f %f %f %f\n",bvh.left[i],bvh.right[i],bvh.tri[i],bvh.minx[i],bvh.maxx[i],bvh.miny[i],bvh.maxy[i],bvh.minz[i],bvh.maxz[i]);
+    }
 
     #if USE_GPU
         printf("copying memory to device\n");
@@ -235,6 +251,7 @@ int main()
               //  cpu_dem_naive_triangle(&ps, &box, &mesh);
               // cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
                 cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
+               // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
                 checkOoB(&ps,&box);
 
             #if OUTPUT
@@ -271,6 +288,7 @@ int main()
 
     free_TriangleMesh(&mesh);
     free_BoundingBox(&box);
+    free_BVH(&bvh);
 
     #if USE_GPU
     cudaDeviceReset();

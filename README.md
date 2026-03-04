@@ -3,7 +3,8 @@
 - sort cell list doesn't match with naive implementation
 
 # WIP
-- morton key sorted BVH 
+- morton key sorted BVH in gpu
+- maybe, need fix in BVH. doesn't match with cell list when particle collides each other. Matches when particles doesn't collide to each other.
 # TODO
 - gpu verlet
 - maybe triangle verlet

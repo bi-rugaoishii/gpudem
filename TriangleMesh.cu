@@ -663,7 +663,7 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     mortonKeyGen(mesh);
     printf("Generated triangle mortonkey and pre sort index\n");
     for (int i=0; i<mesh->nTri; i++){
-        printf("%lld %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+        printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
     }
 
     double checkDistance=0.;
@@ -684,7 +684,7 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     radixSortUint32(&mesh->mortonKey,&mesh->sortedIndex,mesh->nTri,tmpMortonKey,tmpSortedIndex);
     printf("Sorted triangle mortonkey and pre sort index\n");
     for (int i=0; i<mesh->nTri; i++){
-        printf("%lld %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+        printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
     }
 
     checkDistance=0.;
