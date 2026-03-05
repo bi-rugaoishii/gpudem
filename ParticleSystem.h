@@ -186,6 +186,8 @@ typedef struct ParticleSystem{
     double* refz; 
     int *neiList; /* neighbor list */
     int *numNei; /* neighbor list */
+    int *neiListWall; /* neighbor list */
+    int *numNeiWall; /* neighbor list */
 
 
     WallGroup walls;

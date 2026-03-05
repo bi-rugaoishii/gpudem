@@ -14,19 +14,23 @@
 #define DIM 3
 
 /* === triangle related === */
+void wall_collision_verlet(ParticleSystem* p,TriangleMesh* mesh);
+void wall_collision_BVH(ParticleSystem* p,BVH* bvh);
 void wall_collision_triangles(ParticleSystem* ps, BoundingBox *box,TriangleMesh* mesh);
 void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh, int step);
+
+void cpu_dem_verlet_verlet(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
 
 /* calculated distance between a triangle */
 /* i is index of a particle, j is index of a triangle*/
 /* returns dist 1e10 if no collision */
 TriangleContactCache dist_triangle(ParticleSystem* ps,int i, TriangleMesh* mesh, int j);
 
+
 void integrateCPU(ParticleSystem *ps, BoundingBox *box);
 void cpu_dem_naive_triangle(ParticleSystem *ps, BoundingBox *box, TriangleMesh *mesh);
 void particle_collision_naive(ParticleSystem* ps);
 
-void wall_collision_BVH(ParticleSystem* p,BVH* bvh);
 
 void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
 

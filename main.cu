@@ -15,7 +15,7 @@
 #define DIM 3
 #define OUTPUT 1
 #define NONDIM 1
-#define MAX_NEIGHBOR 50
+#define MAX_NEIGHBOR 100
 
 
 
@@ -45,7 +45,7 @@ int main()
     double k = 1e6;
     double mu = 0.3;
 
-    ps.N = 10;
+    ps.N = 200;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -65,7 +65,7 @@ int main()
     double minz = mesh.gminz;
 
     double maxx = mesh.gmaxx;
-    double maxy = 7.0;
+    double maxy = 5.0;
     double maxz = mesh.gmaxz;
 
     printf("Bounding box min (x,y,z)= %f %f %f\n",minx ,miny, minz);
@@ -94,11 +94,12 @@ int main()
     printf("%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
-    double dt = 1e-5;
+    double dt = 1.5e-5;
     double out_time = 0.01;
     double end_time = 2.0;
-    int outStep = round(out_time/dt);
-    printf("Outstep = %d\n",outStep);
+    int outStep = floor(out_time/dt);
+    dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
+    printf("Outstep = %d,dt = %f\n",outStep,dt);
 
     ps.dt=dt;
     
@@ -171,6 +172,11 @@ int main()
     for (int i=0; i<mesh.nTri; i++){
         printf("%d %d %d %f %f %f %f %f %f\n",bvh.left[i],bvh.right[i],bvh.tri[i],bvh.minx[i],bvh.maxx[i],bvh.miny[i],bvh.maxy[i],bvh.minz[i],bvh.maxz[i]);
     }
+    printf("\nCreating wall neighborlist\n");
+    //update_neighborlist_wall(&ps,&mesh,&bvh,box.skinR);
+    update_neighborlist_wall_nobvh(&ps,&mesh,&box,box.skinR);
+    printf("created wall neighborlist\n");
+
 
     #if USE_GPU
         printf("copying memory to device\n");
@@ -250,8 +256,9 @@ int main()
                 //cpu_dem_sort(&ps, &tmpPs, &box, step);
               //  cpu_dem_naive_triangle(&ps, &box, &mesh);
               // cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
-                cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
+               // cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
                // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
+                cpu_dem_verlet_verlet(&ps, &tmpPs, &box,&mesh, &bvh,step);
                 checkOoB(&ps,&box);
 
             #if OUTPUT

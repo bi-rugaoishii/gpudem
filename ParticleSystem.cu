@@ -72,6 +72,8 @@ void freeMemory(ParticleSystem* ps)
     free(ps->refz);
     free(ps->neiList);
     free(ps->numNei);
+    free(ps->neiListWall);
+    free(ps->numNeiWall);
 
     free(ps->walls.n);
     free(ps->walls.d);
@@ -347,6 +349,8 @@ void allocateMemory(ParticleSystem* ps)
     ps->refz = (double*)malloc(size);
     ps->neiList = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
     ps->numNei = (int*)malloc(sizeof(int)*ps->N);
+    ps->neiListWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->numNeiWall = (int*)malloc(sizeof(int)*ps->N);
 
     ps->walls.n = (double*)malloc(size_walls*DIM);
     ps->walls.d = (double*)malloc(size_walls);
@@ -449,10 +453,10 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         while (trial < max_trials)
         {
             // ランダム配置
-            double x = (double)rand() / RAND_MAX*0.1-0.05;
-            double y = (double)rand() / RAND_MAX * 2.0 + 0.5;
+            double x = (double)rand() / RAND_MAX*0.3-0.15;
+            double y = (double)rand() / RAND_MAX * 1. + 0.5;
             //double y = -0.97;
-            double z = (double)rand() / RAND_MAX*0.1-0.05;
+            double z = (double)rand() / RAND_MAX*0.3-0.15;
 
             /*
                double x = 0.;
@@ -488,6 +492,7 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
 
         if (trial == max_trials){
             printf("!!!couldn't place them!!\n");
+            abort();
         };
 
 
