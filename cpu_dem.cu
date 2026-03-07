@@ -488,7 +488,6 @@ inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,
     vrot.z = p->r[i]*p->angv[i*DIM+2];
     vrot = vcross(vrot,n);
 
-    /* calculate relative tangential velocity */
     Vec3 vt;
     vt=vsub(v_rel,result.vn_rel);
     result.vt=vadd(vt,vrot);
@@ -610,14 +609,15 @@ inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCach
         p->isContactWall[ci+neiInd]=1;
         p->indHisWall[ci+neiInd]=j;
         p->numContWall[i] +=1;
+        p->deltHisxWall[ci+neiInd] = 0.;
+        p->deltHisyWall[ci+neiInd] = 0.;
+        p->deltHiszWall[ci+neiInd] = 0.;
         if(p->numContWall[i] > p->MAX_NEI){
             printf("OH MY OH MY\n");
         }
     }
 
 
-    double vtmag = vdot(c.vt,c.vt);
-    vtmag = sqrt(vtmag);
 
     /* get the magnitude of delta t history */
     Vec3 delt_old;
@@ -625,42 +625,44 @@ inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCach
     delt_old.y = p->deltHisyWall[ci+neiInd];
     delt_old.z = p->deltHiszWall[ci+neiInd];
 
-    double deltMag = vdot(delt_old,delt_old);
-    deltMag = sqrt(deltMag);
-
-    Vec3 t; /* tangential normal vector */
-
-    if(vtmag>SMALL_NUM){
-        t = vscalar(1./vtmag,c.vt);
-    }else{
-        t = vscalar(1./(deltMag+SMALL_NUM),delt_old); 
-    }
-
-
 
     double dt = p->dt;
 
     /* get new delta t*/
     Vec3 delt_new;
-    delt_new.x =deltMag*t.x + c.vt.x*dt;
-    delt_new.y =deltMag*t.y + c.vt.y*dt;
-    delt_new.z =deltMag*t.z + c.vt.z*dt;
+
+        
+    delt_new.x =delt_old.x + c.vt.x*dt;
+    delt_new.y =delt_old.y + c.vt.y*dt;
+    delt_new.z =delt_old.z + c.vt.z*dt;
+
+    double deltdotn=vdot(delt_new,c.n);
+    delt_new=vsub(delt_new,vscalar(deltdotn,c.n));
 
     Vec3 ft;
 
-    ft.x = p->k[i]*delt_new.x - c.eta*c.vt.x;
-    ft.y = p->k[i]*delt_new.y - c.eta*c.vt.y;
-    ft.z = p->k[i]*delt_new.z - c.eta*c.vt.z;
+
+    ft = vscalar(p->k[i],delt_new);
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
     if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
+        Vec3 t; /* tangential normal vector */
+        t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+
         double fnnorm = sqrt(fnsq);
         ft = vscalar(-p->mu*fnnorm,t);
-        delt_new = delt_old;
+        delt_new = vscalar(-1./p->k[i],ft);
+    }else{
+        /* add damping */
+        Vec3 damp = vscalar(c.eta,c.vt);
+        ft = vsub(ft,damp);
+
     }
+
+
 
     /* ======== add angular acceleration ========== */
     Vec3 mom;
@@ -709,11 +711,11 @@ inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c){
         p->isContact[ci+neiInd]=1;
         p->indHis[ci+neiInd]=pId;
         p->numCont[i] +=1;
+        p->deltHisx[ci+neiInd] = 0.;
+        p->deltHisy[ci+neiInd] = 0.;
+        p->deltHisz[ci+neiInd] = 0.;
     }
 
-
-    double vtmag = vdot(c.vt,c.vt);
-    vtmag = sqrt(vtmag);
 
     /* get the magnitude of delta t history */
     Vec3 delt_old;
@@ -721,43 +723,44 @@ inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c){
     delt_old.y = p->deltHisy[ci+neiInd];
     delt_old.z = p->deltHisz[ci+neiInd];
 
-    double deltMag = vdot(delt_old,delt_old);
-    deltMag = sqrt(deltMag);
-
-    Vec3 t; /* tangential normal vector */
-
-    if(vtmag>SMALL_NUM){
-        t = vscalar(1./vtmag,c.vt);
-    }else{
-        t = vscalar(1./(deltMag+SMALL_NUM),delt_old); 
-    }
-
-
 
     double dt = p->dt;
 
     /* get new delta t*/
     Vec3 delt_new;
-    delt_new.x =deltMag*t.x + c.vt.x*dt;
-    delt_new.y =deltMag*t.y + c.vt.y*dt;
-    delt_new.z =deltMag*t.z + c.vt.z*dt;
+
+
+    delt_new.x =delt_old.x + c.vt.x*dt;
+    delt_new.y =delt_old.y + c.vt.y*dt;
+    delt_new.z =delt_old.z + c.vt.z*dt;
+
+    double deltdotn=vdot(delt_new,c.n);
+    delt_new=vsub(delt_new,vscalar(deltdotn,c.n));
 
     Vec3 ft;
 
-    ft.x = p->k[i]*delt_new.x - c.eta*c.vt.x;
-    ft.y = p->k[i]*delt_new.y - c.eta*c.vt.y;
-    ft.z = p->k[i]*delt_new.z - c.eta*c.vt.z;
 
+    ft = vscalar(p->k[i],delt_new);
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
+
     if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
+        Vec3 t; /* tangential normal vector */
+        t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+
         double fnnorm = sqrt(fnsq);
         ft = vscalar(-p->mu*fnnorm,t);
-        delt_new = delt_old;
+        delt_new = vscalar(-1./p->k[i],ft);
+    }else{
+        /* add damping */
+        ft.x -= c.eta*c.vt.x;
+        ft.y -= c.eta*c.vt.y;
+        ft.z -= c.eta*c.vt.z;
     }
+
 
     /* ======== add force ========== */
     p->f[bi+0] += ft.x;
@@ -812,9 +815,9 @@ inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,doubl
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[i*DIM+0]+p->r[j]*p->angv[j*DIM+0];
-    vrot.y = p->r[i]*p->angv[i*DIM+1]+p->r[j]*p->angv[j*DIM+1];
-    vrot.z = p->r[i]*p->angv[i*DIM+2]+p->r[j]*p->angv[j*DIM+2];
+    vrot.x = p->r[i]*p->angv[bi+0]+p->r[j]*p->angv[bj+0];
+    vrot.y = p->r[i]*p->angv[bi+1]+p->r[j]*p->angv[bj+1];
+    vrot.z = p->r[i]*p->angv[bi+2]+p->r[j]*p->angv[bj+2];
     vrot = vcross(vrot,n);
 
     Vec3 vt;
@@ -1340,6 +1343,7 @@ void checkOoB(ParticleSystem *p, BoundingBox* box){
 /* ============== dem mains ================= */
 
 void cpu_dem_verlet_verlet(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step){
+
     /* initialize */
     for (int i=0; i<p->N*DIM; i++){
         p->f[i]=0.;

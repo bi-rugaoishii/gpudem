@@ -42,10 +42,11 @@ int main()
     double res = 0.3; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
-    double k = 1e6;
+    double k = 1.3e5;
     double mu = 0.3;
 
-    ps.N = 200;
+
+    ps.N = 2;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -84,17 +85,18 @@ int main()
     initializeParticles(&ps,r,m,k,res);
     initializeParticles(&tmpPs,r,m,k,res);
     printf("initalizing particles done\n");
+    printf("eta const[0] = %f\n",ps.etaconst[0]);
 
 
 
     /* give gravity */
     ps.g[0] = 0.;
-    ps.g[1] = -9.81;
+    ps.g[1] = 0.;
     ps.g[2] = 0.;
-    printf("%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
+    printf("g=%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
-    double dt = 1.5e-5;
+    double dt = 1e-5;
     double out_time = 0.01;
     double end_time = 2.0;
     int outStep = floor(out_time/dt);
@@ -216,6 +218,12 @@ int main()
     const char* outdir = "results";
     solver_output_init(outdir);
 
+    int numWrite=2;
+    for (int i=0; i<numWrite; i++){
+        write_header_text(outdir,0,&ps,i);
+    }
+
+
     
     #endif
 
@@ -238,6 +246,9 @@ int main()
                     copyFromDevice(&ps);
                     #if NONDIM
                         write_frame_bin(outdir,step,&ps,ps.length_factor);
+                        for (int i=0; i<numWrite; i++){
+                            write_single_text(outdir,step,&ps,i);
+                        }
                     #else
                         write_frame_bin(outdir,step,&ps,1.0);
                     #endif
@@ -268,6 +279,9 @@ int main()
                     #if NONDIM
                         //writeParticlesDimensionalizeVTK(&ps, step);
                         write_frame_bin(outdir,step,&ps,ps.length_factor);
+                        for (int i=0; i<numWrite; i++){
+                            write_single_text(outdir,step,&ps,i);
+                        }
                     #else
                         write_frame_bin(outdir,step,&ps,1.0);
                     #endif

@@ -7,5 +7,5 @@
 - maybe, need fix in BVH. doesn't match with cell list when particle collides each other. Matches when particles doesn't collide to each other.
 # TODO
 - gpu verlet
-- maybe triangle verlet
+- neighbor list memory structure improvement
 

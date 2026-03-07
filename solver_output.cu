@@ -62,10 +62,81 @@ BIN出力
 [float radius[N]]
 ============================================================
 */
+void write_header_text(const char* dir,int step,ParticleSystem* p,int pid){
+    char filename[256];
+
+    sprintf(filename,"%s/pid%d.txt",dir,pid);
+
+    FILE* fp=fopen(filename,"w");
+
+    if(fp==NULL)
+    {
+        printf("ERROR: cannot open %s\n",filename);
+        return;
+    }
+
+
+    /*write headers*/
+    
+        fprintf(fp, "0_time(s),1_pid,2_x(m),3_y(m),4_z(m),5_vx(m/s),6_vy(m/s),7_vz(m/s),8_ax(m/s2),9_ay(m/s2),10_az(m/s2),11_angvx(rad/s),12_angvy(rad/s),13_angvz(rad/s),14_angax(rad/s2),15_angay(rad/s2),16_angaz(rad/s2),17_isActive\n");
+
+
+        fclose(fp);
+}
+
+void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
+    char filename[256];
+
+    sprintf(filename,"%s/pid%d.txt",dir,pid);
+
+    FILE* fp=fopen(filename,"a");
+
+    if(fp==NULL)
+    {
+        printf("ERROR: cannot open %s\n",filename);
+        return;
+    }
+
+
+
+    double dt = p->dt*p->time_factor; 
+    double time = dt*(double)step;
+
+    double x=(p->x[pid*3+0]*p->length_factor);
+    double y=(p->x[pid*3+1]*p->length_factor);
+    double z=(p->x[pid*3+2]*p->length_factor);
+
+
+    double ax=(p->a[pid*3+0]*p->length_factor/(p->time_factor*p->time_factor));
+    double ay=(p->a[pid*3+1]*p->length_factor/(p->time_factor*p->time_factor));
+    double az=(p->a[pid*3+2]*p->length_factor/(p->time_factor*p->time_factor));
+
+    double vx=(p->v[pid*3+0]*p->length_factor/p->time_factor);
+    double vy=(p->v[pid*3+1]*p->length_factor/p->time_factor);
+    double vz=(p->v[pid*3+2]*p->length_factor/p->time_factor);
+
+
+    double angax=(p->anga[pid*3+0]/(p->time_factor*p->time_factor));
+    double angay=(p->anga[pid*3+1]/(p->time_factor*p->time_factor));
+    double angaz=(p->anga[pid*3+2]/(p->time_factor*p->time_factor));
+
+    double angvx=(p->angv[pid*3+0]/(p->time_factor));
+    double angvy=(p->angv[pid*3+1]/(p->time_factor));
+    double angvz=(p->angv[pid*3+2]/(p->time_factor));
+
+    int isActive=p->isActive[pid];
+    fprintf(fp,"%f %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d\n",time,pid,x,y,z,vx,vy,vz,ax,ay,az,angvx,angvy,angvz,angax,angay,angaz,isActive);
+
+
+
+
+    fclose(fp);
+}
+
 void write_frame_bin(
-    const char* dir,
-    int step,
-   ParticleSystem* p,const double length_factor)
+        const char* dir,
+        int step,
+        ParticleSystem* p,const double length_factor)
 {
     char filename[256];
 
@@ -81,7 +152,7 @@ void write_frame_bin(
 
 
     /* check number of active particles */
-    
+
     int N=0;
     for(int i=0; i<p->N; i++){
         if(p->isActive[i]==1){

@@ -273,6 +273,8 @@ void copyFromDevice(ParticleSystem* ps)
     size_t size = ps->N * sizeof(double);
 
     cudaMemcpy(ps->x, ps->d_group.x, size*DIM, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ps->v, ps->d_group.v, size*DIM, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ps->a, ps->d_group.a, size*DIM, cudaMemcpyDeviceToHost);
     cudaMemcpy(ps->r, ps->d_group.r, size, cudaMemcpyDeviceToHost);
     cudaMemcpy(ps->isActive, ps->d_group.isActive, ps->N*sizeof(int), cudaMemcpyDeviceToHost);
 }
@@ -448,6 +450,8 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
     int max_trials = 1000; // 1粒子あたりの再配置試行回数
 
 
+
+
     for (int i = 0; i < ps->N; i++){
         int trial = 0;
         while (trial < max_trials)
@@ -458,11 +462,26 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
             //double y = -0.97;
             double z = (double)rand() / RAND_MAX*0.3-0.15;
 
+
+            /* ======== for temporarly check========= */
             /*
-               double x = 0.;
-               double y = 0.5;
-               double z = 0.0;
-               */
+            double x = 0.;
+            double y = 0.021;
+            double z = 0.0;
+
+            if (i==0){
+                x = 0.;
+                y = 0.0;
+                z = 0.0;
+            }else{
+                x = -0.2;
+                y = 0.01732;
+                z = 0.0;
+
+            }
+            */
+            /* ======== for temporarly check========= */
+
 
             // 既存粒子との距離チェック
             int overlap = 0;
@@ -520,6 +539,16 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         ps->v[i*DIM+0] = 0.;
         ps->v[i*DIM+1] = 0.;
         ps->v[i*DIM+2] = 0.;
+
+        /* ======== for temporarly check========= */
+        /*
+        if (i==1){
+            ps->v[i*DIM+0] = 1.;
+            ps->v[i*DIM+1] = 0.;
+            ps->v[i*DIM+2] = 0.;
+        }
+        */
+        /* ======== for temporarly check========= */
 
         ps->angv[i*DIM+0] = 0.;
         ps->angv[i*DIM+1] = 0.;
