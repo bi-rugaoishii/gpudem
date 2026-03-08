@@ -456,15 +456,16 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         int trial = 0;
         while (trial < max_trials)
         {
+            /*
             // ランダム配置
             double x = (double)rand() / RAND_MAX*0.3-0.15;
             double y = (double)rand() / RAND_MAX * 1. + 0.5;
             //double y = -0.97;
             double z = (double)rand() / RAND_MAX*0.3-0.15;
 
+            */
 
             /* ======== for temporarly check========= */
-            /*
             double x = 0.;
             double y = 0.021;
             double z = 0.0;
@@ -475,11 +476,10 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
                 z = 0.0;
             }else{
                 x = -0.2;
-                y = 0.01732;
+                y = 0.005;
                 z = 0.0;
 
             }
-            */
             /* ======== for temporarly check========= */
 
 
@@ -541,13 +541,11 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         ps->v[i*DIM+2] = 0.;
 
         /* ======== for temporarly check========= */
-        /*
         if (i==1){
             ps->v[i*DIM+0] = 1.;
             ps->v[i*DIM+1] = 0.;
             ps->v[i*DIM+2] = 0.;
         }
-        */
         /* ======== for temporarly check========= */
 
         ps->angv[i*DIM+0] = 0.;

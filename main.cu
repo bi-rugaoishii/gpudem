@@ -40,9 +40,11 @@ int main()
     /* =========== parameters ============= */
     double r = 0.01;
     double res = 0.3; //CoR
+    //double res = 0.3; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
-    double k = 1.3e5;
+    //double k = 1.27966e5;
+    double k = 1.28e5;
     double mu = 0.3;
 
 
@@ -91,7 +93,7 @@ int main()
 
     /* give gravity */
     ps.g[0] = 0.;
-    ps.g[1] = 0.;
+    ps.g[1] = -9.81;
     ps.g[2] = 0.;
     printf("g=%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
