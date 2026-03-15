@@ -264,7 +264,7 @@ void wall_collision_verlet(ParticleSystem* p,TriangleMesh* mesh){
 
                     for (int k=0; k<end; k++){
                         if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
-                            printf("duplicate collision of vertex or edge!!\n");
+                           // printf("duplicate collision of vertex or edge!!\n");
                             hadDuplicate=1;
                             break;
                         }
@@ -332,7 +332,7 @@ void wall_collision_BVH(ParticleSystem* p,TriangleMesh* mesh,BVH* bvh){
 
                         for (int k=0; k<end; k++){
                             if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
-                                printf("duplicate collision of vertex or edge!!\n");
+                                //printf("duplicate collision of vertex or edge!!\n");
                                 hadDuplicate=1;
                                 break;
                             }
@@ -414,7 +414,7 @@ void wall_collision_triangles(ParticleSystem* p,BoundingBox *box, TriangleMesh* 
 
                                 for (int k=0; k<end; k++){
                                     if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
-                                        printf("duplicate collision of vertex or edge!!\n");
+                                        //printf("duplicate collision of vertex or edge!!\n");
                                         hadDuplicate=1;
                                         break;
                                     }

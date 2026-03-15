@@ -84,6 +84,34 @@ void write_header_text(const char* dir,int step,ParticleSystem* p,int pid){
         fclose(fp);
 }
 
+void write_initialPos_csv(const char* dir,ParticleSystem* p){
+    char filename[256];
+
+    sprintf(filename,"%s/initialPos.csv",dir);
+
+    FILE* fp=fopen(filename,"a");
+
+    if(fp==NULL){
+        printf("ERROR: cannot open %s\n",filename);
+        return;
+    }
+
+    for (int i=0; i<p->N; i++){
+        double x=(p->x[i*3+0]);
+        double y=(p->x[i*3+1]);
+        double z=(p->x[i*3+2]);
+
+
+        fprintf(fp,"%f %f %f\n",x,y,z);
+    }
+
+
+
+
+
+    fclose(fp);
+}
+
 void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
     char filename[256];
 

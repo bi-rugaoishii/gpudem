@@ -38,7 +38,7 @@ int main()
     BoundingBox box;
 
     /* =========== parameters ============= */
-    double r = 0.01;
+    double r = 0.03;
     double res = 0.3; //CoR
     //double res = 0.3; //CoR
     double density = 1000;
@@ -48,7 +48,7 @@ int main()
     double mu = 0.3;
 
 
-    ps.N = 2;
+    ps.N = 100;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -63,13 +63,13 @@ int main()
     ps.walls.N = 5;
     tmpPs.walls.N = ps.walls.N;
 
-    double minx = mesh.gminx;
-    double miny = mesh.gminy;
-    double minz = mesh.gminz;
+    double minx = mesh.gminx-1.0;
+    double miny = mesh.gminy-1.0;
+    double minz = mesh.gminz-1.0;
 
-    double maxx = mesh.gmaxx;
-    double maxy = 5.0;
-    double maxz = mesh.gmaxz;
+    double maxx = mesh.gmaxx+1.0;
+    double maxy = 7.0;
+    double maxz = mesh.gmaxz+1.0;
 
     printf("Bounding box min (x,y,z)= %f %f %f\n",minx ,miny, minz);
     printf("Bounding box max (x,y,z)= %f %f %f\n",maxx ,maxy, maxz);
@@ -100,7 +100,7 @@ int main()
     /* set time step */
     double dt = 1e-5;
     double out_time = 0.01;
-    double end_time = 2.0;
+    double end_time = 10.0;
     int outStep = floor(out_time/dt);
     dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
     printf("Outstep = %d,dt = %f\n",outStep,dt);
@@ -121,6 +121,19 @@ int main()
     printf("Updating neighbor list done!\n");
 
 
+    /* initialization for file output */
+    
+    #if OUTPUT
+    const char* outdir = "results";
+    solver_output_init(outdir);
+
+    int numWrite=2;
+    for (int i=0; i<numWrite; i++){
+        write_header_text(outdir,0,&ps,i);
+    }
+    #endif
+
+    write_initialPos_csv(outdir,&ps);
 
 
 
@@ -214,20 +227,6 @@ int main()
     start = clock();
     #endif
 
-    /* initialization for file output */
-    
-    #if OUTPUT
-    const char* outdir = "results";
-    solver_output_init(outdir);
-
-    int numWrite=2;
-    for (int i=0; i<numWrite; i++){
-        write_header_text(outdir,0,&ps,i);
-    }
-
-
-    
-    #endif
 
     printf("starting \n");
     for (int step = 1; step < steps; step++)
