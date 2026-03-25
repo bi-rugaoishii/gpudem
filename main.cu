@@ -38,7 +38,7 @@ int main()
     BoundingBox box;
 
     /* =========== parameters ============= */
-    double r = 0.03;
+    double r = 0.01;
     double res = 0.3; //CoR
     //double res = 0.3; //CoR
     double density = 1000;
@@ -48,7 +48,7 @@ int main()
     double mu = 0.3;
 
 
-    ps.N = 100;
+    ps.N = 2;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -93,14 +93,15 @@ int main()
 
     /* give gravity */
     ps.g[0] = 0.;
-    ps.g[1] = -9.81;
+    //ps.g[1] = -9.81;
+    ps.g[1] = 0.;
     ps.g[2] = 0.;
     printf("g=%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
     double dt = 1e-5;
     double out_time = 0.01;
-    double end_time = 10.0;
+    double end_time = 1.0;
     int outStep = floor(out_time/dt);
     dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
     printf("Outstep = %d,dt = %f\n",outStep,dt);

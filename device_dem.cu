@@ -294,7 +294,7 @@ ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,
 
     /* get deltas */
     Vec3 del;
-    del = vscalar(delMag,n);
+    del = vscalar(-delMag,n);
 
     /* get relative velocity (for now assumed not moving)*/ 
     Vec3 v_rel;
@@ -312,16 +312,16 @@ ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,
     double eta = p->etaconst[i]*p->sqrtm[i];
     result.eta = eta;
 
-    result.fn.x = p->k[i]*del.x - eta*result.vn_rel.x;
-    result.fn.y = p->k[i]*del.y - eta*result.vn_rel.y;
-    result.fn.z = p->k[i]*del.z - eta*result.vn_rel.z;
+    result.fn.x = -p->k[i]*del.x - eta*result.vn_rel.x;
+    result.fn.y = -p->k[i]*del.y - eta*result.vn_rel.y;
+    result.fn.z = -p->k[i]*del.z - eta*result.vn_rel.z;
 
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[i*DIM+0];
-    vrot.y = p->r[i]*p->angv[i*DIM+1];
-    vrot.z = p->r[i]*p->angv[i*DIM+2];
+    vrot.x = p->r[i]*p->angv[bi+0];
+    vrot.y = p->r[i]*p->angv[bi+1];
+    vrot.z = p->r[i]*p->angv[bi+2];
     vrot = vcross(vrot,n);
 
     /* calculate relative tangential velocity */
@@ -365,11 +365,12 @@ void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCach
         p->isContactWall[ci+neiInd]=1;
         p->indHisWall[ci+neiInd]=j;
         p->numContWall[i] +=1;
+        p->deltHisxWall[ci+neiInd] = 0.;
+        p->deltHisyWall[ci+neiInd] = 0.;
+        p->deltHiszWall[ci+neiInd] = 0.;
     }
 
 
-    double vtmag = vdot(c.vt,c.vt);
-    vtmag = sqrt(vtmag);
 
     /* get the magnitude of delta t history */
     Vec3 delt_old;
@@ -377,42 +378,45 @@ void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCach
     delt_old.y = p->deltHisyWall[ci+neiInd];
     delt_old.z = p->deltHiszWall[ci+neiInd];
 
-    double deltMag = vdot(delt_old,delt_old);
-    deltMag = sqrt(deltMag);
-
-    Vec3 t; /* tangential normal vector */
-
-    if(vtmag>SMALL_NUM){
-        t = vscalar(1./vtmag,c.vt);
-    }else{
-        t = vscalar(1./(deltMag+SMALL_NUM),delt_old); 
-    }
-
-
-
     double dt = p->dt;
 
     /* get new delta t*/
     Vec3 delt_new;
-    delt_new.x =deltMag*t.x + c.vt.x*dt;
-    delt_new.y =deltMag*t.y + c.vt.y*dt;
-    delt_new.z =deltMag*t.z + c.vt.z*dt;
+
+        
+    delt_new.x =delt_old.x + c.vt.x*dt;
+    delt_new.y =delt_old.y + c.vt.y*dt;
+    delt_new.z =delt_old.z + c.vt.z*dt;
+
+    double deltdotn=vdot(delt_new,c.n);
+    delt_new=vsub(delt_new,vscalar(deltdotn,c.n));
 
     Vec3 ft;
 
-    ft.x = p->k[i]*delt_new.x - c.eta*c.vt.x;
-    ft.y = p->k[i]*delt_new.y - c.eta*c.vt.y;
-    ft.z = p->k[i]*delt_new.z - c.eta*c.vt.z;
+
+    ft = vscalar(-p->k[i],delt_new);
+
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
+
     if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
+        Vec3 t; /* tangential normal vector */
+        t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+
         double fnnorm = sqrt(fnsq);
-        ft = vscalar(-p->mu*fnnorm,t);
-        delt_new = delt_old;
+        ft = vscalar(p->mu*fnnorm,t);
+        delt_new = vscalar(-1./p->k[i],ft);
+    }else{
+        /* add damping */
+        ft.x -= c.eta*c.vt.x;
+        ft.y -= c.eta*c.vt.y;
+        ft.z -= c.eta*c.vt.z;
     }
+
+
 
     /* ======== add angular acceleration ========== */
     Vec3 mom;
@@ -462,14 +466,11 @@ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c){
         p->isContact[ci+neiInd]=1;
         p->indHis[ci+neiInd]=pId;
         p->numCont[i] +=1;
+        p->deltHisx[ci+neiInd] = 0.;
+        p->deltHisy[ci+neiInd] = 0.;
+        p->deltHisz[ci+neiInd] = 0.;
     }
 
-
-
-
-
-    double vtmag = vdot(c.vt,c.vt);
-    vtmag = sqrt(vtmag);
 
     /* get the magnitude of delta t history */
     Vec3 delt_old;
@@ -477,42 +478,54 @@ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c){
     delt_old.y = p->deltHisy[ci+neiInd];
     delt_old.z = p->deltHisz[ci+neiInd];
 
-    double deltMag = vdot(delt_old,delt_old);
-    deltMag = sqrt(deltMag);
-
-    Vec3 t; /* tangential normal vector */
-
-    if(vtmag>SMALL_NUM){
-        t = vscalar(1./vtmag,c.vt);
-    }else{
-        t = vscalar(1./(deltMag+SMALL_NUM),delt_old); 
-    }
-
-
 
     double dt = p->dt;
 
     /* get new delta t*/
     Vec3 delt_new;
-    delt_new.x =deltMag*t.x + c.vt.x*dt;
-    delt_new.y =deltMag*t.y + c.vt.y*dt;
-    delt_new.z =deltMag*t.z + c.vt.z*dt;
+
+
+    delt_new.x =delt_old.x + c.vt.x*dt;
+    delt_new.y =delt_old.y + c.vt.y*dt;
+    delt_new.z =delt_old.z + c.vt.z*dt;
+
+    double deltdotn=vdot(delt_new,c.n);
+    delt_new=vsub(delt_new,vscalar(deltdotn,c.n));
 
     Vec3 ft;
 
-    ft.x = p->k[i]*delt_new.x - c.eta*c.vt.x;
-    ft.y = p->k[i]*delt_new.y - c.eta*c.vt.y;
-    ft.z = p->k[i]*delt_new.z - c.eta*c.vt.z;
 
+    ft = vscalar(-p->k[i],delt_new);
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
     if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
-        double fnnorm = sqrt(fnsq);
-        ft = vscalar(-p->mu*fnnorm,t);
-        delt_new = delt_old;
+        if (ftsq!=0.){
+            Vec3 t;
+            t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+
+            double fnnorm = sqrt(fnsq);
+            ft = vscalar(p->mu*fnnorm,t);
+            delt_new = vscalar(-1./p->k[i],ft);
+
+            /* for debugging
+            double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+            printf("ft after scaling %f %f %f\n", ft.x*force_factor,ft.y*force_factor,ft.z*force_factor);
+            printf("ratio after scaling %f \n", sqrt(vdot(ft,ft))/(p->mu*fnnorm));
+            */
+
+        }else{
+            ft.x =0.;
+            ft.y =0.;
+            ft.z =0.;
+        }
+    }else{
+        /* add damping */
+        ft.x -= c.eta*c.vt.x;
+        ft.y -= c.eta*c.vt.y;
+        ft.z -= c.eta*c.vt.z;
     }
 
     /* ======== add force ========== */
@@ -533,6 +546,18 @@ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c){
     p->deltHisx[ci+neiInd] = delt_new.x;
     p->deltHisy[ci+neiInd] = delt_new.y;
     p->deltHisz[ci+neiInd] = delt_new.z;
+
+    /* ========= for debug ==========*/
+    /*
+    double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+    double velocity_factor = p->length_factor/p->time_factor;
+    printf("vt = %f %f %f\n",velocity_factor*c.vt.x,velocity_factor*c.vt.y,velocity_factor*c.vt.z);
+    printf("vtmag = %f \n",velocity_factor*sqrt(vdot(c.vt,c.vt)));
+    printf("fn = %f %f %f\n",force_factor*c.fn.x,force_factor*c.fn.y,force_factor*c.fn.z);
+    printf("ft = %f %f %f\n",force_factor*ft.x,force_factor*ft.y,force_factor*ft.z);
+    printf("\n");
+    */
+    /* ========= for debug ==========*/
 
 }
 
@@ -589,7 +614,7 @@ ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,doubl
 
     /* get deltas */
     Vec3 del;
-    del = vscalar(delMag,n);
+    del = vscalar(-delMag,n); // negated for the convention
 
     /* get relative velocity */
     Vec3 v_rel;
@@ -608,15 +633,15 @@ ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,doubl
     double eta = p->etaconst[i]*sqrt(m_eff);
     result.eta = eta;
 
-    result.fn.x = p->k[i]*del.x - eta*result.vn_rel.x;
-    result.fn.y = p->k[i]*del.y - eta*result.vn_rel.y;
-    result.fn.z = p->k[i]*del.z - eta*result.vn_rel.z;
+    result.fn.x = -p->k[i]*del.x - eta*result.vn_rel.x;
+    result.fn.y = -p->k[i]*del.y - eta*result.vn_rel.y;
+    result.fn.z = -p->k[i]*del.z - eta*result.vn_rel.z;
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[i*DIM+0]+p->r[j]*p->angv[j*DIM+0];
-    vrot.y = p->r[i]*p->angv[i*DIM+1]+p->r[j]*p->angv[j*DIM+1];
-    vrot.z = p->r[i]*p->angv[i*DIM+2]+p->r[j]*p->angv[j*DIM+2];
+    vrot.x = p->r[i]*p->angv[bi+0]+p->r[j]*p->angv[bj+0];
+    vrot.y = p->r[i]*p->angv[bi+1]+p->r[j]*p->angv[bj+1];
+    vrot.z = p->r[i]*p->angv[bi+2]+p->r[j]*p->angv[bj+2];
     vrot = vcross(vrot,n);
 
     Vec3 vt;

@@ -483,9 +483,9 @@ inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[i*DIM+0];
-    vrot.y = p->r[i]*p->angv[i*DIM+1];
-    vrot.z = p->r[i]*p->angv[i*DIM+2];
+    vrot.x = p->r[i]*p->angv[bi+0];
+    vrot.y = p->r[i]*p->angv[bi+1];
+    vrot.z = p->r[i]*p->angv[bi+2];
     vrot = vcross(vrot,n);
 
     Vec3 vt;
