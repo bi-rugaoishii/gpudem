@@ -230,6 +230,10 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
     box->d_box.invdy = box->invdy;
     box->d_box.invdz = box->invdz;
 
+    box->d_box.skinR = box->skinR;
+    box->d_box.refreshThresh = box->refreshThresh;
+    box->d_box.refreshThreshSq = box->refreshThreshSq;
+
     box->d_box.rangex = box->rangex;
     box->d_box.rangey = box->rangey;
     box->d_box.rangez = box->rangez;
@@ -242,6 +246,7 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
 
     cudaMemcpy(box->d_box.pList,  box->pList,  sizeof(int)*ps->N, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pNum,  box->pNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_box.usedCells, box->usedCells, sizeof(int) * size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pStart,  box->pStart,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.cellOffset,  box->cellOffset,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.tList,  box->tList,  sizeof(int)*size*box->MAX_TRI, cudaMemcpyHostToDevice);
@@ -261,6 +266,7 @@ void free_BoundingBox(BoundingBox *box){
     cudaFree(box->d_box.pList);
     cudaFree(box->d_box.tmpExSum);
     cudaFree(box->d_box.pNum);
+    cudaFree(box->d_box.usedCells);
     cudaFree(box->d_box.pStart);
     cudaFree(box->d_box.cellOffset);
     cudaFree(box->d_box.tList);
@@ -328,6 +334,8 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     box->d_box.MAX_TRI = box->MAX_TRI;
     cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
     cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
+    cudaMalloc(&box->d_box.usedCells, sizeof(int) * sizeBox);
+
     cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
     cudaMalloc(&box->d_box.tList, sizeof(int)*sizeBox*box->MAX_TRI);
     cudaMalloc(&box->d_box.tNum, sizeof(int)*sizeBox);
@@ -748,6 +756,65 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
     p->cellx[i*DIM+2] = dz;
 
     return (box->sizey*dz+dy)*box->sizex+dx;
+}
+
+ __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+
+
+    int skinR = box->skinR;
+    if(p->isActive[i]!=1){
+        return;
+    }
+
+    //particle-particle
+    /* cycle through neighbor cells */
+    int bi=i*DIM;
+    int x=p->cellx[bi+0];
+    int y=p->cellx[bi+1];
+    int z=p->cellx[bi+2];
+    int numNei = 0;
+
+    for (int sx=-1; sx<=1; sx++){
+        for (int sy=-1; sy<=1; sy++){
+            for (int sz=-1; sz<=1; sz++){
+                int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+
+                int start = box->pStart[cellId];
+                int end = start+box->pNum[cellId];
+                for (int k=box->pStart[cellId]; k<end; k++){
+                    int j = box->pList[k];
+                    if (i==j){
+                        continue;
+                    }else{
+                        int bj=j*DIM;
+
+                        Vec3 del;
+                        /* normal points toward particle i */
+                        del.x = p->x[bi+0]- p->x[bj+0];
+                        del.y = p->x[bi+1]- p->x[bj+1];
+                        del.z = p->x[bi+2]- p->x[bj+2];
+                        double distsq = vdot(del,del);
+                        double R = p->r[i]+p->r[j]+skinR;
+                        if (distsq<R*R){
+                            p->neiList[i*p->MAX_NEI+numNei]=j;
+                            numNei+=1;
+                            if(numNei >= p->MAX_NEI){
+                                printf("Neighbor over flow!!!!\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }/* neighbor cell search done */
+    p->numNei[i]=numNei;
+
+    /* set reference position */
+    p->refx[i]=p->x[bi+0];
+    p->refy[i]=p->x[bi+1];
+    p->refz[i]=p->x[bi+2];
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){

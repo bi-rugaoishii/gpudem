@@ -92,6 +92,16 @@ typedef struct DeviceParticleGroup{
     void* tmp_storage;
     size_t tmp_bytes;
 
+    /* ========== verlet list related ========= */
+    double* refx;
+    double* refy;
+    double* refz; 
+    int *neiList; /* neighbor list */
+    int *numNei; /* neighbor list */
+    int *neiListWall; /* neighbor list */
+    int *numNeiWall; /* neighbor list */
+    int *refreshVerletFlag;
+
     DeviceWallGroup walls;
 } DeviceParticleGroup;
 

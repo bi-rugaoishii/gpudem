@@ -25,7 +25,11 @@ solver_output_init が呼ばれていること
 */
 
 void write_header_text(const char* dir,int step,ParticleSystem* p,int pid);
+
 void write_single_text(const char* dir,int step,ParticleSystem* p,int pid);
+
+void write_initialPos_csv(const char* dir,ParticleSystem* p);
+
 void write_frame_bin(
     const char* dir,
     int step,

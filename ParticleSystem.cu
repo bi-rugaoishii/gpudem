@@ -1,5 +1,6 @@
 #include "ParticleSystem.h"
 #include <stdio.h>
+#include <random>
 
 
 /*
@@ -140,6 +141,18 @@ void freeMemory(ParticleSystem* ps)
 
         cudaFree(ps->d_group.tmp_storage);
 
+        /* ========== verlet list related ======= */
+        cudaFree(ps->d_group.refx);
+        cudaFree(ps->d_group.refy);
+        cudaFree(ps->d_group.refz);
+
+        cudaFree(ps->d_group.neiList);
+        cudaFree(ps->d_group.numNei);
+
+        cudaFree(ps->d_group.neiListWall);
+        cudaFree(ps->d_group.numNeiWall);
+        cudaFree(ps->d_group.refreshVerletFlag);
+
         /* ==== structs ====*/
         cudaFree(ps->d_groupPtr);
         #endif
@@ -257,6 +270,17 @@ void copyToDevice(ParticleSystem *ps)
 
     cudaMemcpy(ps->d_group.walls.n,  ps->walls.n,  size_walls*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.walls.d,  ps->walls.d,  size_walls, cudaMemcpyHostToDevice);
+
+    /* ========== verlet list related ======= */
+    cudaMemcpy(ps->d_group.refx, ps->refx, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.refy, ps->refy, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.refz, ps->refz, size, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.neiList, ps->neiList, ps->N * ps->MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.numNei, ps->numNei, ps->N * sizeof(int), cudaMemcpyHostToDevice);
+
+    cudaMemcpy(ps->d_group.neiListWall, ps->neiListWall, ps->N * ps->MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.numNeiWall, ps->numNeiWall, ps->N * sizeof(int), cudaMemcpyHostToDevice);
 
     /* ========= structs =========== */
     cudaMemcpy(ps->d_groupPtr, &ps->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
@@ -411,9 +435,22 @@ void allocateMemory(ParticleSystem* ps)
     cudaMalloc((void**)&ps->d_group.mortonKey, sizeof(uint32_t)*ps->N);
     cudaMalloc((void**)&ps->d_group.mortonOrder, sizeof(int)*ps->N);
     cudaMalloc((void**)&ps->d_group.tmpMortonKey, sizeof(uint32_t)*ps->N);
+
+    /* ========== verlet list related ======= */
+    cudaMalloc((void**)&ps->d_group.refx, size);
+    cudaMalloc((void**)&ps->d_group.refy, size);
+    cudaMalloc((void**)&ps->d_group.refz, size);
+
+    cudaMalloc((void**)&ps->d_group.neiList, sizeof(int) * ps->N * ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.numNei, sizeof(int) * ps->N);
+
+    cudaMalloc((void**)&ps->d_group.neiListWall, sizeof(int) * ps->N * ps->MAX_NEI);
+    cudaMalloc((void**)&ps->d_group.numNeiWall, sizeof(int) * ps->N);
+
     cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
     cudaMalloc((void**)&ps->d_group.walls.n, size_walls*DIM);
     cudaMalloc((void**)&ps->d_group.walls.d, size_walls);
+    cudaMalloc((void**)&ps->d_group.refreshVerletFlag, sizeof(int));
 
     /* ======== for sorting ==============*/
 
@@ -449,6 +486,9 @@ void allocateMemory(ParticleSystem* ps)
 void initializeParticles(ParticleSystem* ps,double r,double m,double k,double res)
 {
     int max_trials = 1000; // 1粒子あたりの再配置試行回数
+    int seed = 1;
+    std::mt19937 mt(seed);
+    std::uniform_real_distribution<double> uni(0,1);
 
 
 
@@ -459,28 +499,34 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         {
             // ランダム配置
             /*
-            double x = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
-            double y = (double)rand() / RAND_MAX * 1.0 + 2.8;
+               double x = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
+               double y = (double)rand() / RAND_MAX * 1.0 + 2.8;
             //double y = -0.97;
             double z = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
             */
 
+            double x = uni(mt)*(0.4)-(0.2);
+            double y = uni(mt)* 1.0 + 0.5 ;
+            double z = uni(mt)*(0.4)-(0.2);
+
 
             /* ======== for temporarly check========= */
-            double x = 0.;
-            double y = 0.021;
-            double z = 0.0;
+            /*
+               double x = 0.;
+               double y = 0.021;
+               double z = 0.0;
 
-            if (i==0){
-                x = 0.;
-                y = 0.0;
-                z = 0.0;
-            }else{
-                x = -0.2;
-                y = 0.005;
-                z = 0.0;
+               if (i==0){
+               x = 0.;
+               y = 0.0;
+               z = 0.0;
+               }else{
+               x = -0.2;
+               y = 0.005;
+               z = 0.0;
 
-            }
+               }
+             */
             /* ======== for temporarly check========= */
 
 
@@ -542,11 +588,13 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
         ps->v[i*DIM+2] = 0.;
 
         /* ======== for temporarly check========= */
+        /*
         if (i==1){
             ps->v[i*DIM+0] = 1.;
             ps->v[i*DIM+1] = 0.;
             ps->v[i*DIM+2] = 0.;
         }
+        */
         /* ======== for temporarly check========= */
 
         ps->angv[i*DIM+0] = 0.;

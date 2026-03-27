@@ -6,7 +6,30 @@
 #include "ParticleSystem.h"
 #include "TriangleContactCache.h"
 
+/*
+ * ==============================
+ * for GPU
+ * ==============================
+ */
+typedef struct DeviceBVH{
+    double* minx;
+    double* miny;
+    double* minz;
+    double* maxx;
+    double* maxy;
+    double* maxz;
+
+    int* left;
+    int* right;
+    int* tri;      // leafなら三角形index, 内部ノードなら-1
+
+    int nodeCount;
+} DeviceBVH;
+
 typedef struct BVH{
+    DeviceBVH d_bvh;
+    DeviceBVH* d_bvhPtr;
+
     double* minx;
     double* miny;
     double* minz;
@@ -28,10 +51,19 @@ TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleM
 
 void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,double skinR);
 
+void copyToDeviceBVH(BVH *bvh, ParticleSystem *p, int numTriangles);
+
 void free_BVH(BVH *bvh);
 void computeNodeAABB(int start, int end,TriangleMesh *mesh, BVH *bvh,int k);
 
 
 
 int buildBVH(BVH* bvh,TriangleMesh *mesh);
+
+/* == for device == */
+__global__ void k_update_neighborlist_wall(DeviceParticleGroup *p, DeviceTriangleMesh *mesh, DeviceBVH *bvh,double skinR);
+
+__device__ __forceinline__ int d_sphereAABBOverlapNeighbor(DeviceParticleGroup* p,int i,DeviceBVH *bvh, int j, double skinR);
+
+__device__ __forceinline__ TriangleContactCache d_dist_triangle_neighbor(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j,double skinR);
 #endif

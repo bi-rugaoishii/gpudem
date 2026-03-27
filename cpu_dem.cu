@@ -1329,7 +1329,7 @@ void particle_collision_naive(ParticleSystem* p){
 
 /* =========== verlet list related =============== */
 
-int shouldRefresh(ParticleSystem *p, BoundingBox* box){
+int shouldRefreshNeighborList(ParticleSystem *p, BoundingBox* box){
     int flag = 0;
     double threshSq = box->refreshThreshSq;
     for(int i=0; i<p->N; i++){
@@ -1421,7 +1421,7 @@ void cpu_dem_verlet_verlet(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox*
         p->angv[bi+2] += p->anga[bi+2] * p->dt;
     }
 
-    int flag = shouldRefresh(p,box);
+    int flag = shouldRefreshNeighborList(p,box);
     if (flag ==1){
         update_neighborlist(p,tmpP,box);
         update_neighborlist_wall(p,mesh,bvh,box->skinR);
@@ -1482,7 +1482,7 @@ void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* bo
         p->angv[bi+1] += p->anga[bi+1] * p->dt;
         p->angv[bi+2] += p->anga[bi+2] * p->dt;
     }
-    int flag = shouldRefresh(p,box);
+    int flag = shouldRefreshNeighborList(p,box);
     if (flag ==1){
         update_neighborlist(p,tmpP,box);
     }
@@ -1541,7 +1541,7 @@ void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingB
         p->angv[bi+1] += p->anga[bi+1] * p->dt;
         p->angv[bi+2] += p->anga[bi+2] * p->dt;
     }
-    int flag = shouldRefresh(p,box);
+    int flag = shouldRefreshNeighborList(p,box);
     if (flag ==1){
         update_neighborlist(p,tmpP,box);
     }

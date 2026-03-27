@@ -38,17 +38,17 @@ int main()
     BoundingBox box;
 
     /* =========== parameters ============= */
-    double r = 0.01;
+    double r = 0.02;
     double res = 0.3; //CoR
     //double res = 0.3; //CoR
     double density = 1000;
     double m = density*3.14*r*r*r*4./3.;
     //double k = 1.27966e5;
-    double k = 1.28e5;
+    double k = 5e5;
     double mu = 0.3;
 
 
-    ps.N = 2;
+    ps.N = 1000;
     tmpPs.N = ps.N;
 
     /* read triangles */
@@ -69,6 +69,7 @@ int main()
 
     double maxx = mesh.gmaxx+1.0;
     double maxy = 7.0;
+    //double maxy = 2.0;
     double maxz = mesh.gmaxz+1.0;
 
     printf("Bounding box min (x,y,z)= %f %f %f\n",minx ,miny, minz);
@@ -93,8 +94,8 @@ int main()
 
     /* give gravity */
     ps.g[0] = 0.;
-    //ps.g[1] = -9.81;
-    ps.g[1] = 0.;
+    ps.g[1] = -9.81;
+    //ps.g[1] = 0.;
     ps.g[2] = 0.;
     printf("g=%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
@@ -187,9 +188,11 @@ int main()
     initializeBVH(&bvh, mesh.nTri);
     buildBVH(&bvh, &mesh);
     printf("BVH built\n");
+
     for (int i=0; i<mesh.nTri; i++){
         printf("%d %d %d %f %f %f %f %f %f\n",bvh.left[i],bvh.right[i],bvh.tri[i],bvh.minx[i],bvh.maxx[i],bvh.miny[i],bvh.maxy[i],bvh.minz[i],bvh.maxz[i]);
     }
+
     printf("\nCreating wall neighborlist\n");
     //update_neighborlist_wall(&ps,&mesh,&bvh,box.skinR);
     update_neighborlist_wall_nobvh(&ps,&mesh,&box,box.skinR);
@@ -201,6 +204,7 @@ int main()
         copyToDevice(&ps);
         copyToDevice(&tmpPs);
         copyToDeviceBox(&box,&ps);
+        copyToDeviceBVH(&bvh,&ps,mesh.nTri);
         deviceMallocCopyTriangleMesh(&mesh);
         printf("copying memory to device done\n");
     #endif
@@ -210,6 +214,7 @@ int main()
     int steps = (int)(end_time/dt);
 
     #if USE_GPU
+    //int blockSize = 1;
     int blockSize = 256;
     int gridSize = (ps.N + blockSize - 1) / blockSize;
     printf("grid=%d, block=%d\n", gridSize, blockSize);
@@ -239,7 +244,9 @@ int main()
             //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
 
             //device_dem(&ps, &box, gridSize, blockSize);
-            device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
+            //device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
+            //device_dem_verlet_triangles(&ps, &box, &mesh,gridSize, blockSize);
+            device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
             //device_dem_withSort(&ps, &tmpPs,&box, gridSize, blockSize,step);
             #if OUTPUT
                 if (step % outStep == 0)

@@ -23,11 +23,17 @@ typedef struct DeviceBoundingBox{
     double dx,dy,dz;
     double invdx,invdy,invdz;
 
+    double skinR;
+    double refreshThresh;
+    double refreshThreshSq;
+
     double rangex,rangey,rangez;
     int sizex,sizey,sizez,N;
 
     int *pList;  //list of particle in cell CSR formal
     int *pNum; //number of particle in  cell
+    int *usedCells; //id of cells with particles
+    int numUsedCells; //number of cells with particles
     int *pStart; //starting index of the cell in pList
     int *cellOffset; 
 
@@ -130,6 +136,8 @@ void free_BoundingBox(BoundingBox *box);
 
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
+
+ __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box);
 
 __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box);
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);

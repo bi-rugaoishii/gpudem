@@ -286,6 +286,63 @@ void d_wall_collision_triangles(DeviceParticleGroup* p,int i,DeviceBoundingBox *
 
 }
 
+__device__ __forceinline__ void d_wall_collision_verlet(DeviceParticleGroup* p,int i, DeviceTriangleMesh* mesh){
+
+        if(p->isActive[i]!=1){
+            return;
+        }
+
+        int end = p->numNeiWall[i];
+        int ci = i*p->MAX_NEI;
+
+        int numContVorENow = 0;
+
+        for (int k=0; k<end; k++){
+            int indTri = p->neiListWall[ci+k];
+
+
+            // ここで球 vs 三角形の精密判定
+            TriangleContactCache tc;
+            tc = d_dist_triangle(p,i,mesh,indTri); 
+
+            if(tc.dist<p->r[i]){
+                double delmag;
+                if(tc.hitAt==-1){ //hit at face
+                    delmag = p->r[i]-tc.dist;
+                }else{ //hit as face or edge
+                    int end = numContVorENow;
+                    int hadDuplicate=0;
+
+                    for (int k=0; k<end; k++){
+                        if(p->indHisVorENow[i*p->MAX_NEI+k]==tc.hitAt){
+                           // printf("duplicate collision of vertex or edge!!\n");
+                            hadDuplicate=1;
+                            break;
+                        }
+                    }
+
+                    if(hadDuplicate ==1){
+                        continue;
+
+                    }
+
+                    delmag = p->r[i]-tc.dist;
+
+
+                    p->indHisVorENow[i*p->MAX_NEI+end] = tc.hitAt;
+                    numContVorENow+=1;
+                }
+                if (delmag*p->invr[i]*0.5>0.1){
+                    printf("overlap over 10%% with wall!!!!\n");
+                }
+
+                ContactCache c;
+                c = d_calc_normal_force_wall(p,i,indTri,tc.n,delmag);
+                d_calc_tangential_force_wall(p,i,indTri,c);
+            }
+        }
+        d_update_history_wall(p,i);
+}
 
 __device__ __forceinline__
 ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,double delMag){
@@ -760,6 +817,57 @@ void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBound
     d_update_history(p,i);
 }
 
+__device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,DeviceBoundingBox *box){
+    if(p->isActive[i]!=1){
+        return;
+    }
+    //particle-particle
+    /* cycle through neighbor list */
+
+    int bi=i*DIM;
+    int end = p->numNei[i];
+    int ci = i*p->MAX_NEI;
+    for (int k=0; k<end; k++){
+        int j = p->neiList[ci+k];
+        int bj=j*DIM;
+
+        Vec3 del;
+        /* normal points toward particle i */
+        del.x = p->x[bi+0]- p->x[bj+0];
+        del.y = p->x[bi+1]- p->x[bj+1];
+        del.z = p->x[bi+2]- p->x[bj+2];
+        double distsq = vdot(del,del);
+        double R = p->r[i]+p->r[j];
+
+        if (distsq<R*R){
+            double dist = sqrt(distsq);
+            double delMag = R-dist;
+            if (delMag*p->invr[i]*0.5>0.05){
+                printf("overlap over 5%% with pair %d %d!!!!\n",i,j);
+                printf("overlap is %f %% with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
+            }
+
+            /* ======================================================
+               Force Calculation
+               ======================================================*/
+            /* get normal direction */
+            Vec3 n;
+            n.x = del.x/dist;
+            n.y = del.y/dist;
+            n.z = del.z/dist;
+            ContactCache c;
+            c = d_calc_normal_force(p,i,j,n,delMag);
+
+
+            d_calc_tangential_force(p,i,j,c);
+
+        }
+    }/* neighbor search done */
+
+    /* update contact history */
+    d_update_history(p,i);
+}
+
 __device__ __forceinline__
 void d_particle_collision_naive(DeviceParticleGroup* p, int i){
     //particle-particle
@@ -853,12 +961,32 @@ __global__ void check_g_kernel(DeviceParticleGroup* ps,DeviceTriangleMesh *mesh)
     printf("value in kernel: dt = %f, etaconst = %f\n",ps->dt,ps->etaconst[0]);
 }
 
+__global__ void k_collision_verlet_verlet(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= p->N || p->isActive[i]!=1) return;
+
+    d_particle_collision_verlet(p,i,box);
+    //d_particle_collision_naive(p,i);
+    // d_particle_collision_cell_linked_noVec3(p,i,box);
+    d_wall_collision_verlet(p,i,mesh);
+}
+
+__global__ void k_collision_verlet_triangle(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= p->N || p->isActive[i]!=1) return;
+
+    d_particle_collision_verlet(p,i,box);
+    //d_particle_collision_naive(p,i);
+    // d_particle_collision_cell_linked_noVec3(p,i,box);
+    d_wall_collision_triangles(p,i,box,mesh);
+
+}
 __global__ void k_collision_triangle(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= p->N || p->isActive[i]!=1) return;
 
-   // d_particle_collision_cell_linked(p,i,box);
-    d_particle_collision_naive(p,i);
+    d_particle_collision_cell_linked(p,i,box);
+    //d_particle_collision_naive(p,i);
     // d_particle_collision_cell_linked_noVec3(p,i,box);
     d_wall_collision_triangles(p,i,box,mesh);
 
@@ -921,6 +1049,28 @@ __global__ void k_integrate(DeviceParticleGroup* p){
 
 }
 
+/* ============== verlet list related============  */
+
+__global__ void k_shouldRefreshNeighborList(DeviceParticleGroup *p, DeviceBoundingBox* box){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i >= p->N || p->isActive[i]!=1) return;
+
+    double threshSq = box->refreshThreshSq;
+    int bi = i*DIM;
+    Vec3 del;
+
+    del.x = p->x[bi+0]- p->refx[i];
+    del.y = p->x[bi+1]- p->refy[i];
+    del.z = p->x[bi+2]- p->refz[i];
+
+    double distsq=vdot(del,del);
+    if(distsq>threshSq){
+        p->refreshVerletFlag[0]=1;
+    }
+}
+
+
 /* ============== check Out of Bounds ============  */
 __global__ void dk_checkOoB(DeviceParticleGroup *p,DeviceBoundingBox* box){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -939,6 +1089,74 @@ __global__ void dk_checkOoB(DeviceParticleGroup *p,DeviceBoundingBox* box){
    main routine 
    ======================================================
  */
+void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
+
+    /* initialize force */
+    cudaMemset(p->d_group.f, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.mom, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.isContact, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+    cudaMemset(p->d_group.isContactWall, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+
+    k_collision_verlet_verlet<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr,mesh->d_meshPtr);
+    k_integrate<<<gridSize, blockSize>>>(p->d_groupPtr);
+    dk_checkOoB<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    /* ==  check if refresh of verlet list required == */
+
+    cudaMemset(p->d_group.refreshVerletFlag, 0, sizeof(int));
+    k_shouldRefreshNeighborList<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    int shouldRefreshVerletFlag = 0;
+    cudaMemcpy(&shouldRefreshVerletFlag,p->d_group.refreshVerletFlag,sizeof(int), cudaMemcpyDeviceToHost);
+    /* == refresh neighborlist if needed == */
+
+    if (shouldRefreshVerletFlag ==1){
+        d_update_pList(p,box,gridSize, blockSize);
+        k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+        k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_groupPtr,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);
+    }
+
+    /*
+       cudaError_t err = cudaGetLastError();
+       printf("CUDA error = %s\n", cudaGetErrorString(err));
+     */
+    //    cudaDeviceSynchronize();
+
+}
+void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize){
+
+    /* initialize force */
+    cudaMemset(p->d_group.f, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.mom, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.isContact, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+    cudaMemset(p->d_group.isContactWall, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+
+    k_collision_verlet_triangle<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr,mesh->d_meshPtr);
+    k_integrate<<<gridSize, blockSize>>>(p->d_groupPtr);
+    dk_checkOoB<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    /* ==  check if refresh of verlet list required == */
+
+    cudaMemset(p->d_group.refreshVerletFlag, 0, sizeof(int));
+    k_shouldRefreshNeighborList<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    int shouldRefreshVerletFlag = 0;
+    cudaMemcpy(&shouldRefreshVerletFlag,p->d_group.refreshVerletFlag,sizeof(int), cudaMemcpyDeviceToHost);
+    /* == refresh neighborlist if needed == */
+
+    if (shouldRefreshVerletFlag ==1){
+        d_update_pList(p,box,gridSize, blockSize);
+        k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+    }
+
+    /*
+       cudaError_t err = cudaGetLastError();
+       printf("CUDA error = %s\n", cudaGetErrorString(err));
+     */
+    //    cudaDeviceSynchronize();
+
+}
+
 void device_dem_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize){
 
     /* initialize force */

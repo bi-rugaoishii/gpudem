@@ -9,6 +9,7 @@
 #include <chrono>
 #include "ParticleSystem.h"
 #include "BoundingBox.h"
+#include "BVH.h"
 #include "Vec3.h"
 #include "ContactCache.h"
 #include "TriangleContactCache.h"
@@ -18,8 +19,14 @@
 __device__ __forceinline__
 TriangleContactCache d_dist_triangle(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j);
 
+__device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,DeviceBoundingBox *box);
+
 __device__ __forceinline__
 void d_wall_collision_triangles(DeviceParticleGroup* p,int i,DeviceBoundingBox *box, DeviceTriangleMesh* mesh);
+
+__device__ __forceinline__
+void d_wall_collision_verlet(DeviceParticleGroup* p,int i,DeviceTriangleMesh* mesh);
+
 
 __device__ __forceinline__
 void updateAcceleration(DeviceParticleGroup* p,int i);
@@ -86,14 +93,23 @@ __global__ void check_g_kernel(DeviceParticleGroup* p,DeviceTriangleMesh *mesh);
 
 __global__ void k_integrate(DeviceParticleGroup* p);
 
+__global__ void k_shouldRefreshNeighborList(DeviceParticleGroup *p, DeviceBoundingBox* box);
+
+__global__ void k_collision_verlet_verlet(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
+
 __global__ void k_collision_triangle(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
 
 __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
+
 /*
    ======================================================
    main routine 
    ======================================================
 */
+
+void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
+
+void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
 
 
 void device_dem_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
