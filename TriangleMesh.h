@@ -183,7 +183,7 @@ typedef struct TriangleMesh {
 void deviceMallocCopyTriangleMesh(TriangleMesh *mesh);
 #endif
 
-void free_TriangleMesh(TriangleMesh* mesh);
+void free_TriangleMesh(TriangleMesh* mesh,int isGPUon);
 static int count_ascii_stl_triangles(FILE* fp);
 int load_ascii_stl_double(const char* filename, TriangleMesh* mesh);
 

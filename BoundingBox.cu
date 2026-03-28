@@ -254,7 +254,7 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
     cudaMemcpy(box->d_boxPtr,  &box->d_box,  sizeof(DeviceBoundingBox), cudaMemcpyHostToDevice);
 }
 
-void free_BoundingBox(BoundingBox *box){
+void free_BoundingBox(BoundingBox *box, int isGPUon){
 
     free(box->pList);
     free(box->pNum);
@@ -263,19 +263,24 @@ void free_BoundingBox(BoundingBox *box){
     free(box->usedCells);
 
     #if USE_GPU
-    cudaFree(box->d_box.pList);
-    cudaFree(box->d_box.tmpExSum);
-    cudaFree(box->d_box.pNum);
-    cudaFree(box->d_box.usedCells);
-    cudaFree(box->d_box.pStart);
-    cudaFree(box->d_box.cellOffset);
-    cudaFree(box->d_box.tList);
-    cudaFree(box->d_box.tNum);
-    cudaFree(box->d_boxPtr);
+    if (isGPUon == 1 ){
+        cudaFree(box->d_box.pList);
+        cudaFree(box->d_box.tmpExSum);
+        cudaFree(box->d_box.pNum);
+        cudaFree(box->d_box.usedCells);
+        cudaFree(box->d_box.pStart);
+        cudaFree(box->d_box.cellOffset);
+        cudaFree(box->d_box.tList);
+        cudaFree(box->d_box.tNum);
+        cudaFree(box->d_boxPtr);
+    }
     #endif
 }
 
-void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, double minx, double maxx, double miny, double maxy, double minz, double maxz){
+void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, cJSON *json_inlet_type, int isGPUon){
+    /* find boxlimits */
+    calc_BoundingBoxLimits(box,mesh,json_inlet_type);
+
     /* find maximum radius */
 
     double maxr=0.;
@@ -285,15 +290,9 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
         }
     }
 
-    box->minx = minx;
-    box->miny = miny;
-    box->minz = minz;
-    box->maxx = maxx;
-    box->maxy = maxy;
-    box->maxz = maxz;
-    box->rangex = maxx - minx;
-    box->rangey = maxy - miny;
-    box->rangez = maxz - minz;
+    box->rangex = box->maxx - box->minx;
+    box->rangey = box->maxy - box->miny;
+    box->rangez = box->maxz - box->minz;
 
     box->dx = maxr*4. ;
     box->dy = maxr*4. ;
@@ -330,39 +329,74 @@ void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *me
     box->tNum = (int*)calloc(sizeBox,sizeof(int));
 
     #if USE_GPU
-    box->d_box.N= sizeBox;
-    box->d_box.MAX_TRI = box->MAX_TRI;
-    cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
-    cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
-    cudaMalloc(&box->d_box.usedCells, sizeof(int) * sizeBox);
+    if (isGPUon==1){
+        box->d_box.N= sizeBox;
+        box->d_box.MAX_TRI = box->MAX_TRI;
+        cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
+        cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
+        cudaMalloc(&box->d_box.usedCells, sizeof(int) * sizeBox);
 
-    cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
-    cudaMalloc(&box->d_box.tList, sizeof(int)*sizeBox*box->MAX_TRI);
-    cudaMalloc(&box->d_box.tNum, sizeof(int)*sizeBox);
-    cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
+        cudaMalloc(&box->d_box.pStart, sizeof(int)*sizeBox);
+        cudaMalloc(&box->d_box.tList, sizeof(int)*sizeBox*box->MAX_TRI);
+        cudaMalloc(&box->d_box.tNum, sizeof(int)*sizeBox);
+        cudaMalloc(&box->d_box.cellOffset, sizeof(int)*sizeBox);
 
-    /* for cub */
+        /* for cub */
 
-    box->d_box.tmpExSum =NULL;
-    box->d_box.scanTmpBytes = 0;
+        box->d_box.tmpExSum =NULL;
+        box->d_box.scanTmpBytes = 0;
 
-    cub::DeviceScan::ExclusiveSum(
-            box->d_box.tmpExSum,
-            box->d_box.scanTmpBytes,
-            box->d_box.pNum,
-            box->d_box.pStart,
-            box->d_box.N);
-    cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
+        cub::DeviceScan::ExclusiveSum(
+                box->d_box.tmpExSum,
+                box->d_box.scanTmpBytes,
+                box->d_box.pNum,
+                box->d_box.pStart,
+                box->d_box.N);
+        cudaMalloc(&box->d_box.tmpExSum, box->d_box.scanTmpBytes);
 
-    /* for structs*/
-    cudaMalloc(&box->d_boxPtr,sizeof(DeviceBoundingBox));
+        /* for structs*/
+        cudaMalloc(&box->d_boxPtr,sizeof(DeviceBoundingBox));
+    }
     #endif
+
+}
+
+void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_inlet_type){
+
+    double minx_inlet = cJSON_GetObjectItem(json_inlet_type,"minx")->valuedouble;
+    double miny_inlet = cJSON_GetObjectItem(json_inlet_type,"miny")->valuedouble;
+    double minz_inlet = cJSON_GetObjectItem(json_inlet_type,"minz")->valuedouble;
+    double maxx_inlet = cJSON_GetObjectItem(json_inlet_type,"maxx")->valuedouble;
+    double maxy_inlet = cJSON_GetObjectItem(json_inlet_type,"maxy")->valuedouble;
+    double maxz_inlet = cJSON_GetObjectItem(json_inlet_type,"maxz")->valuedouble;
+
+    /* === get boxlimits ===*/
+    /* gives 10 percent margin*/
+
+    box->minx = mesh->gminx < minx_inlet ? mesh->gminx : minx_inlet;
+    box->minx = box->minx*1.1;
+
+    box->miny = mesh->gminy < miny_inlet ? mesh->gminy : miny_inlet;
+    box->miny = box->miny*1.1;
+
+    box->minz = mesh->gminz < minz_inlet ? mesh->gminz : minz_inlet;
+    box->minz = box->minz*1.1;
+
+    box->maxx = mesh->gmaxx > maxx_inlet ? mesh->gmaxx : maxx_inlet;
+    box->maxx = box->maxx*1.1;
+
+    box->maxy = mesh->gmaxy > maxy_inlet ? mesh->gmaxy : maxy_inlet;
+    box->maxy = box->maxy*1.1;
+
+    box->maxz = mesh->gmaxz > maxz_inlet ? mesh->gmaxz : maxz_inlet;
+    box->maxz = box->maxz*1.1;
 
 }
 
 void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box){
     //update_pList_withSort_fast(p,tmpPs,box);
     update_pList_fast(p,box);
+
     int skinR = box->skinR;
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
@@ -758,7 +792,7 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
     return (box->sizey*dz+dy)*box->sizex+dx;
 }
 
- __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){
+__global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 

@@ -6,6 +6,7 @@
 #include "Vec3.h"
 #include "BoundingBox.h"
 #include "TriangleMesh.h"
+#include "cJSON.h"
 struct TriangleMesh;
 struct BoundingBox;
 
@@ -214,7 +215,7 @@ typedef struct ParticleSystem{
 free
 ============================================================
 */
-void freeMemory(ParticleSystem* ps);
+void freeMemory(ParticleSystem* ps, int isGPUon);
 
 /*
 ============================================================
@@ -236,14 +237,14 @@ void copyFromDevice(ParticleSystem* ps);
 メモリ確保
 ============================================================
 */
-void allocateMemory(ParticleSystem* ps);
+void allocateMemory(ParticleSystem* ps, int isGPUon);
 
 /*
 ============================================================
 初期化
 ============================================================
 */
-void initializeParticles(ParticleSystem* ps,double r,double m, double k, double res);
+void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m, double k, double res);
 
 void nondimensionalize(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh);
 

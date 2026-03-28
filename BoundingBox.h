@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "ParticleSystem.h"
+#include "cJSON.h"
 struct ParticleSystem;
 struct DeviceParticleGroup;
 struct TriangleMesh;
@@ -127,8 +128,10 @@ void update_pList_fast(ParticleSystem *p, BoundingBox *box);
 void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
 void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
 
-void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh* mesh, double minx, double maxx, double miny, double maxy, double minz, double maxz);
-void free_BoundingBox(BoundingBox *box);
+void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_inlet_type);
+
+void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh* mesh, cJSON *json_inlet, int isGPUon);
+void free_BoundingBox(BoundingBox *box, int isGPUon);
 
 /* ============================
  * device related functions

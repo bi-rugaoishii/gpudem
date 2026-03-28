@@ -232,7 +232,7 @@ void deviceMallocCopyTriangleMesh(TriangleMesh *mesh){
 #endif
 
 /* ========== triangle mesh ===============*/
-void free_TriangleMesh(TriangleMesh* mesh){
+void free_TriangleMesh(TriangleMesh* mesh, int isGPUon){
     free(mesh->sortedIndex);
 
     free(mesh->cx);
@@ -291,54 +291,56 @@ void free_TriangleMesh(TriangleMesh* mesh){
     free(mesh->tri_e2);
 
     #if USE_GPU
-    cudaFree(mesh->d_mesh.mx);
-    cudaFree(mesh->d_mesh.my);
-    cudaFree(mesh->d_mesh.mz);
+    if(isGPUon == 1){
+        cudaFree(mesh->d_mesh.mx);
+        cudaFree(mesh->d_mesh.my);
+        cudaFree(mesh->d_mesh.mz);
 
-    cudaFree(mesh->d_mesh.nx);
-    cudaFree(mesh->d_mesh.ny);
-    cudaFree(mesh->d_mesh.nz);
-    cudaFree(mesh->d_mesh.d);
+        cudaFree(mesh->d_mesh.nx);
+        cudaFree(mesh->d_mesh.ny);
+        cudaFree(mesh->d_mesh.nz);
+        cudaFree(mesh->d_mesh.d);
 
-    cudaFree(mesh->d_mesh.edge);
+        cudaFree(mesh->d_mesh.edge);
 
-    cudaFree(mesh->d_mesh.e01x);
-    cudaFree(mesh->d_mesh.e01y);
-    cudaFree(mesh->d_mesh.e01z);
+        cudaFree(mesh->d_mesh.e01x);
+        cudaFree(mesh->d_mesh.e01y);
+        cudaFree(mesh->d_mesh.e01z);
 
-    cudaFree(mesh->d_mesh.e02x);
-    cudaFree(mesh->d_mesh.e02y);
-    cudaFree(mesh->d_mesh.e02z);
+        cudaFree(mesh->d_mesh.e02x);
+        cudaFree(mesh->d_mesh.e02y);
+        cudaFree(mesh->d_mesh.e02z);
 
-    cudaFree(mesh->d_mesh.e12x);
-    cudaFree(mesh->d_mesh.e12y);
-    cudaFree(mesh->d_mesh.e12z);
+        cudaFree(mesh->d_mesh.e12x);
+        cudaFree(mesh->d_mesh.e12y);
+        cudaFree(mesh->d_mesh.e12z);
 
-    cudaFree(mesh->d_mesh.d00);
-    cudaFree(mesh->d_mesh.d00inv);
-    cudaFree(mesh->d_mesh.d01);
-    cudaFree(mesh->d_mesh.d11);
-    cudaFree(mesh->d_mesh.d11inv);
-    cudaFree(mesh->d_mesh.d22);
-    cudaFree(mesh->d_mesh.d22inv);
-    cudaFree(mesh->d_mesh.denom);
+        cudaFree(mesh->d_mesh.d00);
+        cudaFree(mesh->d_mesh.d00inv);
+        cudaFree(mesh->d_mesh.d01);
+        cudaFree(mesh->d_mesh.d11);
+        cudaFree(mesh->d_mesh.d11inv);
+        cudaFree(mesh->d_mesh.d22);
+        cudaFree(mesh->d_mesh.d22inv);
+        cudaFree(mesh->d_mesh.denom);
 
-    cudaFree(mesh->d_mesh.tri_i0);
-    cudaFree(mesh->d_mesh.tri_i1);
-    cudaFree(mesh->d_mesh.tri_i2);
+        cudaFree(mesh->d_mesh.tri_i0);
+        cudaFree(mesh->d_mesh.tri_i1);
+        cudaFree(mesh->d_mesh.tri_i2);
 
-    cudaFree(mesh->d_mesh.tri_e0);
-    cudaFree(mesh->d_mesh.tri_e1);
-    cudaFree(mesh->d_mesh.tri_e2);
+        cudaFree(mesh->d_mesh.tri_e0);
+        cudaFree(mesh->d_mesh.tri_e1);
+        cudaFree(mesh->d_mesh.tri_e2);
 
-    cudaFree(mesh->d_mesh.minx);
-    cudaFree(mesh->d_mesh.maxx);
-    cudaFree(mesh->d_mesh.miny);
-    cudaFree(mesh->d_mesh.maxy);
-    cudaFree(mesh->d_mesh.minz);
-    cudaFree(mesh->d_mesh.maxz);
+        cudaFree(mesh->d_mesh.minx);
+        cudaFree(mesh->d_mesh.maxx);
+        cudaFree(mesh->d_mesh.miny);
+        cudaFree(mesh->d_mesh.maxy);
+        cudaFree(mesh->d_mesh.minz);
+        cudaFree(mesh->d_mesh.maxz);
 
-    cudaFree(mesh->d_meshPtr);
+        cudaFree(mesh->d_meshPtr);
+    }
     #endif
 }
 
@@ -362,6 +364,7 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     FILE* fp = fopen(filename,"r");
     if(!fp){
         printf("stl open error\n");
+        abort();
         return 0;
     }
 
@@ -656,15 +659,21 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
 
     /* ============ generate morton key and check presort index ========*/
 
-    printf("Triangle center coordinates\n");
-    for (int i=0; i<mesh->nTri; i++){
-        printf("%f %f %f\n",mesh->cx[i],mesh->cy[i],mesh->cz[i]);
-    }
+    /* === for debug === 
+
+       printf("Triangle center coordinates\n");
+       for (int i=0; i<mesh->nTri; i++){
+       printf("%f %f %f\n",mesh->cx[i],mesh->cy[i],mesh->cz[i]);
+       }
+     */
     mortonKeyGen(mesh);
     printf("Generated triangle mortonkey and pre sort index\n");
-    for (int i=0; i<mesh->nTri; i++){
-        printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
-    }
+
+    /* === for debug === 
+       for (int i=0; i<mesh->nTri; i++){
+       printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+       }
+     */
 
     double checkDistance=0.;
     for (int i=1; i<mesh->nTri; i++){
@@ -683,9 +692,11 @@ int load_ascii_stl_double(const char* filename, TriangleMesh* mesh){
     int *tmpSortedIndex = (int*)malloc(sizeof(int)*mesh->nTri);
     radixSortUint32(&mesh->mortonKey,&mesh->sortedIndex,mesh->nTri,tmpMortonKey,tmpSortedIndex);
     printf("Sorted triangle mortonkey and pre sort index\n");
-    for (int i=0; i<mesh->nTri; i++){
-        printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
-    }
+    /* === for debug === 
+       for (int i=0; i<mesh->nTri; i++){
+       printf("%u %d\n",mesh->mortonKey[i],mesh->sortedIndex[i]);
+       }
+     */
 
     checkDistance=0.;
     for (int i=1; i<mesh->nTri; i++){

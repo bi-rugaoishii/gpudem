@@ -614,7 +614,7 @@ void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,dou
 }
 
 
-void initializeBVH(BVH *bvh, int numTriangles){
+void initializeBVH(BVH *bvh, int numTriangles, int isGPUon){
     int maxNodes = 2*numTriangles-1;
     bvh->minx = (double*)malloc(sizeof(double)*maxNodes);
     bvh->miny = (double*)malloc(sizeof(double)*maxNodes);
@@ -628,26 +628,28 @@ void initializeBVH(BVH *bvh, int numTriangles){
     bvh->tri = (int*)malloc(sizeof(int)*maxNodes);
     bvh->nodeCount = 0;
     #if USE_GPU
-    cudaMalloc(&bvh->d_bvh.minx, sizeof(double)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.miny, sizeof(double)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.minz, sizeof(double)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.maxx, sizeof(double)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.maxy, sizeof(double)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.maxz, sizeof(double)*maxNodes);
+    if (isGPUon == 1){
+        cudaMalloc(&bvh->d_bvh.minx, sizeof(double)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.miny, sizeof(double)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.minz, sizeof(double)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.maxx, sizeof(double)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.maxy, sizeof(double)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.maxz, sizeof(double)*maxNodes);
 
-    cudaMalloc(&bvh->d_bvh.left, sizeof(int)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.right, sizeof(int)*maxNodes);
-    cudaMalloc(&bvh->d_bvh.tri, sizeof(int)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.left, sizeof(int)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.right, sizeof(int)*maxNodes);
+        cudaMalloc(&bvh->d_bvh.tri, sizeof(int)*maxNodes);
 
-    bvh->d_bvh.nodeCount = bvh->nodeCount;
+        bvh->d_bvh.nodeCount = bvh->nodeCount;
 
-    /* for structs*/
-    cudaMalloc(&bvh->d_bvhPtr,sizeof(DeviceBVH));
+        /* for structs*/
+        cudaMalloc(&bvh->d_bvhPtr,sizeof(DeviceBVH));
+    }
 
     #endif
 }
 
-void free_BVH(BVH *bvh){
+void free_BVH(BVH *bvh, int isGPUon){
     free(bvh->minx) ;
     free(bvh->miny) ;
     free(bvh->minz) ;
@@ -660,16 +662,18 @@ void free_BVH(BVH *bvh){
     free(bvh->tri) ;
 
     #if USE_GPU
-    cudaFree(bvh->d_bvh.minx);
-    cudaFree(bvh->d_bvh.miny);
-    cudaFree(bvh->d_bvh.minz);
-    cudaFree(bvh->d_bvh.maxx);
-    cudaFree(bvh->d_bvh.maxy);
-    cudaFree(bvh->d_bvh.maxz);
-    cudaFree(bvh->d_bvh.left);
-    cudaFree(bvh->d_bvh.right);
-    cudaFree(bvh->d_bvh.tri);
-    cudaFree(bvh->d_bvhPtr);
+    if (isGPUon == 1){
+        cudaFree(bvh->d_bvh.minx);
+        cudaFree(bvh->d_bvh.miny);
+        cudaFree(bvh->d_bvh.minz);
+        cudaFree(bvh->d_bvh.maxx);
+        cudaFree(bvh->d_bvh.maxy);
+        cudaFree(bvh->d_bvh.maxz);
+        cudaFree(bvh->d_bvh.left);
+        cudaFree(bvh->d_bvh.right);
+        cudaFree(bvh->d_bvh.tri);
+        cudaFree(bvh->d_bvhPtr);
+    }
     #endif
 }
 

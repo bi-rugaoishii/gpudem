@@ -44,7 +44,7 @@ typedef struct BVH{
     int nodeCount;
 } BVH;
 
-void initializeBVH(BVH *bvh, int numTriangles);
+void initializeBVH(BVH *bvh, int numTriangles, int isGPUon);
 
 void update_neighborlist_wall_nobvh(ParticleSystem *p,TriangleMesh *mesh,BoundingBox *box,double skinR);
 TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleMesh* mesh, int j,double skinR);
@@ -53,7 +53,7 @@ void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,dou
 
 void copyToDeviceBVH(BVH *bvh, ParticleSystem *p, int numTriangles);
 
-void free_BVH(BVH *bvh);
+void free_BVH(BVH *bvh, int isGPUon);
 void computeNodeAABB(int start, int end,TriangleMesh *mesh, BVH *bvh,int k);
 
 

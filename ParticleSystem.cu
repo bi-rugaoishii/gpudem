@@ -7,9 +7,8 @@
 ============================================================
 free
 ============================================================
-*/
-void freeMemory(ParticleSystem* ps)
-{
+ */
+void freeMemory(ParticleSystem* ps, int isGPUon){
     /* host*/
     free(ps->x);
     free(ps->v);
@@ -35,7 +34,7 @@ void freeMemory(ParticleSystem* ps)
     free(ps->invmoi);
 
     free(ps->mom);
-    
+
     free(ps->deltHisx);
     free(ps->deltHisy);
     free(ps->deltHisz);
@@ -80,6 +79,7 @@ void freeMemory(ParticleSystem* ps)
     free(ps->walls.d);
 
     #if USE_GPU
+    if (isGPUon ==1){
         cudaFree(ps->d_group.x);
         cudaFree(ps->d_group.v);
         cudaFree(ps->d_group.a);
@@ -104,7 +104,7 @@ void freeMemory(ParticleSystem* ps)
         cudaFree(ps->d_group.invmoi);
 
         cudaFree(ps->d_group.mom);
-        
+
         cudaFree(ps->d_group.deltHisx);
         cudaFree(ps->d_group.deltHisy);
         cudaFree(ps->d_group.deltHisz);
@@ -155,7 +155,8 @@ void freeMemory(ParticleSystem* ps)
 
         /* ==== structs ====*/
         cudaFree(ps->d_groupPtr);
-        #endif
+    }
+    #endif
 }
 
 
@@ -309,8 +310,7 @@ void copyFromDevice(ParticleSystem* ps)
    メモリ確保
    ============================================================
  */
-void allocateMemory(ParticleSystem* ps)
-{
+void allocateMemory(ParticleSystem* ps, int isGPUon){
     size_t size = ps->N * sizeof(double);
     size_t size_walls = ps->walls.N * sizeof(double);
 
@@ -384,95 +384,97 @@ void allocateMemory(ParticleSystem* ps)
 
     // Device
     #if USE_GPU
-    cudaMalloc((void**)&ps->d_group.x,  size*DIM);
-    cudaMalloc((void**)&ps->d_group.v,  size*DIM);
-    cudaMalloc((void**)&ps->d_group.a,  size*DIM);
-    cudaMalloc((void**)&ps->d_group.f,  size*DIM);
-    cudaMalloc((void**)&ps->d_group.r,  size);
-    cudaMalloc((void**)&ps->d_group.rsq,  size);
-    cudaMalloc((void**)&ps->d_group.invr, size);
+    if (isGPUon == 1){
+        cudaMalloc((void**)&ps->d_group.x,  size*DIM);
+        cudaMalloc((void**)&ps->d_group.v,  size*DIM);
+        cudaMalloc((void**)&ps->d_group.a,  size*DIM);
+        cudaMalloc((void**)&ps->d_group.f,  size*DIM);
+        cudaMalloc((void**)&ps->d_group.r,  size);
+        cudaMalloc((void**)&ps->d_group.rsq,  size);
+        cudaMalloc((void**)&ps->d_group.invr, size);
 
-    cudaMalloc((void**)&ps->d_group.m, size);
-    cudaMalloc((void**)&ps->d_group.sqrtm, size);
-    cudaMalloc((void**)&ps->d_group.invm, size);
-    cudaMalloc((void**)&ps->d_group.k, size);
-    cudaMalloc((void**)&ps->d_group.etaconst, size);
-    cudaMalloc((void**)&ps->d_group.g, sizeof(double)*DIM);
+        cudaMalloc((void**)&ps->d_group.m, size);
+        cudaMalloc((void**)&ps->d_group.sqrtm, size);
+        cudaMalloc((void**)&ps->d_group.invm, size);
+        cudaMalloc((void**)&ps->d_group.k, size);
+        cudaMalloc((void**)&ps->d_group.etaconst, size);
+        cudaMalloc((void**)&ps->d_group.g, sizeof(double)*DIM);
 
-    cudaMalloc((void**)&ps->d_group.isActive, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.isActive, sizeof(int)*ps->N);
 
-    cudaMalloc((void**)&ps->d_group.angv, size*DIM);
-    cudaMalloc((void**)&ps->d_group.anga, size*DIM);
-    cudaMalloc((void**)&ps->d_group.moi, size);
-    cudaMalloc((void**)&ps->d_group.invmoi, size);
+        cudaMalloc((void**)&ps->d_group.angv, size*DIM);
+        cudaMalloc((void**)&ps->d_group.anga, size*DIM);
+        cudaMalloc((void**)&ps->d_group.moi, size);
+        cudaMalloc((void**)&ps->d_group.invmoi, size);
 
-    cudaMalloc((void**)&ps->d_group.mom, size*DIM);
+        cudaMalloc((void**)&ps->d_group.mom, size*DIM);
 
-    cudaMalloc((void**)&ps->d_group.deltHisx, sizeof(double)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.deltHisy, sizeof(double)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.deltHisz, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisx, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisy, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisz, sizeof(double)*ps->N*ps->MAX_NEI);
 
-    cudaMalloc((void**)&ps->d_group.deltHisxWall, sizeof(double)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.deltHisyWall, sizeof(double)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.deltHiszWall, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisxWall, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisyWall, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHiszWall, sizeof(double)*ps->N*ps->MAX_NEI);
 
-    cudaMalloc((void**)&ps->d_group.indHis, sizeof(int)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.numCont, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.indHis, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.numCont, sizeof(int)*ps->N);
 
-    cudaMalloc((void**)&ps->d_group.isContact, sizeof(int)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.isContact, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*ps->MAX_NEI);
 
-    cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.indHisWallNow, sizeof(int)*ps->N*ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.indHisVorENow, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisWallNow, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisVorENow, sizeof(int)*ps->N*ps->MAX_NEI);
 
-    cudaMalloc((void**)&ps->d_group.numContWall, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.numContWall, sizeof(int)*ps->N);
 
-    cudaMalloc((void**)&ps->d_group.cellId, sizeof(int)*ps->N);
-    cudaMalloc((void**)&ps->d_group.cellx, sizeof(int)*DIM*ps->N);
+        cudaMalloc((void**)&ps->d_group.cellId, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.cellx, sizeof(int)*DIM*ps->N);
 
-    cudaMalloc((void**)&ps->d_group.pId, sizeof(int)*ps->N);
-    cudaMalloc((void**)&ps->d_group.mortonKey, sizeof(uint32_t)*ps->N);
-    cudaMalloc((void**)&ps->d_group.mortonOrder, sizeof(int)*ps->N);
-    cudaMalloc((void**)&ps->d_group.tmpMortonKey, sizeof(uint32_t)*ps->N);
+        cudaMalloc((void**)&ps->d_group.pId, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.mortonKey, sizeof(uint32_t)*ps->N);
+        cudaMalloc((void**)&ps->d_group.mortonOrder, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.tmpMortonKey, sizeof(uint32_t)*ps->N);
 
-    /* ========== verlet list related ======= */
-    cudaMalloc((void**)&ps->d_group.refx, size);
-    cudaMalloc((void**)&ps->d_group.refy, size);
-    cudaMalloc((void**)&ps->d_group.refz, size);
+        /* ========== verlet list related ======= */
+        cudaMalloc((void**)&ps->d_group.refx, size);
+        cudaMalloc((void**)&ps->d_group.refy, size);
+        cudaMalloc((void**)&ps->d_group.refz, size);
 
-    cudaMalloc((void**)&ps->d_group.neiList, sizeof(int) * ps->N * ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.numNei, sizeof(int) * ps->N);
+        cudaMalloc((void**)&ps->d_group.neiList, sizeof(int) * ps->N * ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.numNei, sizeof(int) * ps->N);
 
-    cudaMalloc((void**)&ps->d_group.neiListWall, sizeof(int) * ps->N * ps->MAX_NEI);
-    cudaMalloc((void**)&ps->d_group.numNeiWall, sizeof(int) * ps->N);
+        cudaMalloc((void**)&ps->d_group.neiListWall, sizeof(int) * ps->N * ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.numNeiWall, sizeof(int) * ps->N);
 
-    cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
-    cudaMalloc((void**)&ps->d_group.walls.n, size_walls*DIM);
-    cudaMalloc((void**)&ps->d_group.walls.d, size_walls);
-    cudaMalloc((void**)&ps->d_group.refreshVerletFlag, sizeof(int));
+        cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
+        cudaMalloc((void**)&ps->d_group.walls.n, size_walls*DIM);
+        cudaMalloc((void**)&ps->d_group.walls.d, size_walls);
+        cudaMalloc((void**)&ps->d_group.refreshVerletFlag, sizeof(int));
 
-    /* ======== for sorting ==============*/
+        /* ======== for sorting ==============*/
 
-    ps->d_group.tmp_storage=NULL;
-    ps->d_group.tmp_bytes=0;
+        ps->d_group.tmp_storage=NULL;
+        ps->d_group.tmp_bytes=0;
 
-    /* calculate temporarly size */
+        /* calculate temporarly size */
 
-    cub::DeviceRadixSort::SortPairs(
-            ps->d_group.tmp_storage,
-            ps->d_group.tmp_bytes,
-            ps->d_group.mortonKey,
-            ps->d_group.tmpMortonKey,
-            ps->d_group.mortonOrder,
-            ps->d_group.tmpMortonOrder,
-            ps->N);
+        cub::DeviceRadixSort::SortPairs(
+                ps->d_group.tmp_storage,
+                ps->d_group.tmp_bytes,
+                ps->d_group.mortonKey,
+                ps->d_group.tmpMortonKey,
+                ps->d_group.mortonOrder,
+                ps->d_group.tmpMortonOrder,
+                ps->N);
 
-    cudaMalloc((void**)&ps->d_group.tmp_storage,ps->d_group.tmp_bytes);
+        cudaMalloc((void**)&ps->d_group.tmp_storage,ps->d_group.tmp_bytes);
 
-    /* ======== for structs ============*/
-    cudaMalloc((void**)&ps->d_groupPtr,sizeof(DeviceParticleGroup));
+        /* ======== for structs ============*/
+        cudaMalloc((void**)&ps->d_groupPtr,sizeof(DeviceParticleGroup));
 
+    }
 
     #endif
 
@@ -483,7 +485,7 @@ void allocateMemory(ParticleSystem* ps)
    初期化
    ============================================================
  */
-void initializeParticles(ParticleSystem* ps,double r,double m,double k,double res)
+void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res)
 {
     int max_trials = 1000; // 1粒子あたりの再配置試行回数
     int seed = 1;
@@ -491,143 +493,162 @@ void initializeParticles(ParticleSystem* ps,double r,double m,double k,double re
     std::uniform_real_distribution<double> uni(0,1);
 
 
+    if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"shuffle")==0){
+
+        printf("shuffling particles\n");
+
+        /* == get box for shuffling == */
+
+        cJSON *json_shuffle = cJSON_GetObjectItem(json_inlet,"shuffle");
+        double minx_shuffle = cJSON_GetObjectItem(json_shuffle,"minx")->valuedouble;
+        double miny_shuffle = cJSON_GetObjectItem(json_shuffle,"miny")->valuedouble;
+        double minz_shuffle = cJSON_GetObjectItem(json_shuffle,"minz")->valuedouble;
+        double maxx_shuffle = cJSON_GetObjectItem(json_shuffle,"maxx")->valuedouble;
+        double maxy_shuffle = cJSON_GetObjectItem(json_shuffle,"maxy")->valuedouble;
+        double maxz_shuffle = cJSON_GetObjectItem(json_shuffle,"maxz")->valuedouble;
+
+        for (int i = 0; i < ps->N; i++){
+            int trial = 0;
+            while (trial < max_trials)
+            {
+                // ランダム配置
+                /*
+                   double x = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
+                   double y = (double)rand() / RAND_MAX * 1.0 + 2.8;
+                //double y = -0.97;
+                double z = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
+                 */
+
+                double x = uni(mt)*(maxx_shuffle-minx_shuffle) + minx_shuffle;
+                double y = uni(mt)*(maxy_shuffle-miny_shuffle) + miny_shuffle;
+                double z = uni(mt)*(maxz_shuffle-minz_shuffle) + minz_shuffle;
 
 
-    for (int i = 0; i < ps->N; i++){
-        int trial = 0;
-        while (trial < max_trials)
-        {
-            // ランダム配置
+                /* ======== for temporarly check========= */
+                /*
+                   double x = 0.;
+                   double y = 0.021;
+                   double z = 0.0;
+
+                   if (i==0){
+                   x = 0.;
+                   y = 0.0;
+                   z = 0.0;
+                   }else{
+                   x = -0.2;
+                   y = 0.005;
+                   z = 0.0;
+
+                   }
+                 */
+                /* ======== for temporarly check========= */
+
+
+                // 既存粒子との距離チェック
+                int overlap = 0;
+                for (int j = 0; j < i; j++)
+                {
+                    double dx = x - ps->x[j*DIM+0];
+                    double dy = y - ps->x[j*DIM+1];
+                    double dz = z - ps->x[j*DIM+2];
+                    double d2 = dx*dx + dy*dy + dz*dz;
+                    if (d2 < 4*r*r) // 半径2倍以上離れているか
+                    {
+                        overlap = 1;
+                        break;
+                    }
+                }
+
+                if (!overlap)
+                {
+                    ps->x[i*DIM+0] = x;
+                    ps->x[i*DIM+1] = y;
+                    ps->x[i*DIM+2] = z;
+                    break;
+                }
+
+                trial++;
+            }
+
+            if (trial == max_trials){
+                printf("!!!couldn't place them!!\n");
+                abort();
+            };
+
+
             /*
-               double x = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
-               double y = (double)rand() / RAND_MAX * 1.0 + 2.8;
-            //double y = -0.97;
-            double z = (double)rand() / RAND_MAX*(0.3)-(0.35+0.15);
-            */
+               ps->x[i*DIM+0] = 0.25;
+               ps->x[i*DIM+1] = (double)i*1.0+0.03;
+               ps->x[i*DIM+2] = 0.25;
+             */
 
-            double x = uni(mt)*(0.4)-(0.2);
-            double y = uni(mt)* 1.0 + 0.5 ;
-            double z = uni(mt)*(0.4)-(0.2);
+            ps->r[i] = r;
+            ps->rsq[i] = ps->r[i]*ps->r[i];
+            ps->invr[i] = 1./ps->r[i];
+            ps->k[i] = k;
+            ps->m[i] = m;
+            ps->sqrtm[i] = sqrt(m);
+            ps->invm[i] = 1./m;
+            ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
+            ps->cellId[i] = -1;
+            ps->isActive[i] = 1;
 
+
+            ps->numCont[i] = 0;
+            ps->numContWall[i] = 0;
+
+            ps->v[i*DIM+0] = 0.;
+            ps->v[i*DIM+1] = 0.;
+            ps->v[i*DIM+2] = 0.;
 
             /* ======== for temporarly check========= */
             /*
-               double x = 0.;
-               double y = 0.021;
-               double z = 0.0;
-
-               if (i==0){
-               x = 0.;
-               y = 0.0;
-               z = 0.0;
-               }else{
-               x = -0.2;
-               y = 0.005;
-               z = 0.0;
-
+               if (i==1){
+               ps->v[i*DIM+0] = 1.;
+               ps->v[i*DIM+1] = 0.;
+               ps->v[i*DIM+2] = 0.;
                }
              */
             /* ======== for temporarly check========= */
 
+            ps->angv[i*DIM+0] = 0.;
+            ps->angv[i*DIM+1] = 0.;
+            ps->angv[i*DIM+2] = 0.;
 
-            // 既存粒子との距離チェック
-            int overlap = 0;
-            for (int j = 0; j < i; j++)
-            {
-                double dx = x - ps->x[j*DIM+0];
-                double dy = y - ps->x[j*DIM+1];
-                double dz = z - ps->x[j*DIM+2];
-                double d2 = dx*dx + dy*dy + dz*dz;
-                if (d2 < 4*r*r) // 半径2倍以上離れているか
-                {
-                    overlap = 1;
-                    break;
-                }
+            ps->anga[i*DIM+0] = 0.;
+            ps->anga[i*DIM+1] = 0.;
+            ps->anga[i*DIM+2] = 0.;
+
+            ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
+            ps->invmoi[i] = 1./ps->moi[i];
+
+            ps->pId[i] = i;
+
+
+            for (int j=0; j<ps->MAX_NEI; j++){
+                ps->indHis[i*ps->MAX_NEI+j] = -1;
+                ps->indHisWall[i*ps->MAX_NEI+j] = -1;
+                ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
+
+                ps->isContact[i*ps->MAX_NEI+j] = -1;
+                ps->isContactWall[i*ps->MAX_NEI+j] = -1;
+
+                ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
+                ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
+                ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
+                ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
+                ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
+                ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
             }
-
-            if (!overlap)
-            {
-                ps->x[i*DIM+0] = x;
-                ps->x[i*DIM+1] = y;
-                ps->x[i*DIM+2] = z;
-                break;
-            }
-
-            trial++;
         }
+    }else if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"file")==0){
+        printf("to be created...");
+        abort();
 
-        if (trial == max_trials){
-            printf("!!!couldn't place them!!\n");
-            abort();
-        };
-
-
-        /*
-           ps->x[i*DIM+0] = 0.25;
-           ps->x[i*DIM+1] = (double)i*1.0+0.03;
-           ps->x[i*DIM+2] = 0.25;
-         */
-
-        ps->r[i] = r;
-        ps->rsq[i] = ps->r[i]*ps->r[i];
-        ps->invr[i] = 1./ps->r[i];
-        ps->k[i] = k;
-        ps->m[i] = m;
-        ps->sqrtm[i] = sqrt(m);
-        ps->invm[i] = 1./m;
-        ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
-        ps->cellId[i] = -1;
-        ps->isActive[i] = 1;
-
-
-        ps->numCont[i] = 0;
-        ps->numContWall[i] = 0;
-
-        ps->v[i*DIM+0] = 0.;
-        ps->v[i*DIM+1] = 0.;
-        ps->v[i*DIM+2] = 0.;
-
-        /* ======== for temporarly check========= */
-        /*
-        if (i==1){
-            ps->v[i*DIM+0] = 1.;
-            ps->v[i*DIM+1] = 0.;
-            ps->v[i*DIM+2] = 0.;
-        }
-        */
-        /* ======== for temporarly check========= */
-
-        ps->angv[i*DIM+0] = 0.;
-        ps->angv[i*DIM+1] = 0.;
-        ps->angv[i*DIM+2] = 0.;
-
-        ps->anga[i*DIM+0] = 0.;
-        ps->anga[i*DIM+1] = 0.;
-        ps->anga[i*DIM+2] = 0.;
-
-        ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
-        ps->invmoi[i] = 1./ps->moi[i];
-
-        ps->pId[i] = i;
-
-
-        for (int j=0; j<ps->MAX_NEI; j++){
-            ps->indHis[i*ps->MAX_NEI+j] = -1;
-            ps->indHisWall[i*ps->MAX_NEI+j] = -1;
-            ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
-
-            ps->isContact[i*ps->MAX_NEI+j] = -1;
-            ps->isContactWall[i*ps->MAX_NEI+j] = -1;
-
-            ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
-        }
+    }else{
+        printf("no proper input mode defined!\n");
+        abort();
     }
-
 
 }
 
