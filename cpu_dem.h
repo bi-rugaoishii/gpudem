@@ -43,7 +43,7 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 /* =========== verlet list related =============== */
 int shouldRefreshNeighborList(ParticleSystem *p, BoundingBox* box);
 
-void checkOoB(ParticleSystem *p, BoundingBox* box);
+void checkOoB(ParticleSystem *p, ParticleSystem *tmpP, BoundingBox* box);
 
 void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh, int step);
 void cpu_dem_nosort_triangle(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, TriangleMesh* mesh);

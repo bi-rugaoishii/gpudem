@@ -141,6 +141,7 @@ void freeMemory(ParticleSystem* ps, int isGPUon){
 
         cudaFree(ps->d_group.tmp_storage);
 
+
         /* ========== verlet list related ======= */
         cudaFree(ps->d_group.refx);
         cudaFree(ps->d_group.refy);

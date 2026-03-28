@@ -829,6 +829,9 @@ __device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup*
     int ci = i*p->MAX_NEI;
     for (int k=0; k<end; k++){
         int j = p->neiList[ci+k];
+        if(p->isActive[j]!=1){
+            continue;
+        }
         int bj=j*DIM;
 
         Vec3 del;
@@ -1099,6 +1102,7 @@ void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *
 
     k_collision_verlet_verlet<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr,mesh->d_meshPtr);
     k_integrate<<<gridSize, blockSize>>>(p->d_groupPtr);
+
     dk_checkOoB<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
 
     /* ==  check if refresh of verlet list required == */
@@ -1108,9 +1112,10 @@ void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *
 
     int shouldRefreshVerletFlag = 0;
     cudaMemcpy(&shouldRefreshVerletFlag,p->d_group.refreshVerletFlag,sizeof(int), cudaMemcpyDeviceToHost);
+
     /* == refresh neighborlist if needed == */
 
-    if (shouldRefreshVerletFlag ==1){
+    if (shouldRefreshVerletFlag==1){
         d_update_pList(p,box,gridSize, blockSize);
         k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
         k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_groupPtr,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);

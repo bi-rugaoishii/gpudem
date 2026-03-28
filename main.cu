@@ -339,7 +339,7 @@ int main(){
             // cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
             // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
             cpu_dem_verlet_verlet(&ps, &tmpPs, &box,&mesh, &bvh,step);
-            checkOoB(&ps,&box);
+            checkOoB(&ps,&tmpPs,&box);
 
             #if OUTPUT
             if (step % outStep == 0){

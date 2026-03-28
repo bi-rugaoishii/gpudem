@@ -945,6 +945,9 @@ void particle_collision_verlet(ParticleSystem* p, BoundingBox *box){
         int ci = i*p->MAX_NEI;
         for (int k=0; k<end; k++){
             int j = p->neiList[ci+k];
+            if (p->isActive[j] != 1){
+                continue;
+            }
             int bj=j*DIM;
 
             Vec3 del;
@@ -1354,8 +1357,11 @@ int shouldRefreshNeighborList(ParticleSystem *p, BoundingBox* box){
 
 /* ============== check Out of Bounds ============  */
 
-void checkOoB(ParticleSystem *p, BoundingBox* box){
+void checkOoB(ParticleSystem *p, ParticleSystem *tmpP, BoundingBox* box){
     for(int i=0; i<p->N; i++){
+        if(p->isActive[i]==0){
+            continue;
+        }
         double x=p->x[i*DIM+0];
         double y=p->x[i*DIM+1];
         double z=p->x[i*DIM+2];
@@ -1364,6 +1370,7 @@ void checkOoB(ParticleSystem *p, BoundingBox* box){
             continue;
         }       
     }
+
 }
 
 /* ============== dem mains ================= */

@@ -93,6 +93,7 @@ typedef struct DeviceParticleGroup{
     void* tmp_storage;
     size_t tmp_bytes;
 
+
     /* ========== verlet list related ========= */
     double* refx;
     double* refy;
@@ -109,10 +110,10 @@ typedef struct DeviceParticleGroup{
 
 
 /*
-============================================================
-CPU管理構造体
-============================================================
-*/
+   ============================================================
+   CPU管理構造体
+   ============================================================
+   */
 
 typedef struct WallGroup{
     int N;
@@ -151,7 +152,7 @@ typedef struct ParticleSystem{
     int* isActive; /* flag if particle is OoB */ 
 
     /* ======== tangential force related =========*/
-     /* history of delta tangent */
+    /* history of delta tangent */
     double* deltHisx; 
     double* deltHisy;
     double* deltHisz;
@@ -166,7 +167,7 @@ typedef struct ParticleSystem{
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
     int MAX_NEI; //sets maximum number of neighbors
-                 
+
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
 
@@ -175,8 +176,8 @@ typedef struct ParticleSystem{
 
     int* cellId;
     int* cellx; //coordinate index in structured cell
-    
-                 //
+
+    //
     double dt;
     double mu; //friction
 
@@ -211,39 +212,39 @@ typedef struct ParticleSystem{
 
 
 /*
-============================================================
-free
-============================================================
-*/
+   ============================================================
+   free
+   ============================================================
+   */
 void freeMemory(ParticleSystem* ps, int isGPUon);
 
 /*
-============================================================
-Host→Device転送
-============================================================
-*/
+   ============================================================
+   Host→Device転送
+   ============================================================
+   */
 void copyToDevice(ParticleSystem* ps);
 
 
 /*
-============================================================
-Device→Host転送
-============================================================
-*/
+   ============================================================
+   Device→Host転送
+   ============================================================
+   */
 void copyFromDevice(ParticleSystem* ps);
 
 /*
-============================================================
-メモリ確保
-============================================================
-*/
+   ============================================================
+   メモリ確保
+   ============================================================
+   */
 void allocateMemory(ParticleSystem* ps, int isGPUon);
 
 /*
-============================================================
-初期化
-============================================================
-*/
+   ============================================================
+   初期化
+   ============================================================
+   */
 void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m, double k, double res);
 
 void nondimensionalize(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh);
