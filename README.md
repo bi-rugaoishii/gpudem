@@ -1,5 +1,4 @@
 # TODO
-- add json setting file  
 - give pre setting function to the gui
 - neighbor list memory structure improvement
 - superquadric (maybe based on liggghts?)
