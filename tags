@@ -4,7 +4,7 @@
 !_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
 !_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
 !_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
-!_TAG_PROC_CWD	/home/dakahoshi/myDEM/gpudem/	//
+!_TAG_PROC_CWD	/home/dakahoshi/myProgram/gpudem/	//
 !_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
@@ -13,6 +13,7 @@ $(PROGRAM)	makefile	/^$(PROGRAM): $(OBJS)$/;"	t
 %.o	makefile	/^%.o : %.c$/;"	t
 %.o	makefile	/^%.o : %.cu$/;"	t
 0	demSettings.json	/^            "geometry\/box.stl"$/;"	s	array:walls.filepaths
+ARCH	makefile	/^ARCH = sm_70$/;"	m
 BVH	BVH.h	/^typedef struct BVH{$/;"	s
 BVH	BVH.h	/^} BVH;$/;"	t	typeref:struct:BVH
 BoundingBox	BoundingBox.h	/^typedef struct BoundingBox{$/;"	s
@@ -20,7 +21,7 @@ BoundingBox	BoundingBox.h	/^} BoundingBox;$/;"	t	typeref:struct:BoundingBox
 BuildTask	BVH.cu	/^} BuildTask;$/;"	t	typeref:struct:__anona81005cb0108	file:
 CC	makefile	/^CC = nvcc$/;"	m
 CC_C	makefile	/^CC_C = gcc$/;"	m
-CFLAGS	makefile	/^CFLAGS = -O3  -DUSE_GPU=1 -arch=sm_86 -fmad=false$/;"	m
+CFLAGS	makefile	/^CFLAGS = -O3$/;"	m
 CJSON_CDECL	cJSON.c	/^    void (CJSON_CDECL *deallocate)(void *pointer);$/;"	m	struct:internal_hooks	typeref:typename:void (* deallocate)(void * pointer)	file:
 CJSON_CDECL	cJSON.c	/^    void *(CJSON_CDECL *allocate)(size_t size);$/;"	m	struct:internal_hooks	typeref:typename:void * (* allocate)(size_t size)	file:
 CJSON_CDECL	cJSON.c	/^    void *(CJSON_CDECL *reallocate)(void *pointer, size_t size);$/;"	m	struct:internal_hooks	typeref:typename:void * (* reallocate)(void * pointer,size_t size)	file:
@@ -57,6 +58,7 @@ DeviceTriangleMesh	TriangleMesh.h	/^typedef struct DeviceTriangleMesh {$/;"	s
 DeviceTriangleMesh	TriangleMesh.h	/^} DeviceTriangleMesh;$/;"	t	typeref:struct:DeviceTriangleMesh
 DeviceWallGroup	ParticleSystem.h	/^typedef struct DeviceWallGroup{$/;"	s
 DeviceWallGroup	ParticleSystem.h	/^} DeviceWallGroup;$/;"	t	typeref:struct:DeviceWallGroup
+GPUFLAGS	makefile	/^GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false$/;"	m
 HashEntry	TriangleMesh.h	/^} HashEntry;$/;"	t	typeref:struct:__anond1da66be0108
 LIBS	makefile	/^LIBS = -lm $/;"	m
 MAX_NEI	ParticleSystem.h	/^    int MAX_NEI; \/\/sets maximum number of neighbors$/;"	m	struct:DeviceParticleGroup	typeref:typename:int
@@ -77,61 +79,24 @@ OUTPUT	main.cu	/^#define OUTPUT /;"	d	file:
 PROGRAM	makefile	/^PROGRAM = myDEM3d$/;"	m
 ParticleSystem	ParticleSystem.h	/^typedef struct ParticleSystem{$/;"	s
 ParticleSystem	ParticleSystem.h	/^} ParticleSystem;$/;"	t	typeref:struct:ParticleSystem
-Pos	imgui.ini	/^Pos=171,129$/;"	k	section:Window
-Pos	imgui.ini	/^Pos=491,50$/;"	k	section:Window
+Pos	imgui.ini	/^Pos=172,114$/;"	k	section:Window
+Pos	imgui.ini	/^Pos=366,-77$/;"	k	section:Window
+Pos	imgui.ini	/^Pos=592,105$/;"	k	section:Window
 Pos	imgui.ini	/^Pos=60,60$/;"	k	section:Window
-Pos	imgui.ini	/^Pos=93,256$/;"	k	section:Window
 RefScale	imgui.ini	/^RefScale=13$/;"	k	section:Table
 SETTINGS_LOADER_H_	settings_loader.h	/^#define SETTINGS_LOADER_H_$/;"	d
 SMALL_NUM	cpu_dem.cu	/^#define SMALL_NUM /;"	d	file:
 SMALL_NUM	device_dem.cu	/^#define SMALL_NUM /;"	d	file:
 SOLVER_OUTPUT_H	solver_output.h	/^#define SOLVER_OUTPUT_H$/;"	d
-Size	imgui.ini	/^Size=235,163$/;"	k	section:Window
-Size	imgui.ini	/^Size=288,77$/;"	k	section:Window
-Size	imgui.ini	/^Size=399,148$/;"	k	section:Window
+Size	imgui.ini	/^Size=114,92$/;"	k	section:Window
+Size	imgui.ini	/^Size=248,204$/;"	k	section:Window
+Size	imgui.ini	/^Size=256,306$/;"	k	section:Window
+Size	imgui.ini	/^Size=32,39$/;"	k	section:Window
 Size	imgui.ini	/^Size=400,400$/;"	k	section:Window
-Size	imgui.ini	/^Size=597,324$/;"	k	section:Window
+Size	imgui.ini	/^Size=572,323$/;"	k	section:Window
 TODO	README.md	/^# TODO$/;"	c
-Table	imgui.ini	/^[Table][0x013BEF12,4]$/;"	s
-Table	imgui.ini	/^[Table][0x02A2A4EB,4]$/;"	s
-Table	imgui.ini	/^[Table][0x05815969,4]$/;"	s
-Table	imgui.ini	/^[Table][0x070BFA00,4]$/;"	s
-Table	imgui.ini	/^[Table][0x093429C7,4]$/;"	s
-Table	imgui.ini	/^[Table][0x0B8B8C8B,4]$/;"	s
-Table	imgui.ini	/^[Table][0x103DFDE1,4]$/;"	s
-Table	imgui.ini	/^[Table][0x1B0D82E0,4]$/;"	s
-Table	imgui.ini	/^[Table][0x29D37840,4]$/;"	s
-Table	imgui.ini	/^[Table][0x31CF8B4D,4]$/;"	s
-Table	imgui.ini	/^[Table][0x33C84DEB,4]$/;"	s
-Table	imgui.ini	/^[Table][0x3D210CE5,4]$/;"	s
-Table	imgui.ini	/^[Table][0x3D8A9E89,4]$/;"	s
-Table	imgui.ini	/^[Table][0x503C626E,4]$/;"	s
-Table	imgui.ini	/^[Table][0x59C6196B,4]$/;"	s
-Table	imgui.ini	/^[Table][0x5F9F2436,4]$/;"	s
-Table	imgui.ini	/^[Table][0x6352DB28,4]$/;"	s
-Table	imgui.ini	/^[Table][0x64697FB1,4]$/;"	s
-Table	imgui.ini	/^[Table][0x7802DBF4,4]$/;"	s
-Table	imgui.ini	/^[Table][0x7A8CA6C7,4]$/;"	s
-Table	imgui.ini	/^[Table][0x84506697,4]$/;"	s
-Table	imgui.ini	/^[Table][0x85DEDE1C,4]$/;"	s
-Table	imgui.ini	/^[Table][0x8E52800A,4]$/;"	s
-Table	imgui.ini	/^[Table][0x9EEAD1D1,4]$/;"	s
-Table	imgui.ini	/^[Table][0x9F55E8E3,4]$/;"	s
-Table	imgui.ini	/^[Table][0xA806A911,4]$/;"	s
-Table	imgui.ini	/^[Table][0xB14FDF8E,4]$/;"	s
-Table	imgui.ini	/^[Table][0xB71BFAF7,4]$/;"	s
-Table	imgui.ini	/^[Table][0xC2C1E239,4]$/;"	s
-Table	imgui.ini	/^[Table][0xC3BDFFDA,4]$/;"	s
-Table	imgui.ini	/^[Table][0xC70F6E46,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCA5EC9A7,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCA7E02A6,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCAF356BA,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCDD1CFD6,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCFCBAC81,4]$/;"	s
-Table	imgui.ini	/^[Table][0xCFF5C9DB,4]$/;"	s
-Table	imgui.ini	/^[Table][0xDFA7E5F6,4]$/;"	s
-Table	imgui.ini	/^[Table][0xF1D7198C,4]$/;"	s
-Table	imgui.ini	/^[Table][0xF9CB9FE2,4]$/;"	s
+Table	imgui.ini	/^[Table][0x1EF3B86E,4]$/;"	s
+Table	imgui.ini	/^[Table][0x62D57479,4]$/;"	s
 TriangleContactCache	TriangleContactCache.h	/^    TriangleContactCache(){}$/;"	f	struct:TriangleContactCache	typeref:typename:__host__ __device__
 TriangleContactCache	TriangleContactCache.h	/^typedef struct TriangleContactCache{$/;"	s
 TriangleContactCache	TriangleContactCache.h	/^}TriangleContactCache;$/;"	t	typeref:struct:TriangleContactCache
@@ -146,9 +111,10 @@ WIP	README.md	/^# WIP$/;"	c
 WallGroup	ParticleSystem.h	/^typedef struct WallGroup{$/;"	s
 WallGroup	ParticleSystem.h	/^} WallGroup;$/;"	t	typeref:struct:WallGroup
 Window	imgui.ini	/^[Window][Animation Control]$/;"	s
+Window	imgui.ini	/^[Window][Choose Result Folder##ChooseResult]$/;"	s
 Window	imgui.ini	/^[Window][Choose STL File##ChooseSTL]$/;"	s
 Window	imgui.ini	/^[Window][Debug##Default]$/;"	s
-Window	imgui.ini	/^[Window][Render Mode]$/;"	s
+Window	imgui.ini	/^[Window][Draw Result]$/;"	s
 Window	imgui.ini	/^[Window][STL Control]$/;"	s
 _BOUNDINGBOX_H_	BoundingBox.h	/^#define _BOUNDINGBOX_H_$/;"	d
 _BVH_H_	BVH.h	/^#define _BVH_H_$/;"	d
@@ -305,7 +271,7 @@ cellOffset	BoundingBox.h	/^    int *cellOffset; $/;"	m	struct:BoundingBox	typere
 cellOffset	BoundingBox.h	/^    int *cellOffset; $/;"	m	struct:DeviceBoundingBox	typeref:typename:int *
 cellx	ParticleSystem.h	/^    int* cellx; \/\/coordinate index in structured cell$/;"	m	struct:DeviceParticleGroup	typeref:typename:int *
 cellx	ParticleSystem.h	/^    int* cellx; \/\/coordinate index in structured cell$/;"	m	struct:ParticleSystem	typeref:typename:int *
-checkOoB	cpu_dem.cu	/^void checkOoB(ParticleSystem *p, BoundingBox* box){$/;"	f	typeref:typename:void
+checkOoB	cpu_dem.cu	/^void checkOoB(ParticleSystem *p, ParticleSystem *tmpP, BoundingBox* box){$/;"	f	typeref:typename:void
 check_g_kernel	device_dem.cu	/^__global__ void check_g_kernel(DeviceParticleGroup* ps,DeviceTriangleMesh *mesh){$/;"	f	typeref:typename:void
 child	cJSON.h	/^    struct cJSON *child;$/;"	m	struct:cJSON	typeref:struct:cJSON *
 cjson_min	cJSON.c	/^#define cjson_min(/;"	d	file:

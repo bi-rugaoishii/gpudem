@@ -126,35 +126,40 @@ void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
     }
 
 
+    for(int i=0; i<p->N; i++){
+        if (p->pId[i]!= pid){
+            continue;
+        }else{
+            double dt = p->dt*p->time_factor; 
+            double time = dt*(double)step;
 
-    double dt = p->dt*p->time_factor; 
-    double time = dt*(double)step;
-
-    double x=(p->x[pid*3+0]*p->length_factor);
-    double y=(p->x[pid*3+1]*p->length_factor);
-    double z=(p->x[pid*3+2]*p->length_factor);
-
-
-    double ax=(p->a[pid*3+0]*p->length_factor/(p->time_factor*p->time_factor));
-    double ay=(p->a[pid*3+1]*p->length_factor/(p->time_factor*p->time_factor));
-    double az=(p->a[pid*3+2]*p->length_factor/(p->time_factor*p->time_factor));
-
-    double vx=(p->v[pid*3+0]*p->length_factor/p->time_factor);
-    double vy=(p->v[pid*3+1]*p->length_factor/p->time_factor);
-    double vz=(p->v[pid*3+2]*p->length_factor/p->time_factor);
+            double x=(p->x[i*3+0]*p->length_factor);
+            double y=(p->x[i*3+1]*p->length_factor);
+            double z=(p->x[i*3+2]*p->length_factor);
 
 
-    double angax=(p->anga[pid*3+0]/(p->time_factor*p->time_factor));
-    double angay=(p->anga[pid*3+1]/(p->time_factor*p->time_factor));
-    double angaz=(p->anga[pid*3+2]/(p->time_factor*p->time_factor));
+            double ax=(p->a[i*3+0]*p->length_factor/(p->time_factor*p->time_factor));
+            double ay=(p->a[i*3+1]*p->length_factor/(p->time_factor*p->time_factor));
+            double az=(p->a[i*3+2]*p->length_factor/(p->time_factor*p->time_factor));
 
-    double angvx=(p->angv[pid*3+0]/(p->time_factor));
-    double angvy=(p->angv[pid*3+1]/(p->time_factor));
-    double angvz=(p->angv[pid*3+2]/(p->time_factor));
+            double vx=(p->v[i*3+0]*p->length_factor/p->time_factor);
+            double vy=(p->v[i*3+1]*p->length_factor/p->time_factor);
+            double vz=(p->v[i*3+2]*p->length_factor/p->time_factor);
 
-    int isActive=p->isActive[pid];
-    fprintf(fp,"%f %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d\n",time,pid,x,y,z,vx,vy,vz,ax,ay,az,angvx,angvy,angvz,angax,angay,angaz,isActive);
 
+            double angax=(p->anga[i*3+0]/(p->time_factor*p->time_factor));
+            double angay=(p->anga[i*3+1]/(p->time_factor*p->time_factor));
+            double angaz=(p->anga[i*3+2]/(p->time_factor*p->time_factor));
+
+            double angvx=(p->angv[i*3+0]/(p->time_factor));
+            double angvy=(p->angv[i*3+1]/(p->time_factor));
+            double angvz=(p->angv[i*3+2]/(p->time_factor));
+
+            int isActive=p->isActive[i];
+            fprintf(fp,"%f %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d\n",time,pid,x,y,z,vx,vy,vz,ax,ay,az,angvx,angvy,angvz,angax,angay,angaz,isActive);
+            break;
+        }
+    }
 
 
 

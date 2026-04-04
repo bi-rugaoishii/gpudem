@@ -287,6 +287,7 @@ void wall_collision_verlet(ParticleSystem* p,TriangleMesh* mesh){
 
                 ContactCache c;
                 c = calc_normal_force_wall(p,i,indTri,tc.n,delmag);
+
                 calc_tangential_force_wall(p,i,indTri,c);
             }
         }
@@ -596,7 +597,7 @@ inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCach
     int neiInd=0;
 
     for (int k=0; k<p->numContWall[i]; k++){
-        if (j == p->indHisWall[ci+k]){ /* if the contact particle is in the history */
+        if (j == p->indHisWall[ci+k]){ /* if the contact wall is in the history */
             isInHis =1;
             neiInd=k;
             p->isContactWall[ci+neiInd]=1;
@@ -958,7 +959,10 @@ void particle_collision_verlet(ParticleSystem* p, BoundingBox *box){
             double distsq = vdot(del,del);
             double R = p->r[i]+p->r[j];
 
+
             if (distsq<R*R){
+
+
                 double dist = sqrt(distsq);
                 double delMag = R-dist;
                 if (delMag*p->invr[i]*0.5>0.05){
@@ -1434,6 +1438,8 @@ void cpu_dem_verlet_verlet(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox*
         update_neighborlist_wall(p,mesh,bvh,box->skinR);
         //update_neighborlist_wall_nobvh(p,mesh,box,box->skinR);
     }
+
+
 }
 
 void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step){

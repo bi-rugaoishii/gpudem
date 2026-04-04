@@ -194,6 +194,12 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     td=p->deltHisyWall; p->deltHisyWall=tmp->deltHisyWall; tmp->deltHisyWall=td;
     td=p->deltHiszWall; p->deltHiszWall=tmp->deltHiszWall; tmp->deltHiszWall=td;
 
+    ti = p->isContact;      p->isContact = tmp->isContact;      tmp->isContact = ti;
+    ti = p->indHis;         p->indHis = tmp->indHis;            tmp->indHis = ti;
+
+    ti = p->isContactWall;  p->isContactWall = tmp->isContactWall; tmp->isContactWall = ti;
+    ti = p->indHisWall;     p->indHisWall = tmp->indHisWall;    tmp->indHisWall = ti;
+
     // ---- contact number ----
     ti=p->numCont;      p->numCont=tmp->numCont;      tmp->numCont=ti;
     ti=p->numContWall;  p->numContWall=tmp->numContWall; tmp->numContWall=ti;
@@ -394,8 +400,8 @@ void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_in
 }
 
 void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box){
-    //update_pList_withSort_fast(p,tmpPs,box);
-    update_pList_fast(p,box);
+    update_pList_withSort_fast(p,tmpPs,box);
+    //update_pList_fast(p,box);
 
     int skinR = box->skinR;
     for (int i=0; i<p->N; i++){
@@ -454,6 +460,7 @@ void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *b
 
 
 void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box){
+    printf("sorting\n");
     /* initialize */
     for (int i=0; i<box->numUsedCells; i++){
         int cid = box->usedCells[i];
