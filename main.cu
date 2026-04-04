@@ -294,7 +294,7 @@ int main(){
 
     /* ========== GPU ============= */
     if(isGPUon ==1){
-        for (int step = 1; step < steps; step++){
+        for (int step = 1; step <= steps; step++){
             #if USE_GPU
             /* GPU */
 
@@ -330,7 +330,7 @@ int main(){
     }else{
         /* ============= CPU ============== */
         #endif
-        for (int step = 1; step < steps; step++){
+        for (int step = 1; step <= steps; step++){
             /* CPU */
             // cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
             //cpu_dem_sort(&ps, &tmpPs, &box, step);
