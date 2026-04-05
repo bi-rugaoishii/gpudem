@@ -107,6 +107,7 @@ __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
    ======================================================
 */
 
+void device_dem_verlet_verlet_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
 void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);

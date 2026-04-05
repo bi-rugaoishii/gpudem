@@ -4,7 +4,6 @@ ARCH = sm_70
 CFLAGS = -O3
 GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false
 #CFLAGS = -O0 -g -G
-#CFLAGS = -O3  
 #CFLAGS = -O3  -pg
 #CFLAGS = -O0  -g -G 
 #CFLAGS = -Xcompiler -fsanitize=address -O0  -arch=$(ARCH)  -g  

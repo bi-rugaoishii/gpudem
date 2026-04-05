@@ -245,6 +245,7 @@ void allocateMemory(ParticleSystem* ps, int isGPUon);
    初期化
    ============================================================
    */
+void initializeTmpParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res);
 void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m, double k, double res);
 
 void nondimensionalize(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh);

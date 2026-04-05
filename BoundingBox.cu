@@ -91,6 +91,70 @@ void radixSortUint32(
     *indexPtr = srcIdx;
 }
 
+void swap_device_ps_pointer(DeviceParticleGroup** p, DeviceParticleGroup** tmpP){
+    DeviceParticleGroup* tmp = *p;
+    *p = *tmpP;
+    *tmpP = tmp;
+}
+
+void swap_device_ps_member_pointer(DeviceParticleGroup* p, DeviceParticleGroup* tmp){
+    double* td;
+    int*    ti;
+   // uint32_t* tu;
+
+
+    td=p->x; p->x=tmp->x; tmp->x=td;
+    td=p->v; p->v=tmp->v; tmp->v=td;
+
+    td=p->r; p->r=tmp->r; tmp->r=td;
+    td=p->rsq; p->rsq=tmp->rsq; tmp->rsq=td;
+    td=p->invr; p->invr=tmp->invr; tmp->invr=td;
+
+    td=p->m; p->m=tmp->m; tmp->m=td;
+    td=p->invm; p->invm=tmp->invm; tmp->invm=td;
+    td=p->sqrtm; p->sqrtm=tmp->sqrtm; tmp->sqrtm=td;
+    td=p->moi; p->moi=tmp->moi; tmp->moi=td;
+    td=p->invmoi; p->invmoi=tmp->invmoi; tmp->invmoi=td;
+    td=p->etaconst; p->etaconst=tmp->etaconst; tmp->etaconst=td;
+
+    td=p->angv; p->angv=tmp->angv; tmp->angv=td;
+
+    // ---- contact history ----
+    td=p->deltHisx;     p->deltHisx=tmp->deltHisx;     tmp->deltHisx=td;
+    td=p->deltHisy;     p->deltHisy=tmp->deltHisy;     tmp->deltHisy=td;
+    td=p->deltHisz;     p->deltHisz=tmp->deltHisz;     tmp->deltHisz=td;
+
+    td=p->deltHisxWall; p->deltHisxWall=tmp->deltHisxWall; tmp->deltHisxWall=td;
+    td=p->deltHisyWall; p->deltHisyWall=tmp->deltHisyWall; tmp->deltHisyWall=td;
+    td=p->deltHiszWall; p->deltHiszWall=tmp->deltHiszWall; tmp->deltHiszWall=td;
+
+    ti = p->isContact;      p->isContact = tmp->isContact;      tmp->isContact = ti;
+    ti = p->indHis;         p->indHis = tmp->indHis;            tmp->indHis = ti;
+
+    ti = p->isContactWall;  p->isContactWall = tmp->isContactWall; tmp->isContactWall = ti;
+    ti = p->indHisWall;     p->indHisWall = tmp->indHisWall;    tmp->indHisWall = ti;
+
+    // ---- contact number ----
+    ti=p->numCont;      p->numCont=tmp->numCont;      tmp->numCont=ti;
+    ti=p->numContWall;  p->numContWall=tmp->numContWall; tmp->numContWall=ti;
+
+    // ---- cell info ----
+    ti=p->cellId;       p->cellId=tmp->cellId;       tmp->cellId=ti;
+    ti=p->cellx;        p->cellx=tmp->cellx;         tmp->cellx=ti;
+
+    // ---- particle id ----
+    ti=p->pId;          p->pId=tmp->pId;             tmp->pId=ti;
+
+    ti=p->isActive;       p->isActive=tmp->isActive;       tmp->isActive=ti;
+
+    ti=p->refreshVerletFlag;      p->refreshVerletFlag=tmp->refreshVerletFlag;      tmp->refreshVerletFlag=ti;
+
+    // ---- morton key is swapped to p->tmpMortonkey ----
+    /*
+    tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
+    */
+}
+
 void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     int N = p->N;
 
@@ -160,8 +224,8 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
         tmp->cellx[i*DIM+2]  = p->cellx[src*DIM+2];
 
 
-        // ---- morton key ----
-        tmp->mortonKey[i] = p->mortonKey[src];
+        // ---- morton key is already swapped----
+        //tmp->mortonKey[i] = p->mortonKey[src];
         tmp->pId[i] = p->pId[src];
     }
 
@@ -169,7 +233,7 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     /* swap pointers*/
     double* td;
     int*    ti;
-    uint32_t* tu;
+    //uint32_t* tu;
 
     td=p->x; p->x=tmp->x; tmp->x=td;
     td=p->v; p->v=tmp->v; tmp->v=td;
@@ -212,10 +276,12 @@ void swap_ps(ParticleSystem *p, ParticleSystem *tmp){
     ti=p->pId;          p->pId=tmp->pId;             tmp->pId=ti;
 
     ti=p->isActive;       p->isActive=tmp->isActive;       tmp->isActive=ti;
-    // ---- morton key ----
-    tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
+
+    // ---- morton key is already swapped----
+    //tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
 
 }
+
 
 void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
 
@@ -474,12 +540,13 @@ void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,Boundin
     }
     /* get cellId and get mortonkey*/
     for (int i=0; i<p->N; i++){
-        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-        p->cellx[i*DIM+0] = dx;
-        p->cellx[i*DIM+1] = dy;
-        p->cellx[i*DIM+2] = dz;
+        int bi = i*DIM;
+        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[bi+0] = dx;
+        p->cellx[bi+1] = dy;
+        p->cellx[bi+2] = dz;
         p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
         p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
     }
@@ -546,14 +613,16 @@ void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox 
         p->mortonOrder[i] = i;
     }
 
+
     /* get cellId and get mortonkey*/
     for (int i=0; i<p->N; i++){
-        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-        p->cellx[i*DIM+0] = dx;
-        p->cellx[i*DIM+1] = dy;
-        p->cellx[i*DIM+2] = dz;
+        int bi=i*DIM;
+        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[bi+0] = dx;
+        p->cellx[bi+1] = dy;
+        p->cellx[bi+2] = dz;
         p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
         p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
     }
@@ -617,12 +686,17 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
                         printf("Cell Id is FUCKED BRO!");
                     }
 
+
+                    /** put this paragraph if want to use the cell linked list triangles*/
+                    /*
+                    int tNum = box->tNum[cellId];
+
+                    box->tList[cellId*box->MAX_TRI+tNum]=i;
                     if (box->tNum[cellId]>= box->MAX_TRI){
                         printf("!!!!!!!Too many triangles in a cell!!!!\n");
                     }
+                    */
 
-                    int tNum = box->tNum[cellId];
-                    box->tList[cellId*box->MAX_TRI+tNum]=i;
                     box->tNum[cellId]++;
                 }
             }
@@ -760,6 +834,166 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
    device  related functions
    ===================================
  */
+__global__ void checkConsistency(DeviceParticleGroup* p){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i >= p->N) return;
+
+    int bi = i * DIM;
+
+    uint32_t key = morton3D(
+        (uint32_t)p->cellx[bi+0],
+        (uint32_t)p->cellx[bi+1],
+        (uint32_t)p->cellx[bi+2]
+    );
+
+    if(key != p->mortonKey[i]){
+        printf("ERROR at i=%d pId=%d\n", i, p->pId[i]);
+        printf("cellx=(%d,%d,%d) key=%u but mortonKey=%u\n",
+            p->cellx[bi+0],
+            p->cellx[bi+1],
+            p->cellx[bi+2],
+            key,
+            p->mortonKey[i]);
+    }
+}
+
+__global__ void check(DeviceParticleGroup* p){
+    printf("device mortonKey ptr: %p\n", p->mortonKey);
+}
+
+__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=p->N){
+        return;
+    }
+
+
+    int src = p->tmpMortonOrder[i];
+
+    // --- position ---
+    tmp->x[i*3+0] = p->x[src*3+0];
+    tmp->x[i*3+1] = p->x[src*3+1];
+    tmp->x[i*3+2] = p->x[src*3+2];
+
+    // --- velocity ---
+    tmp->v[i*3+0] = p->v[src*3+0];
+    tmp->v[i*3+1] = p->v[src*3+1];
+    tmp->v[i*3+2] = p->v[src*3+2];
+
+    // --- ang velocity ---
+    tmp->angv[i*3+0] = p->angv[src*3+0];
+    tmp->angv[i*3+1] = p->angv[src*3+1];
+    tmp->angv[i*3+2] = p->angv[src*3+2];
+
+    // --- scalar ---
+    tmp->r[i] = p->r[src];
+    tmp->rsq[i] = p->rsq[src];
+    tmp->invr[i] = p->invr[src];
+
+    tmp->m[i] = p->m[src];
+    tmp->sqrtm[i] = p->sqrtm[src];
+    tmp->invm[i] = p->invm[src];
+    tmp->moi[i] = p->moi[src];
+    tmp->invmoi[i] = p->invmoi[src];
+    tmp->etaconst[i] = p->etaconst[src];
+
+    tmp->isActive[i] = p->isActive[src];
+
+    int bi = i*p->MAX_NEI;
+    int bsrc = src*p->MAX_NEI;
+    for (int j=0; j<p->MAX_NEI; j++){
+        // ---- contact history (particle) ----
+        tmp->deltHisx[bi+j] = p->deltHisx[bsrc+j];
+        tmp->deltHisy[bi+j] = p->deltHisy[bsrc+j];
+        tmp->deltHisz[bi+j] = p->deltHisz[bsrc+j];
+
+        tmp->isContact[bi+j] = p->isContact[bsrc+j];
+
+        /* get the after order index of contact particle */
+        tmp->indHis[bi+j] = p->indHis[bsrc+j];
+
+        // ---- contact history (wall) ----
+        tmp->deltHisxWall[bi+j] = p->deltHisxWall[bsrc+j];
+        tmp->deltHisyWall[bi+j] = p->deltHisyWall[bsrc+j];
+        tmp->deltHiszWall[bi+j] = p->deltHiszWall[bsrc+j];
+        tmp->isContactWall[bi+j] = p->isContactWall[bsrc+j];
+        tmp->indHisWall[bi+j] = p->indHisWall[bsrc+j];
+
+    }
+
+    // ---- number of contact ----
+    tmp->numCont[i]     = p->numCont[src];
+    tmp->numContWall[i] = p->numContWall[src];
+
+    // ---- cell info ----
+    tmp->cellId[i] = p->cellId[src];
+    tmp->cellx[i*DIM+0]  = p->cellx[src*DIM+0];
+    tmp->cellx[i*DIM+1]  = p->cellx[src*DIM+1];
+    tmp->cellx[i*DIM+2]  = p->cellx[src*DIM+2];
+
+
+    // ---- morton key is refreshed here from the member tmpMortonkey ----
+    //p->mortonKey[i] = p->tmpMortonKey[i];
+
+    tmp->pId[i] = p->pId[src];
+
+}
+
+__global__ void dk_morton_key(DeviceParticleGroup* p, DeviceBoundingBox* box){
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=p->N){
+        return;
+    }
+
+    int bi=i*DIM;
+    p->mortonOrder[i] = i;
+    p->mortonKey[i]=morton3D((uint32_t)p->cellx[bi+0], (uint32_t)p->cellx[bi+1], (uint32_t)p->cellx[bi+2]);
+
+    /* for debug */
+    /*
+    printf("ix=%d iy=%d iz=%d, key=%d\n",p->cellx[bi+0],p->cellx[bi+1],p->cellx[bi+2],p->mortonKey[i]);
+    */
+
+
+}
+
+__global__ void dk_print_N(DeviceParticleGroup* p, int N){
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=N){
+        return;
+    }
+
+    int bi=i*DIM;
+    /* for debug */
+    printf("ix=%d iy=%d iz=%d, key=%d\n",p->cellx[bi+0],p->cellx[bi+1],p->cellx[bi+2],p->mortonKey[i]);
+
+}
+
+__global__ void dk_print(DeviceParticleGroup* p){
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=p->N){
+        return;
+    }
+
+    int bi=i*DIM;
+
+    printf("i=%d pId=%d ix=%u iy=%u iz=%u key=%u\n",
+            i, p->pId[i], p->cellx[bi+0], p->cellx[bi+1],p->cellx[bi+2],
+            p->mortonKey[i]);
+}
+__global__ void dk_print_tmpMorton(DeviceParticleGroup* p){
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=p->N){
+        return;
+    }
+
+    int bi=i*DIM;
+
+    printf("i=%d pId=%d ix=%u iy=%u iz=%u key=%u\n",
+            i, p->pId[i], p->cellx[bi+0], p->cellx[bi+1],p->cellx[bi+2],
+            p->tmpMortonKey[i]);
+}
 
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
@@ -789,12 +1023,18 @@ __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
 }
 
 __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box){
-    int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-    int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-    int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-    p->cellx[i*DIM+0] = dx;
-    p->cellx[i*DIM+1] = dy;
-    p->cellx[i*DIM+2] = dz;
+    int bi = i*DIM;
+    int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+    int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+    int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+    p->cellx[bi+0] = dx;
+    p->cellx[bi+1] = dy;
+    p->cellx[bi+2] = dz;
+
+    /* for debug */
+    /*
+    printf("recalc i=%d pId=%d ix=%d iy=%d\n", i, p->pId[i], dx, dy);
+    */
 
     return (box->sizey*dz+dy)*box->sizex+dx;
 }
@@ -856,6 +1096,51 @@ __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *
     p->refx[i]=p->x[bi+0];
     p->refy[i]=p->x[bi+1];
     p->refz[i]=p->x[bi+2];
+}
+
+void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize){
+
+    /* initialize */
+    cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
+    cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
+    cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
+
+    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+
+    dk_morton_key<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+
+
+    cub::DeviceRadixSort::SortPairs(
+            p->d_group.tmp_storage,
+            p->d_group.tmp_bytes,
+            p->d_group.mortonKey,
+            p->d_group.tmpMortonKey,
+            p->d_group.mortonOrder,
+            p->d_group.tmpMortonOrder,
+            p->N);
+
+
+    cudaDeviceSynchronize();
+    d_swap_ps<<<gridSize,blockSize>>>(p->d_groupPtr, tmpPs->d_groupPtr);
+
+
+    swap_device_ps_member_pointer(&p->d_group,&tmpPs->d_group);
+    cudaMemcpy(p->d_groupPtr, &p->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
+    cudaMemcpy(tmpPs->d_groupPtr, &tmpPs->d_group,
+           sizeof(DeviceParticleGroup),
+           cudaMemcpyHostToDevice);
+
+
+
+    cub::DeviceScan::ExclusiveSum(box->d_box.tmpExSum,
+            box->d_box.scanTmpBytes,
+            box->d_box.pNum,
+            box->d_box.pStart,
+            box->d_box.N);
+
+    dk_build_pList<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
 }
 
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){

@@ -920,7 +920,9 @@ void d_particle_collision_naive(DeviceParticleGroup* p, int i){
 __device__ __forceinline__
 void updateAcceleration(DeviceParticleGroup* p, int i){
     int bi = i*DIM;
-    p->a[bi+0] = (p->g[0]+p->f[bi+0]*p->invm[i]) ;
+
+
+    p->a[bi+0] = (p->g[0]+p->f[bi+0]*p->invm[i]);
     p->a[bi+1] = (p->g[1]+p->f[bi+1]*p->invm[i]);
     p->a[bi+2] = (p->g[2]+p->f[bi+2]*p->invm[i]);
 }
@@ -1092,6 +1094,46 @@ __global__ void dk_checkOoB(DeviceParticleGroup *p,DeviceBoundingBox* box){
    main routine 
    ======================================================
  */
+void device_dem_verlet_verlet_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
+
+    /* initialize force */
+    cudaMemset(p->d_group.f, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.mom, 0, sizeof(double)*DIM*p->d_group.N);
+    cudaMemset(p->d_group.isContact, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+    cudaMemset(p->d_group.isContactWall, 0, sizeof(int)*p->d_group.N*p->d_group.MAX_NEI);
+
+    k_collision_verlet_verlet<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr,mesh->d_meshPtr);
+    k_integrate<<<gridSize, blockSize>>>(p->d_groupPtr);
+
+    dk_checkOoB<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    /* ==  check if refresh of verlet list required == */
+
+    cudaMemset(p->d_group.refreshVerletFlag, 0, sizeof(int));
+    k_shouldRefreshNeighborList<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+    int shouldRefreshVerletFlag = 0;
+    cudaMemcpy(&shouldRefreshVerletFlag,p->d_group.refreshVerletFlag,sizeof(int), cudaMemcpyDeviceToHost);
+
+    /* == refresh neighborlist if needed == */
+
+    if (shouldRefreshVerletFlag==1){
+        printf("sorting\n");
+        d_update_pList_withSort(p,tmpPs,box,gridSize, blockSize);
+
+
+        k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+        k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_groupPtr,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);
+    }
+
+    /*
+       cudaError_t err = cudaGetLastError();
+       printf("CUDA error = %s\n", cudaGetErrorString(err));
+     */
+    //    cudaDeviceSynchronize();
+
+}
+
 void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
 
     /* initialize force */
@@ -1116,6 +1158,8 @@ void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *
     /* == refresh neighborlist if needed == */
 
     if (shouldRefreshVerletFlag==1){
+        /* for debug */
+        printf("refreshing\n");
         d_update_pList(p,box,gridSize, blockSize);
         k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
         k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_groupPtr,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);

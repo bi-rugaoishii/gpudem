@@ -486,6 +486,81 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
    初期化
    ============================================================
  */
+void initializeTmpParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res)
+{
+    for (int i = 0; i < ps->N; i++){
+        ps->x[i*DIM+0] = 0.;
+        ps->x[i*DIM+1] = 0.;
+        ps->x[i*DIM+2] = 0.;
+
+
+        /*
+           ps->x[i*DIM+0] = 0.25;
+           ps->x[i*DIM+1] = (double)i*1.0+0.03;
+           ps->x[i*DIM+2] = 0.25;
+         */
+
+        ps->r[i] = r;
+        ps->rsq[i] = ps->r[i]*ps->r[i];
+        ps->invr[i] = 1./ps->r[i];
+        ps->k[i] = k;
+        ps->m[i] = m;
+        ps->sqrtm[i] = sqrt(m);
+        ps->invm[i] = 1./m;
+        ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
+        ps->cellId[i] = -1;
+        ps->isActive[i] = 1;
+
+
+        ps->numCont[i] = 0;
+        ps->numContWall[i] = 0;
+
+        ps->v[i*DIM+0] = 0.;
+        ps->v[i*DIM+1] = 0.;
+        ps->v[i*DIM+2] = 0.;
+
+        /* ======== for temporarly check========= */
+        /*
+           if (i==1){
+           ps->v[i*DIM+0] = 1.;
+           ps->v[i*DIM+1] = 0.;
+           ps->v[i*DIM+2] = 0.;
+           }
+         */
+        /* ======== for temporarly check========= */
+
+        ps->angv[i*DIM+0] = 0.;
+        ps->angv[i*DIM+1] = 0.;
+        ps->angv[i*DIM+2] = 0.;
+
+        ps->anga[i*DIM+0] = 0.;
+        ps->anga[i*DIM+1] = 0.;
+        ps->anga[i*DIM+2] = 0.;
+
+        ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
+        ps->invmoi[i] = 1./ps->moi[i];
+
+        ps->pId[i] = i;
+
+
+        for (int j=0; j<ps->MAX_NEI; j++){
+            ps->indHis[i*ps->MAX_NEI+j] = -1;
+            ps->indHisWall[i*ps->MAX_NEI+j] = -1;
+            ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
+
+            ps->isContact[i*ps->MAX_NEI+j] = -1;
+            ps->isContactWall[i*ps->MAX_NEI+j] = -1;
+
+            ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
+            ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
+        }
+    }
+}
+
 void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res)
 {
     int max_trials = 1000; // 1粒子あたりの再配置試行回数

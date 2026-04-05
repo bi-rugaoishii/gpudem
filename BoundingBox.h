@@ -98,7 +98,7 @@ int compare_int(const void *a, const void *b);
 
 /* ============ Morton key related ================ */
 
-inline uint32_t expandBits(uint32_t v){
+__device__ __host__ __forceinline__ uint32_t expandBits(uint32_t v){
     v &= 0x000003ff;                 // 10bit
     v = (v | (v << 16)) & 0x030000FF;
     v = (v | (v <<  8)) & 0x0300F00F;
@@ -106,7 +106,7 @@ inline uint32_t expandBits(uint32_t v){
     v = (v | (v <<  2)) & 0x09249249;
     return v;
 }
-inline uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){
+__device__ __host__ __forceinline__  uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){
     return (expandBits(ix) << 2)| (expandBits(iy) << 1)| (expandBits(iz));
 }
 
@@ -118,6 +118,7 @@ void radixSortUint32(
     int*       workIndex);
 
 void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
+void swap_device_ps_pointer(DeviceParticleGroup **p, DeviceParticleGroup **tmp);
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
 
@@ -137,10 +138,13 @@ void free_BoundingBox(BoundingBox *box, int isGPUon);
  * device related functions
  * ============================*/
 
+__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp);
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
 
  __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box);
+
+void d_update_pList_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize);
 
 __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box);
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);

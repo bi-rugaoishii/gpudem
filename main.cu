@@ -125,7 +125,8 @@ int main(){
 
     printf("initalizing particles\n");
     initializeParticles(&ps,json_inlet,r,m,k,res);
-    initializeParticles(&tmpPs,json_inlet,r,m,k,res);
+    initializeTmpParticles(&tmpPs,json_inlet,r,m,k,res); 
+    //initializeParticles(&tmpPs,json_inlet,r,m,k,res); //needs to be fixed by just copying needed values from ps to tmpPs
     printf("initalizing particles done\n");
     printf("eta const[0] = %f\n",ps.etaconst[0]);
 
@@ -147,7 +148,7 @@ int main(){
     double end_time = cJSON_GetObjectItem(json_others,"endTime")->valuedouble;
     int outStep = floor(out_time/dt);
     dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
-    printf("Outstep = %d,dt = %f\n",outStep,dt);
+    printf("Outstep = %d,dt = %e\n",outStep,dt);
 
     ps.dt=dt;
 
@@ -166,9 +167,12 @@ int main(){
     update_tList(&box, &mesh);
     printf("Updating triangle list done!\n");
 
+
+
     printf("\nUpdating neighbor list\n");
     update_neighborlist(&ps,&tmpPs,&box);
     printf("Updating neighbor list done!\n");
+
 
 
     /* initialization for file output */
@@ -221,6 +225,7 @@ int main(){
     #if NONDIM
     printf("nondimensionalizing ...\n");
     nondimensionalize(&ps,&box,&mesh);
+   // nondimensionalize(&tmpPs,&box,&mesh);
     printf("nondimensionalizing done \n");
     printf("\n");
     printf("g after nondim is %f %f %f \n",ps.g[0],ps.g[1],ps.g[2]);
@@ -244,8 +249,8 @@ int main(){
      */
 
     printf("\nCreating wall neighborlist\n");
-    //update_neighborlist_wall(&ps,&mesh,&bvh,box.skinR);
-    update_neighborlist_wall_nobvh(&ps,&mesh,&box,box.skinR);
+    update_neighborlist_wall(&ps,&mesh,&bvh,box.skinR);
+    //update_neighborlist_wall_nobvh(&ps,&mesh,&box,box.skinR);
     printf("created wall neighborlist\n");
 
 
@@ -288,6 +293,7 @@ int main(){
     #endif
 
 
+
     /* ====== main dem routine ===== */
 
     printf("starting \n");
@@ -304,8 +310,9 @@ int main(){
             //device_dem(&ps, &box, gridSize, blockSize);
             //device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
             //device_dem_verlet_triangles(&ps, &box, &mesh,gridSize, blockSize);
-            device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
-            //device_dem_withSort(&ps, &tmpPs,&box, gridSize, blockSize,step);
+            //device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
+            device_dem_verlet_verlet_withSort(&ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+
             #if OUTPUT
             if (step % outStep == 0)
             {

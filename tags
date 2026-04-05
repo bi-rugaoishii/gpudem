@@ -271,6 +271,8 @@ cellOffset	BoundingBox.h	/^    int *cellOffset; $/;"	m	struct:BoundingBox	typere
 cellOffset	BoundingBox.h	/^    int *cellOffset; $/;"	m	struct:DeviceBoundingBox	typeref:typename:int *
 cellx	ParticleSystem.h	/^    int* cellx; \/\/coordinate index in structured cell$/;"	m	struct:DeviceParticleGroup	typeref:typename:int *
 cellx	ParticleSystem.h	/^    int* cellx; \/\/coordinate index in structured cell$/;"	m	struct:ParticleSystem	typeref:typename:int *
+check	BoundingBox.cu	/^__global__ void check(DeviceParticleGroup* p){$/;"	f	typeref:typename:void
+checkConsistency	BoundingBox.cu	/^__global__ void checkConsistency(DeviceParticleGroup* p){$/;"	f	typeref:typename:void
 checkOoB	cpu_dem.cu	/^void checkOoB(ParticleSystem *p, ParticleSystem *tmpP, BoundingBox* box){$/;"	f	typeref:typename:void
 check_g_kernel	device_dem.cu	/^__global__ void check_g_kernel(DeviceParticleGroup* ps,DeviceTriangleMesh *mesh){$/;"	f	typeref:typename:void
 child	cJSON.h	/^    struct cJSON *child;$/;"	m	struct:cJSON	typeref:struct:cJSON *
@@ -335,9 +337,11 @@ d_particle_collision_cell_linked	device_dem.cu	/^void d_particle_collision_cell_
 d_particle_collision_naive	device_dem.cu	/^void d_particle_collision_naive(DeviceParticleGroup* p, int i){$/;"	f	typeref:typename:void
 d_particle_collision_verlet	device_dem.cu	/^__device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,Devic/;"	f	typeref:typename:void
 d_sphereAABBOverlapNeighbor	BVH.cu	/^__device__ __forceinline__ int d_sphereAABBOverlapNeighbor(DeviceParticleGroup* p,int i,DeviceBV/;"	f	typeref:typename:int
+d_swap_ps	BoundingBox.cu	/^__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp){$/;"	f	typeref:typename:void
 d_update_history	device_dem.cu	/^void d_update_history(DeviceParticleGroup *p,int i){$/;"	f	typeref:typename:void
 d_update_history_wall	device_dem.cu	/^void d_update_history_wall(DeviceParticleGroup *p,int i){$/;"	f	typeref:typename:void
 d_update_pList	BoundingBox.cu	/^void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){$/;"	f	typeref:typename:void
+d_update_pList_withSort	BoundingBox.cu	/^void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingBox *box,int grid/;"	f	typeref:typename:void
 d_wall_collision_naive	device_dem.cu	/^void d_wall_collision_naive(DeviceParticleGroup* ps,int i){$/;"	f	typeref:typename:void
 d_wall_collision_triangles	device_dem.cu	/^void d_wall_collision_triangles(DeviceParticleGroup* p,int i,DeviceBoundingBox *box, DeviceTrian/;"	f	typeref:typename:void
 d_wall_collision_verlet	device_dem.cu	/^__device__ __forceinline__ void d_wall_collision_verlet(DeviceParticleGroup* p,int i, DeviceTria/;"	f	typeref:typename:void
@@ -364,12 +368,17 @@ device_dem	device_dem.cu	/^void device_dem(ParticleSystem *p, BoundingBox *box, 
 device_dem_triangles	device_dem.cu	/^void device_dem_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, /;"	f	typeref:typename:void
 device_dem_verlet_triangles	device_dem.cu	/^void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gri/;"	f	typeref:typename:void
 device_dem_verlet_verlet	device_dem.cu	/^void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, /;"	f	typeref:typename:void
+device_dem_verlet_verlet_withSort	device_dem.cu	/^void device_dem_verlet_verlet_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box/;"	f	typeref:typename:void
 dist	TriangleContactCache.h	/^    double dist;$/;"	m	struct:TriangleContactCache	typeref:typename:double
 dist_triangle	cpu_dem.cu	/^TriangleContactCache dist_triangle(ParticleSystem* ps, int i, TriangleMesh* mesh, int j){$/;"	f	typeref:typename:TriangleContactCache
 dist_triangle_neighbor	BVH.cu	/^TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleMesh* mesh, int j/;"	f	typeref:typename:TriangleContactCache
 dk_build_cellCount	BoundingBox.cu	/^__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 dk_build_pList	BoundingBox.cu	/^__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 dk_checkOoB	device_dem.cu	/^__global__ void dk_checkOoB(DeviceParticleGroup *p,DeviceBoundingBox* box){$/;"	f	typeref:typename:void
+dk_morton_key	BoundingBox.cu	/^__global__ void dk_morton_key(DeviceParticleGroup* p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
+dk_print	BoundingBox.cu	/^__global__ void dk_print(DeviceParticleGroup* p){$/;"	f	typeref:typename:void
+dk_print_N	BoundingBox.cu	/^__global__ void dk_print_N(DeviceParticleGroup* p, int N){$/;"	f	typeref:typename:void
+dk_print_tmpMorton	BoundingBox.cu	/^__global__ void dk_print_tmpMorton(DeviceParticleGroup* p){$/;"	f	typeref:typename:void
 dt	ParticleSystem.h	/^    double dt;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double
 dt	ParticleSystem.h	/^    double dt;$/;"	m	struct:ParticleSystem	typeref:typename:double
 dt	python/compareDrop.py	/^dt = 0.001$/;"	v
@@ -408,7 +417,7 @@ error	cJSON.c	/^} error;$/;"	t	typeref:struct:__anon7b2d70730108	file:
 eta	ContactCache.h	/^    double eta;$/;"	m	struct:ContactCache	typeref:typename:double
 etaconst	ParticleSystem.h	/^    double* etaconst;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 etaconst	ParticleSystem.h	/^    double* etaconst;$/;"	m	struct:ParticleSystem	typeref:typename:double *
-expandBits	BoundingBox.h	/^inline uint32_t expandBits(uint32_t v){$/;"	f	typeref:typename:uint32_t
+expandBits	BoundingBox.h	/^__device__ __host__ __forceinline__ uint32_t expandBits(uint32_t v){$/;"	f	typeref:typename:__device__ __host__ __forceinline__ uint32_t
 f	ParticleSystem.h	/^    double* f;$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 f	ParticleSystem.h	/^    double* f;$/;"	m	struct:ParticleSystem	typeref:typename:double *
 false	cJSON.c	/^#define false /;"	d	file:
@@ -460,6 +469,7 @@ indHisWallNow	ParticleSystem.h	/^    int* indHisWallNow; \/* Index of collided w
 index	TriangleMesh.h	/^    int index;             \/\/ unique vertex index$/;"	m	struct:__anond1da66be0108	typeref:typename:int
 initializeBVH	BVH.cu	/^void initializeBVH(BVH *bvh, int numTriangles, int isGPUon){$/;"	f	typeref:typename:void
 initializeParticles	ParticleSystem.cu	/^void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double/;"	f	typeref:typename:void
+initializeTmpParticles	ParticleSystem.cu	/^void initializeTmpParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,dou/;"	f	typeref:typename:void
 initialize_BoundingBox	BoundingBox.cu	/^void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, cJSON *json_/;"	f	typeref:typename:void
 inlet	demSettings.json	/^    "inlet":{$/;"	o
 inputMode	demSettings.json	/^        "inputMode":"shuffle",$/;"	s	object:inlet
@@ -571,7 +581,7 @@ moi	ParticleSystem.h	/^    double* moi; \/* moment of intertia *\/$/;"	m	struct:
 moi	ParticleSystem.h	/^    double* moi; \/* moment of intertia *\/$/;"	m	struct:ParticleSystem	typeref:typename:double *
 mom	ParticleSystem.h	/^    double* mom; \/* torque *\/$/;"	m	struct:DeviceParticleGroup	typeref:typename:double *
 mom	ParticleSystem.h	/^    double* mom; \/* torque *\/$/;"	m	struct:ParticleSystem	typeref:typename:double *
-morton3D	BoundingBox.h	/^inline uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){$/;"	f	typeref:typename:uint32_t
+morton3D	BoundingBox.h	/^__device__ __host__ __forceinline__  uint32_t morton3D(uint32_t ix, uint32_t iy,uint32_t iz){$/;"	f	typeref:typename:__device__ __host__ __forceinline__ uint32_t
 mortonKey	ParticleSystem.h	/^    uint32_t *mortonKey;$/;"	m	struct:DeviceParticleGroup	typeref:typename:uint32_t *
 mortonKey	ParticleSystem.h	/^    uint32_t *mortonKey;$/;"	m	struct:ParticleSystem	typeref:typename:uint32_t *
 mortonKey	TriangleMesh.h	/^    uint32_t *mortonKey;$/;"	m	struct:TriangleMesh	typeref:typename:uint32_t *
@@ -731,6 +741,8 @@ static_strlen	cJSON.c	/^#define static_strlen(/;"	d	file:
 string	cJSON.h	/^    char *string;$/;"	m	struct:cJSON	typeref:typename:char *
 suffix_object	cJSON.c	/^static void suffix_object(cJSON *prev, cJSON *item)$/;"	f	typeref:typename:void	file:
 swapBytes	output.cu	/^void swapBytes(void* data, size_t size)$/;"	f	typeref:typename:void
+swap_device_ps_member_pointer	BoundingBox.cu	/^void swap_device_ps_member_pointer(DeviceParticleGroup* p, DeviceParticleGroup* tmp){$/;"	f	typeref:typename:void
+swap_device_ps_pointer	BoundingBox.cu	/^void swap_device_ps_pointer(DeviceParticleGroup** p, DeviceParticleGroup** tmpP){$/;"	f	typeref:typename:void
 swap_ps	BoundingBox.cu	/^void swap_ps(ParticleSystem *p, ParticleSystem *tmp){$/;"	f	typeref:typename:void
 t	python/compareDrop.py	/^t = 0.0$/;"	v
 t	python/compareRoll.py	/^t = np.linspace(0,2,1000)$/;"	v
