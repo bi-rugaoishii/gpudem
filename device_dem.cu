@@ -1161,7 +1161,9 @@ void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *
         /* for debug */
         printf("refreshing\n");
         d_update_pList(p,box,gridSize, blockSize);
-        k_update_neighborlist<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+
+        printf("sort neighborlist\n");
+        k_update_neighborlist_endsort<<<gridSize, blockSize>>>(p->d_groupPtr,box->d_boxPtr);
         k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_groupPtr,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);
     }
 

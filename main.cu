@@ -310,8 +310,8 @@ int main(){
             //device_dem(&ps, &box, gridSize, blockSize);
             //device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
             //device_dem_verlet_triangles(&ps, &box, &mesh,gridSize, blockSize);
-            //device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
-            device_dem_verlet_verlet_withSort(&ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+            device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
+            //device_dem_verlet_verlet_withSort(&ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
 
             #if OUTPUT
             if (step % outStep == 0)

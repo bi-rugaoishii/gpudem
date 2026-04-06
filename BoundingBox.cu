@@ -516,6 +516,7 @@ void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *b
             }
         }/* neighbor cell search done */
         p->numNei[i]=numNei;
+        
 
         /* set reference position */
         p->refx[i]=p->x[bi+0];
@@ -1039,6 +1040,81 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
     return (box->sizey*dz+dy)*box->sizex+dx;
 }
 
+__device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei){
+
+
+    for (int i=1; i<numNei; i++){
+        int j=i;
+        int tmp=neiList[startInd+i];
+        while(j>0 && neiList[startInd+j-1]>tmp){
+            neiList[startInd+j]=neiList[startInd+j-1];
+            j--;
+        }
+        neiList[startInd+j]=tmp;
+    }
+
+}
+
+__global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+
+
+    int skinR = box->skinR;
+    if(p->isActive[i]!=1){
+        return;
+    }
+
+    //particle-particle
+    /* cycle through neighbor cells */
+    int bi=i*DIM;
+    int x=p->cellx[bi+0];
+    int y=p->cellx[bi+1];
+    int z=p->cellx[bi+2];
+    int numNei = 0;
+
+    for (int sx=-1; sx<=1; sx++){
+        for (int sy=-1; sy<=1; sy++){
+            for (int sz=-1; sz<=1; sz++){
+                int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+
+                int start = box->pStart[cellId];
+                int end = start+box->pNum[cellId];
+                for (int k=box->pStart[cellId]; k<end; k++){
+                    int j = box->pList[k];
+                    if (i==j){
+                        continue;
+                    }else{
+                        int bj=j*DIM;
+
+                        Vec3 del;
+                        /* normal points toward particle i */
+                        del.x = p->x[bi+0]- p->x[bj+0];
+                        del.y = p->x[bi+1]- p->x[bj+1];
+                        del.z = p->x[bi+2]- p->x[bj+2];
+                        double distsq = vdot(del,del);
+                        double R = p->r[i]+p->r[j]+skinR;
+                        if (distsq<R*R){
+                            p->neiList[i*p->MAX_NEI+numNei]=j;
+                            numNei+=1;
+                            if(numNei >= p->MAX_NEI){
+                                printf("Neighbor over flow!!!!\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }/* neighbor cell search done */
+    p->numNei[i]=numNei;
+    d_sort_neighborlist(p->neiList,i*p->MAX_NEI,numNei);
+
+    /* set reference position */
+    p->refx[i]=p->x[bi+0];
+    p->refy[i]=p->x[bi+1];
+    p->refz[i]=p->x[bi+2];
+}
+
 __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -1129,8 +1205,8 @@ void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingB
     swap_device_ps_member_pointer(&p->d_group,&tmpPs->d_group);
     cudaMemcpy(p->d_groupPtr, &p->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
     cudaMemcpy(tmpPs->d_groupPtr, &tmpPs->d_group,
-           sizeof(DeviceParticleGroup),
-           cudaMemcpyHostToDevice);
+            sizeof(DeviceParticleGroup),
+            cudaMemcpyHostToDevice);
 
 
 

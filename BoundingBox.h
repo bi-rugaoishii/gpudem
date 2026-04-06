@@ -138,10 +138,12 @@ void free_BoundingBox(BoundingBox *box, int isGPUon);
  * device related functions
  * ============================*/
 
+__device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei);
 __global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp);
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
 
+__global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box);
  __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box);
 
 void d_update_pList_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize);

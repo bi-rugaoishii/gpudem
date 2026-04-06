@@ -336,6 +336,7 @@ d_meshPtr	TriangleMesh.h	/^    DeviceTriangleMesh *d_meshPtr;$/;"	m	struct:Trian
 d_particle_collision_cell_linked	device_dem.cu	/^void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 d_particle_collision_naive	device_dem.cu	/^void d_particle_collision_naive(DeviceParticleGroup* p, int i){$/;"	f	typeref:typename:void
 d_particle_collision_verlet	device_dem.cu	/^__device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,Devic/;"	f	typeref:typename:void
+d_sort_neighborlist	BoundingBox.cu	/^__device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei){$/;"	f	typeref:typename:void
 d_sphereAABBOverlapNeighbor	BVH.cu	/^__device__ __forceinline__ int d_sphereAABBOverlapNeighbor(DeviceParticleGroup* p,int i,DeviceBV/;"	f	typeref:typename:int
 d_swap_ps	BoundingBox.cu	/^__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp){$/;"	f	typeref:typename:void
 d_update_history	device_dem.cu	/^void d_update_history(DeviceParticleGroup *p,int i){$/;"	f	typeref:typename:void
@@ -516,6 +517,7 @@ k_collision_verlet_verlet	device_dem.cu	/^__global__ void k_collision_verlet_ver
 k_integrate	device_dem.cu	/^__global__ void k_integrate(DeviceParticleGroup* p){$/;"	f	typeref:typename:void
 k_shouldRefreshNeighborList	device_dem.cu	/^__global__ void k_shouldRefreshNeighborList(DeviceParticleGroup *p, DeviceBoundingBox* box){$/;"	f	typeref:typename:void
 k_update_neighborlist	BoundingBox.cu	/^__global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){$/;"	f	typeref:typename:void
+k_update_neighborlist_endsort	BoundingBox.cu	/^__global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box){$/;"	f	typeref:typename:void
 k_update_neighborlist_wall	BVH.cu	/^__global__ void k_update_neighborlist_wall(DeviceParticleGroup *p, DeviceTriangleMesh *mesh, Dev/;"	f	typeref:typename:void
 left	BVH.h	/^    int* left;$/;"	m	struct:BVH	typeref:typename:int *
 left	BVH.h	/^    int* left;$/;"	m	struct:DeviceBVH	typeref:typename:int *
