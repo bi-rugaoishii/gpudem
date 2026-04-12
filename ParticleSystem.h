@@ -1,15 +1,100 @@
 #pragma once
-#ifndef _PARTICLESYSTEM_H_
-#define _PARTICLESYSTEM_H_
-#define DIM 3
+#include "hardCodedParameters.h"
 #include <stdint.h>
+#include <cstdlib>
+#include <cuda_runtime.h>
 #include "Vec3.h"
 #include "BoundingBox.h"
 #include "TriangleMesh.h"
 #include "cJSON.h"
 struct TriangleMesh;
 struct BoundingBox;
+/* ==================== Memory Structs =================== */
+struct HostMemory{
+    template <typename T>
+    static T* allocate(int N){
+        return static_cast<T*>(malloc(sizeof(T)*N));
+    }
 
+    template <typename T>
+    static void deallocate(T* ptr){
+        free(ptr);
+    }
+};
+
+struct DeviceMemory{
+    template <typename T>
+    static T* allocate(int N){
+        T* ptr;
+        cudaMalloc((void**)&ptr, sizeof(T)*N);
+        return ptr;
+    }
+
+    template <typename T>
+    static void deallocate(T* ptr){
+        cudaFree(ptr);
+    }
+
+};
+
+/* 
+=======================================
+  interface 
+=======================================
+*/
+
+typedef struct Parameters{
+    double dt;
+    double mu; //friction
+    int N;
+
+    /* nondimensionalize factor */
+    double time_factor;
+    double length_factor;
+    double mass_factor;
+}Parameters;
+
+typedef struct Common{
+    #define MEMBER(type,name,N) type* name;
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+}Common;
+
+typedef struct HostOnly{
+}HostOnly;
+
+typedef struct DeviceOnly{
+    /* for sorting */
+    void* tmp_storage;
+    size_t tmp_bytes;
+    int* refreshVerletFlag;
+}DeviceOnly;
+
+
+template <typename Memory>// typename used later to distinguish gpu and cpu
+struct ParticleSys;
+
+template <>
+struct ParticleSys<DeviceMemory>{
+    Parameters parameters;
+    Common p;
+    DeviceOnly deviceOnly;
+};
+
+template <>
+struct ParticleSys<HostMemory>{
+    Parameters parameters;
+    Common p;
+    HostOnly hostOnly;
+};
+
+/* ==================== Memory Allocation =================== */
+void allocate(ParticleSys<HostMemory> *ps);
+void allocate(ParticleSys<DeviceMemory> *ps);
+
+
+void deallocate(ParticleSys<HostMemory> *ps);
+void deallocate(ParticleSys<DeviceMemory> *ps);
 
 /*
 ============================================================
@@ -68,7 +153,6 @@ typedef struct DeviceParticleGroup{
 
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
-    int MAX_NEI; //sets maximum number of neighbors
                  
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
@@ -166,7 +250,6 @@ typedef struct ParticleSystem{
     int* indHisWallNow; /* Index of collided walls in the current step*/ 
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
-    int MAX_NEI; //sets maximum number of neighbors
 
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
@@ -245,11 +328,10 @@ void allocateMemory(ParticleSystem* ps, int isGPUon);
    初期化
    ============================================================
    */
-void initializeTmpParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res);
-void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m, double k, double res);
+void initializeTmpParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double k,double res);
+void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m, double k, double res);
 
-void nondimensionalize(ParticleSystem* ps, BoundingBox* box, TriangleMesh *mesh);
+void nondimensionalize(ParticleSys<HostMemory>* ps, BoundingBox* box, TriangleMesh *mesh);
 
 
 
-#endif

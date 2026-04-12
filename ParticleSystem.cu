@@ -161,6 +161,56 @@ void freeMemory(ParticleSystem* ps, int isGPUon){
 }
 
 
+/* ==================== Memory Allocation =================== */
+void allocate(ParticleSys<HostMemory> *ps){
+    int N=ps->parameters.N;
+    #define MEMBER(type,name,N) ps->p.name = HostMemory::template allocate<type>(N);
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+}
+
+void allocate(ParticleSys<DeviceMemory> *ps){
+    int N=ps->parameters.N;
+    #define MEMBER(type,name,N) ps->p.name = DeviceMemory::template allocate<type>(N);
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+    cudaMalloc((void**)&ps->deviceOnly.refreshVerletFlag,sizeof(int));
+    
+    /* ===== for sorting ===============*/
+        ps->deviceOnly.tmp_storage=NULL;
+        ps->deviceOnly.tmp_bytes=0;
+
+        /* calculate temporarly size */
+
+        cub::DeviceRadixSort::SortPairs(
+                ps->deviceOnly.tmp_storage,
+                ps->deviceOnly.tmp_bytes,
+                ps->p.mortonKey,
+                ps->p.tmpMortonKey,
+                ps->p.mortonOrder,
+                ps->p.tmpMortonOrder,
+                N);
+
+        cudaMalloc((void**)&ps->deviceOnly.tmp_storage,ps->deviceOnly.tmp_bytes);
+}
+
+void deallocate(ParticleSys<HostMemory> *ps){
+    #define MEMBER(type,name,N) HostMemory::deallocate(ps->p.name);
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+}
+
+void deallocate(ParticleSys<DeviceMemory> *ps){
+    #define MEMBER(type,name,N) DeviceMemory::deallocate(ps->p.name);
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+    DeviceMemory::deallocate(ps->deviceOnly.refreshVerletFlag);
+    DeviceMemory::deallocate(ps->deviceOnly.tmp_storage);
+}
+
+    
+
+
 /*
    ============================================================
    Host→Device転送
@@ -175,7 +225,6 @@ void copyToDevice(ParticleSystem *ps)
     ps->d_group.N = ps->N;
     ps->d_group.walls.N = ps->walls.N;
     ps->d_group.mu = ps->mu;
-    ps->d_group.MAX_NEI = ps->MAX_NEI;
 
     cudaMemcpy(ps->d_group.x,  ps->x,  size*DIM, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.v,  ps->v,  size*DIM, cudaMemcpyHostToDevice);
@@ -205,43 +254,43 @@ void copyToDevice(ParticleSystem *ps)
     // ===== contact history =====
 
     cudaMemcpy(ps->d_group.deltHisx, ps->deltHisx,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.deltHisy, ps->deltHisy,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.deltHisz, ps->deltHisz,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.deltHisxWall, ps->deltHisxWall,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.deltHisyWall, ps->deltHisyWall,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.deltHiszWall, ps->deltHiszWall,
-            sizeof(double)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.indHis, ps->indHis,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.numCont, ps->numCont,
             sizeof(int)*ps->N, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.isContact, ps->isContact,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.isContactWall, ps->isContactWall,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.indHisWall, ps->indHisWall,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.indHisWallNow, ps->indHisWallNow,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.indHisVorENow, ps->indHisVorENow,
-            sizeof(int)*ps->N*ps->MAX_NEI, cudaMemcpyHostToDevice);
+            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
 
     cudaMemcpy(ps->d_group.numContWall, ps->numContWall,
             sizeof(int)*ps->N, cudaMemcpyHostToDevice);
@@ -278,10 +327,10 @@ void copyToDevice(ParticleSystem *ps)
     cudaMemcpy(ps->d_group.refy, ps->refy, size, cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.refz, ps->refz, size, cudaMemcpyHostToDevice);
 
-    cudaMemcpy(ps->d_group.neiList, ps->neiList, ps->N * ps->MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.neiList, ps->neiList, ps->N * MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.numNei, ps->numNei, ps->N * sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMemcpy(ps->d_group.neiListWall, ps->neiListWall, ps->N * ps->MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(ps->d_group.neiListWall, ps->neiListWall, ps->N * MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(ps->d_group.numNeiWall, ps->numNeiWall, ps->N * sizeof(int), cudaMemcpyHostToDevice);
 
     /* ========= structs =========== */
@@ -341,26 +390,26 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
 
     ps->mom = (double*)malloc(size*DIM);
 
-    ps->deltHisx = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
-    ps->deltHisy = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
-    ps->deltHisz = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHisx = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
+    ps->deltHisy = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
+    ps->deltHisz = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
 
-    ps->deltHisxWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
-    ps->deltHisyWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
-    ps->deltHiszWall = (double*)malloc(sizeof(double)*ps->N*ps->MAX_NEI);
+    ps->deltHisxWall = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
+    ps->deltHisyWall = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
+    ps->deltHiszWall = (double*)malloc(sizeof(double)*ps->N*MAX_NEI);
 
-    ps->indHis = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->indHis = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
     ps->numCont = (int*)malloc(sizeof(int)*ps->N);
 
-    ps->isContact = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
-    ps->isContactWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->isContact = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
+    ps->isContactWall = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 
-    ps->indHisWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->indHisWall = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
     ps->numContWall = (int*)malloc(sizeof(int)*ps->N);
 
-    ps->indHisWallNow = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->indHisWallNow = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 
-    ps->indHisVorENow = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->indHisVorENow = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 
     ps->cellId = (int*)malloc(sizeof(int)*ps->N);
     ps->cellx = (int*)malloc(sizeof(int)*DIM*ps->N);
@@ -375,9 +424,9 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
     ps->refx = (double*)malloc(size);
     ps->refy = (double*)malloc(size);
     ps->refz = (double*)malloc(size);
-    ps->neiList = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->neiList = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
     ps->numNei = (int*)malloc(sizeof(int)*ps->N);
-    ps->neiListWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+    ps->neiListWall = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
     ps->numNeiWall = (int*)malloc(sizeof(int)*ps->N);
 
     ps->walls.n = (double*)malloc(size_walls*DIM);
@@ -410,23 +459,23 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
 
         cudaMalloc((void**)&ps->d_group.mom, size*DIM);
 
-        cudaMalloc((void**)&ps->d_group.deltHisx, sizeof(double)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.deltHisy, sizeof(double)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.deltHisz, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisx, sizeof(double)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisy, sizeof(double)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisz, sizeof(double)*ps->N*MAX_NEI);
 
-        cudaMalloc((void**)&ps->d_group.deltHisxWall, sizeof(double)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.deltHisyWall, sizeof(double)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.deltHiszWall, sizeof(double)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisxWall, sizeof(double)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHisyWall, sizeof(double)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.deltHiszWall, sizeof(double)*ps->N*MAX_NEI);
 
-        cudaMalloc((void**)&ps->d_group.indHis, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHis, sizeof(int)*ps->N*MAX_NEI);
         cudaMalloc((void**)&ps->d_group.numCont, sizeof(int)*ps->N);
 
-        cudaMalloc((void**)&ps->d_group.isContact, sizeof(int)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.isContact, sizeof(int)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.isContactWall, sizeof(int)*ps->N*MAX_NEI);
 
-        cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.indHisWallNow, sizeof(int)*ps->N*ps->MAX_NEI);
-        cudaMalloc((void**)&ps->d_group.indHisVorENow, sizeof(int)*ps->N*ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisWall, sizeof(int)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisWallNow, sizeof(int)*ps->N*MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.indHisVorENow, sizeof(int)*ps->N*MAX_NEI);
 
         cudaMalloc((void**)&ps->d_group.numContWall, sizeof(int)*ps->N);
 
@@ -443,10 +492,10 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
         cudaMalloc((void**)&ps->d_group.refy, size);
         cudaMalloc((void**)&ps->d_group.refz, size);
 
-        cudaMalloc((void**)&ps->d_group.neiList, sizeof(int) * ps->N * ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.neiList, sizeof(int) * ps->N * MAX_NEI);
         cudaMalloc((void**)&ps->d_group.numNei, sizeof(int) * ps->N);
 
-        cudaMalloc((void**)&ps->d_group.neiListWall, sizeof(int) * ps->N * ps->MAX_NEI);
+        cudaMalloc((void**)&ps->d_group.neiListWall, sizeof(int) * ps->N * MAX_NEI);
         cudaMalloc((void**)&ps->d_group.numNeiWall, sizeof(int) * ps->N);
 
         cudaMalloc((void**)&ps->d_group.tmpMortonOrder, sizeof(int)*ps->N);
@@ -486,82 +535,82 @@ void allocateMemory(ParticleSystem* ps, int isGPUon){
    初期化
    ============================================================
  */
-void initializeTmpParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res)
+void initializeTmpParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double k,double res)
 {
-    for (int i = 0; i < ps->N; i++){
-        ps->x[i*DIM+0] = 0.;
-        ps->x[i*DIM+1] = 0.;
-        ps->x[i*DIM+2] = 0.;
+    for (int i = 0; i < ps->parameters.N; i++){
+        ps->p.x[i*DIM+0] = 0.;
+        ps->p.x[i*DIM+1] = 0.;
+        ps->p.x[i*DIM+2] = 0.;
 
 
         /*
-           ps->x[i*DIM+0] = 0.25;
-           ps->x[i*DIM+1] = (double)i*1.0+0.03;
-           ps->x[i*DIM+2] = 0.25;
+           ps->p.x[i*DIM+0] = 0.25;
+           ps->p.x[i*DIM+1] = (double)i*1.0+0.03;
+           ps->p.x[i*DIM+2] = 0.25;
          */
 
-        ps->r[i] = r;
-        ps->rsq[i] = ps->r[i]*ps->r[i];
-        ps->invr[i] = 1./ps->r[i];
-        ps->k[i] = k;
-        ps->m[i] = m;
-        ps->sqrtm[i] = sqrt(m);
-        ps->invm[i] = 1./m;
-        ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
-        ps->cellId[i] = -1;
-        ps->isActive[i] = 1;
+        ps->p.r[i] = r;
+        ps->p.rsq[i] = ps->p.r[i]*ps->p.r[i];
+        ps->p.invr[i] = 1./ps->p.r[i];
+        ps->p.k[i] = k;
+        ps->p.m[i] = m;
+        ps->p.sqrtm[i] = sqrt(m);
+        ps->p.invm[i] = 1./m;
+        ps->p.etaconst[i]=-2.*log(res)*sqrt(ps->p.k[i]/(3.1415*3.1415+log(res)*log(res)));
+        ps->p.cellId[i] = -1;
+        ps->p.isActive[i] = 1;
 
 
-        ps->numCont[i] = 0;
-        ps->numContWall[i] = 0;
+        ps->p.numCont[i] = 0;
+        ps->p.numContWall[i] = 0;
 
-        ps->v[i*DIM+0] = 0.;
-        ps->v[i*DIM+1] = 0.;
-        ps->v[i*DIM+2] = 0.;
+        ps->p.v[i*DIM+0] = 0.;
+        ps->p.v[i*DIM+1] = 0.;
+        ps->p.v[i*DIM+2] = 0.;
 
         /* ======== for temporarly check========= */
         /*
            if (i==1){
-           ps->v[i*DIM+0] = 1.;
-           ps->v[i*DIM+1] = 0.;
-           ps->v[i*DIM+2] = 0.;
+           ps->p.v[i*DIM+0] = 1.;
+           ps->p.v[i*DIM+1] = 0.;
+           ps->p.v[i*DIM+2] = 0.;
            }
          */
         /* ======== for temporarly check========= */
 
-        ps->angv[i*DIM+0] = 0.;
-        ps->angv[i*DIM+1] = 0.;
-        ps->angv[i*DIM+2] = 0.;
+        ps->p.angv[i*DIM+0] = 0.;
+        ps->p.angv[i*DIM+1] = 0.;
+        ps->p.angv[i*DIM+2] = 0.;
 
-        ps->anga[i*DIM+0] = 0.;
-        ps->anga[i*DIM+1] = 0.;
-        ps->anga[i*DIM+2] = 0.;
+        ps->p.anga[i*DIM+0] = 0.;
+        ps->p.anga[i*DIM+1] = 0.;
+        ps->p.anga[i*DIM+2] = 0.;
 
-        ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
-        ps->invmoi[i] = 1./ps->moi[i];
+        ps->p.moi[i] = 2./5. * ps->p.m[i]*ps->p.rsq[i];
+        ps->p.invmoi[i] = 1./ps->p.moi[i];
 
-        ps->pId[i] = i;
+        ps->p.pId[i] = i;
 
 
-        for (int j=0; j<ps->MAX_NEI; j++){
-            ps->indHis[i*ps->MAX_NEI+j] = -1;
-            ps->indHisWall[i*ps->MAX_NEI+j] = -1;
-            ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
+        for (int j=0; j<MAX_NEI; j++){
+            ps->p.indHis[i*MAX_NEI+j] = -1;
+            ps->p.indHisWall[i*MAX_NEI+j] = -1;
+            ps->p.indHisWallNow[i*MAX_NEI+j] = -1;
 
-            ps->isContact[i*ps->MAX_NEI+j] = -1;
-            ps->isContactWall[i*ps->MAX_NEI+j] = -1;
+            ps->p.isContact[i*MAX_NEI+j] = -1;
+            ps->p.isContactWall[i*MAX_NEI+j] = -1;
 
-            ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
-            ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
+            ps->p.deltHisx[i*MAX_NEI+j] = 0.;
+            ps->p.deltHisy[i*MAX_NEI+j] = 0.;
+            ps->p.deltHisz[i*MAX_NEI+j] = 0.;
+            ps->p.deltHisxWall[i*MAX_NEI+j] = 0.;
+            ps->p.deltHisyWall[i*MAX_NEI+j] = 0.;
+            ps->p.deltHiszWall[i*MAX_NEI+j] = 0.;
         }
     }
 }
 
-void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m,double k,double res)
+void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double k,double res)
 {
     int max_trials = 1000; // 1粒子あたりの再配置試行回数
     int seed = 1;
@@ -583,7 +632,7 @@ void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m
         double maxy_shuffle = cJSON_GetObjectItem(json_shuffle,"maxy")->valuedouble;
         double maxz_shuffle = cJSON_GetObjectItem(json_shuffle,"maxz")->valuedouble;
 
-        for (int i = 0; i < ps->N; i++){
+        for (int i = 0; i < ps->parameters.N; i++){
             int trial = 0;
             while (trial < max_trials)
             {
@@ -624,9 +673,9 @@ void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m
                 int overlap = 0;
                 for (int j = 0; j < i; j++)
                 {
-                    double dx = x - ps->x[j*DIM+0];
-                    double dy = y - ps->x[j*DIM+1];
-                    double dz = z - ps->x[j*DIM+2];
+                    double dx = x - ps->p.x[j*DIM+0];
+                    double dy = y - ps->p.x[j*DIM+1];
+                    double dz = z - ps->p.x[j*DIM+2];
                     double d2 = dx*dx + dy*dy + dz*dz;
                     if (d2 < 4*r*r) // 半径2倍以上離れているか
                     {
@@ -637,9 +686,9 @@ void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m
 
                 if (!overlap)
                 {
-                    ps->x[i*DIM+0] = x;
-                    ps->x[i*DIM+1] = y;
-                    ps->x[i*DIM+2] = z;
+                    ps->p.x[i*DIM+0] = x;
+                    ps->p.x[i*DIM+1] = y;
+                    ps->p.x[i*DIM+2] = z;
                     break;
                 }
 
@@ -653,68 +702,68 @@ void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m
 
 
             /*
-               ps->x[i*DIM+0] = 0.25;
-               ps->x[i*DIM+1] = (double)i*1.0+0.03;
-               ps->x[i*DIM+2] = 0.25;
+               ps->p.x[i*DIM+0] = 0.25;
+               ps->p.x[i*DIM+1] = (double)i*1.0+0.03;
+               ps->p.x[i*DIM+2] = 0.25;
              */
 
-            ps->r[i] = r;
-            ps->rsq[i] = ps->r[i]*ps->r[i];
-            ps->invr[i] = 1./ps->r[i];
-            ps->k[i] = k;
-            ps->m[i] = m;
-            ps->sqrtm[i] = sqrt(m);
-            ps->invm[i] = 1./m;
-            ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
-            ps->cellId[i] = -1;
-            ps->isActive[i] = 1;
+            ps->p.r[i] = r;
+            ps->p.rsq[i] = ps->p.r[i]*ps->p.r[i];
+            ps->p.invr[i] = 1./ps->p.r[i];
+            ps->p.k[i] = k;
+            ps->p.m[i] = m;
+            ps->p.sqrtm[i] = sqrt(m);
+            ps->p.invm[i] = 1./m;
+            ps->p.etaconst[i]=-2.*log(res)*sqrt(ps->p.k[i]/(3.1415*3.1415+log(res)*log(res)));
+            ps->p.cellId[i] = -1;
+            ps->p.isActive[i] = 1;
 
 
-            ps->numCont[i] = 0;
-            ps->numContWall[i] = 0;
+            ps->p.numCont[i] = 0;
+            ps->p.numContWall[i] = 0;
 
-            ps->v[i*DIM+0] = 0.;
-            ps->v[i*DIM+1] = 0.;
-            ps->v[i*DIM+2] = 0.;
+            ps->p.v[i*DIM+0] = 0.;
+            ps->p.v[i*DIM+1] = 0.;
+            ps->p.v[i*DIM+2] = 0.;
 
             /* ======== for temporarly check========= */
             /*
                if (i==1){
-               ps->v[i*DIM+0] = 1.;
-               ps->v[i*DIM+1] = 0.;
-               ps->v[i*DIM+2] = 0.;
+               ps->p.v[i*DIM+0] = 1.;
+               ps->p.v[i*DIM+1] = 0.;
+               ps->p.v[i*DIM+2] = 0.;
                }
              */
             /* ======== for temporarly check========= */
 
-            ps->angv[i*DIM+0] = 0.;
-            ps->angv[i*DIM+1] = 0.;
-            ps->angv[i*DIM+2] = 0.;
+            ps->p.angv[i*DIM+0] = 0.;
+            ps->p.angv[i*DIM+1] = 0.;
+            ps->p.angv[i*DIM+2] = 0.;
 
-            ps->anga[i*DIM+0] = 0.;
-            ps->anga[i*DIM+1] = 0.;
-            ps->anga[i*DIM+2] = 0.;
+            ps->p.anga[i*DIM+0] = 0.;
+            ps->p.anga[i*DIM+1] = 0.;
+            ps->p.anga[i*DIM+2] = 0.;
 
-            ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
-            ps->invmoi[i] = 1./ps->moi[i];
+            ps->p.moi[i] = 2./5. * ps->p.m[i]*ps->p.rsq[i];
+            ps->p.invmoi[i] = 1./ps->p.moi[i];
 
-            ps->pId[i] = i;
+            ps->p.pId[i] = i;
 
 
-            for (int j=0; j<ps->MAX_NEI; j++){
-                ps->indHis[i*ps->MAX_NEI+j] = -1;
-                ps->indHisWall[i*ps->MAX_NEI+j] = -1;
-                ps->indHisWallNow[i*ps->MAX_NEI+j] = -1;
+            for (int j=0; j<MAX_NEI; j++){
+                ps->p.indHis[i*MAX_NEI+j] = -1;
+                ps->p.indHisWall[i*MAX_NEI+j] = -1;
+                ps->p.indHisWallNow[i*MAX_NEI+j] = -1;
 
-                ps->isContact[i*ps->MAX_NEI+j] = -1;
-                ps->isContactWall[i*ps->MAX_NEI+j] = -1;
+                ps->p.isContact[i*MAX_NEI+j] = -1;
+                ps->p.isContactWall[i*MAX_NEI+j] = -1;
 
-                ps->deltHisx[i*ps->MAX_NEI+j] = 0.;
-                ps->deltHisy[i*ps->MAX_NEI+j] = 0.;
-                ps->deltHisz[i*ps->MAX_NEI+j] = 0.;
-                ps->deltHisxWall[i*ps->MAX_NEI+j] = 0.;
-                ps->deltHisyWall[i*ps->MAX_NEI+j] = 0.;
-                ps->deltHiszWall[i*ps->MAX_NEI+j] = 0.;
+                ps->p.deltHisx[i*MAX_NEI+j] = 0.;
+                ps->p.deltHisy[i*MAX_NEI+j] = 0.;
+                ps->p.deltHisz[i*MAX_NEI+j] = 0.;
+                ps->p.deltHisxWall[i*MAX_NEI+j] = 0.;
+                ps->p.deltHisyWall[i*MAX_NEI+j] = 0.;
+                ps->p.deltHiszWall[i*MAX_NEI+j] = 0.;
             }
         }
     }else if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"file")==0){
@@ -728,51 +777,53 @@ void initializeParticles(ParticleSystem* ps,cJSON *json_inlet, double r,double m
 
 }
 
-void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh){
+void nondimensionalize(ParticleSys<HostMemory>* ps, BoundingBox *box, TriangleMesh* mesh){
     /* get nondimensionalize factor */
-    ps->time_factor = sqrt(ps->m[0]/ps->k[0]);
-    ps->mass_factor = ps->m[0];
-    ps->length_factor = ps->r[0];
+    ps->parameters.time_factor = sqrt(ps->p.m[0]/ps->p.k[0]);
+    ps->parameters.mass_factor = ps->p.m[0];
+    ps->parameters.length_factor = ps->p.r[0];
+    double time_factor = ps->parameters.time_factor;
+    double mass_factor = ps->parameters.mass_factor;
+    double length_factor = ps->parameters.length_factor;
 
-    double inv_time_factor = 1./ps->time_factor;
-    double inv_mass_factor = 1./ps->mass_factor;
-    double inv_length_factor = 1./ps->length_factor;
-    double inv_sqrtk_factor = 1./sqrt(ps->k[0]);
+    double inv_time_factor = 1./time_factor;
+    double inv_mass_factor = 1./mass_factor;
+    double inv_length_factor = 1./length_factor;
+    double inv_sqrtk_factor = 1./sqrt(ps->p.k[0]);
 
-    ps->dt*=inv_time_factor;
+    ps->parameters.dt*=inv_time_factor;
 
-    ps->g[0]*=inv_length_factor*ps->time_factor*ps->time_factor;
-    ps->g[1]*=inv_length_factor*ps->time_factor*ps->time_factor;
-    ps->g[2]*=inv_length_factor*ps->time_factor*ps->time_factor;
+    ps->p.g[0]*=inv_length_factor*time_factor*time_factor;
+    ps->p.g[1]*=inv_length_factor*time_factor*time_factor;
+    ps->p.g[2]*=inv_length_factor*time_factor*time_factor;
 
-    for (int i=0; i<ps->N; i++){
-        ps->x[i*DIM+0]*=inv_length_factor;
-        ps->x[i*DIM+1]*=inv_length_factor;
-        ps->x[i*DIM+2]*=inv_length_factor;
 
-        ps->v[i*DIM+0]*=inv_length_factor*ps->time_factor;
-        ps->v[i*DIM+1]*=inv_length_factor*ps->time_factor;
-        ps->v[i*DIM+2]*=inv_length_factor*ps->time_factor;
 
-        ps->r[i]*=inv_length_factor;
-        ps->rsq[i]*=inv_length_factor*inv_length_factor;
-        ps->invr[i]*=ps->length_factor;
+    for (int i=0; i<ps->parameters.N; i++){
+        ps->p.x[i*DIM+0]*=inv_length_factor;
+        ps->p.x[i*DIM+1]*=inv_length_factor;
+        ps->p.x[i*DIM+2]*=inv_length_factor;
 
-        ps->m[i]*=inv_mass_factor;
-        ps->sqrtm[i]*=sqrt(inv_mass_factor);
+        ps->p.v[i*DIM+0]*=inv_length_factor*time_factor;
+        ps->p.v[i*DIM+1]*=inv_length_factor*time_factor;
+        ps->p.v[i*DIM+2]*=inv_length_factor*time_factor;
 
-        ps->invm[i]*=ps->mass_factor;
+        ps->p.r[i]*=inv_length_factor;
+        ps->p.rsq[i]*=inv_length_factor*inv_length_factor;
+        ps->p.invr[i]*=length_factor;
 
-        ps->moi[i]*=inv_mass_factor*inv_length_factor*inv_length_factor;
-        ps->invmoi[i]*=ps->mass_factor*ps->length_factor*ps->length_factor;
+        ps->p.m[i]*=inv_mass_factor;
+        ps->p.sqrtm[i]*=sqrt(inv_mass_factor);
 
-        ps->k[i]*=inv_sqrtk_factor*inv_sqrtk_factor;
-        ps->etaconst[i]*=inv_sqrtk_factor;
+        ps->p.invm[i]*=mass_factor;
+
+        ps->p.moi[i]*=inv_mass_factor*inv_length_factor*inv_length_factor;
+        ps->p.invmoi[i]*=mass_factor*length_factor*length_factor;
+
+        ps->p.k[i]*=inv_sqrtk_factor*inv_sqrtk_factor;
+        ps->p.etaconst[i]*=inv_sqrtk_factor;
     }
 
-    for (int i=0; i<ps->walls.N; i++){
-        ps->walls.d[i]*=inv_length_factor;
-    }
     /* bounding box*/
 
     box->minx*=inv_length_factor;
@@ -786,9 +837,9 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh)
     box->dy*=inv_length_factor;
     box->dz*=inv_length_factor;
 
-    box->invdx*=ps->length_factor;
-    box->invdy*=ps->length_factor;
-    box->invdz*=ps->length_factor;
+    box->invdx*=length_factor;
+    box->invdy*=length_factor;
+    box->invdz*=length_factor;
 
     box->rangex*=inv_length_factor;
     box->rangey*=inv_length_factor;
@@ -818,14 +869,14 @@ void nondimensionalize(ParticleSystem* ps, BoundingBox *box, TriangleMesh* mesh)
         mesh->e12z[i]*= inv_length_factor;
 
         mesh->d00[i]*= inv_length_factor*inv_length_factor;
-        mesh->d00inv[i]*= ps->length_factor*ps->length_factor;
+        mesh->d00inv[i]*= length_factor*length_factor;
         mesh->d01[i]*= inv_length_factor*inv_length_factor;
         mesh->d11[i]*= inv_length_factor*inv_length_factor;
-        mesh->d11inv[i]*= ps->length_factor*ps->length_factor;
+        mesh->d11inv[i]*=length_factor*length_factor;
         mesh->d22[i]*= inv_length_factor*inv_length_factor;
-        mesh->d22inv[i]*= ps->length_factor*ps->length_factor;
+        mesh->d22inv[i]*=length_factor*length_factor;
 
-        mesh->denom[i]*= ps->length_factor*ps->length_factor*ps->length_factor*ps->length_factor;
+        mesh->denom[i]*= length_factor*length_factor*length_factor*length_factor;
 
         mesh->minx[i]*= inv_length_factor;
         mesh->miny[i]*= inv_length_factor;

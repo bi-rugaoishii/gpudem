@@ -16,8 +16,7 @@
 
 
 /* =========== triangle related ====== */
-__device__ __forceinline__
-TriangleContactCache d_dist_triangle(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j);
+__device__ TriangleContactCache d_dist_triangle(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j);
 
 __device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,DeviceBoundingBox *box);
 
@@ -53,11 +52,9 @@ ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,
 __device__ __forceinline__
 ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,double delMag);
 
-__device__ __forceinline__
-void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCache c);
+__device__ void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCache c);
 
-__device__ __forceinline__
-void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c);
+__device__ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c);
 
 __device__ __forceinline__
 void d_update_history_wall(DeviceParticleGroup *p,int i);

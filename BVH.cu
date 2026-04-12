@@ -1,4 +1,5 @@
 #include "BVH.h"
+#include "hardCodedParameters.h"
 
 typedef struct {
     int start;
@@ -6,7 +7,7 @@ typedef struct {
     int node;
 } BuildTask;
 
-static inline int sphereAABBOverlapNeighbor(ParticleSystem* p,int i,BVH *bvh, int j, double skinR){
+static inline int sphereAABBOverlapNeighbor(Common* p,int i,BVH *bvh, int j, double skinR){
     double minx = bvh->minx[j];
     double miny = bvh->miny[j];
     double minz = bvh->minz[j];
@@ -40,7 +41,7 @@ static inline int sphereAABBOverlapNeighbor(ParticleSystem* p,int i,BVH *bvh, in
     return (dx*dx + dy*dy + dz*dz) <= Rsq;
 }
 
-TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleMesh* mesh, int j,double skinR){
+TriangleContactCache dist_triangle_neighbor(Common* ps, int i, TriangleMesh* mesh, int j,double skinR){
     /* check with plane first */
     double dist = 0.;
     int bi = i*DIM;
@@ -236,8 +237,8 @@ TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleM
     return res;
 }
 
-void update_neighborlist_wall_nobvh(ParticleSystem *p,TriangleMesh *mesh,BoundingBox *box,double skinR){
-    for(int i=0; i<p->N; i++){
+void update_neighborlist_wall_nobvh(Common *p,int N,TriangleMesh *mesh,BoundingBox *box,double skinR){
+    for(int i=0; i<N; i++){
 
         if(p->isActive[i]!=1){
             continue;
@@ -263,7 +264,7 @@ void update_neighborlist_wall_nobvh(ParticleSystem *p,TriangleMesh *mesh,Boundin
                         tc = dist_triangle_neighbor(p,i,mesh,indTri,skinR); 
                         int wasHitBefore = 0;
                         for (int k=0; k<numContWallNow; k++){
-                            if (indTri == p->indHisWallNow[i*p->MAX_NEI+k]){
+                            if (indTri == p->indHisWallNow[i*MAX_NEI+k]){
                                 wasHitBefore =1;
                                 continue;
                             }
@@ -273,15 +274,15 @@ void update_neighborlist_wall_nobvh(ParticleSystem *p,TriangleMesh *mesh,Boundin
                         }
 
                         if(tc.dist<p->r[i]+skinR){
-                            p->neiListWall[i*p->MAX_NEI+numNei]=indTri;
+                            p->neiListWall[i*MAX_NEI+numNei]=indTri;
                             numNei+=1;
-                            if(numNei >= p->MAX_NEI){
+                            if(numNei >= MAX_NEI){
                                 printf("Wall Neighbor over flow!!!!\n");
                                 abort();
                             }
 
                             int numWall = numContWallNow;
-                            p->indHisWallNow[i*p->MAX_NEI+numWall] = indTri;
+                            p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
                             numContWallNow+=1;
                         }
                     }
@@ -520,9 +521,9 @@ __global__ void k_update_neighborlist_wall(DeviceParticleGroup *p, DeviceTriangl
             tc = d_dist_triangle_neighbor(p,i,mesh,indTri,skinR); 
 
             if(tc.dist<p->r[i]+skinR){
-                p->neiListWall[i*p->MAX_NEI+numNei]=indTri;
+                p->neiListWall[i*MAX_NEI+numNei]=indTri;
                 numNei+=1;
-                if(numNei >= p->MAX_NEI){
+                if(numNei >= MAX_NEI){
                     printf("Wall Neighbor over flow!!!!\n");
                 }
             }
@@ -568,8 +569,8 @@ __device__ __forceinline__ int d_sphereAABBOverlapNeighbor(DeviceParticleGroup* 
     return (dx*dx + dy*dy + dz*dz) <= Rsq;
 }
 
-void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,double skinR){
-    for(int i=0; i<p->N; i++){
+void update_neighborlist_wall(Common *p,int N,TriangleMesh *mesh, BVH *bvh,double skinR){
+    for(int i=0; i<N; i++){
 
         if(p->isActive[i]!=1){
             continue;
@@ -597,9 +598,9 @@ void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,dou
                 tc = dist_triangle_neighbor(p,i,mesh,indTri,skinR); 
 
                 if(tc.dist<p->r[i]+skinR){
-                    p->neiListWall[i*p->MAX_NEI+numNei]=indTri;
+                    p->neiListWall[i*MAX_NEI+numNei]=indTri;
                     numNei+=1;
-                    if(numNei >= p->MAX_NEI){
+                    if(numNei >= MAX_NEI){
                         printf("Wall Neighbor over flow!!!!\n");
                         abort();
                     }

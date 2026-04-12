@@ -19,12 +19,13 @@ void wall_collision_BVH(ParticleSystem* p,BVH* bvh);
 void wall_collision_triangles(ParticleSystem* ps, BoundingBox *box,TriangleMesh* mesh);
 void cpu_dem_sort_triangles(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box,TriangleMesh *mesh, int step);
 
-void cpu_dem_verlet_verlet(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
+void cpu_dem_verlet_verlet(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
 
 /* calculated distance between a triangle */
 /* i is index of a particle, j is index of a triangle*/
 /* returns dist 1e10 if no collision */
 TriangleContactCache dist_triangle(ParticleSystem* ps,int i, TriangleMesh* mesh, int j);
+TriangleContactCache dist_triangle(Common* ps,int i, TriangleMesh* mesh, int j);
 
 
 void integrateCPU(ParticleSystem *ps, BoundingBox *box);
@@ -34,7 +35,7 @@ void particle_collision_naive(ParticleSystem* ps);
 
 void cpu_dem_verlet_BVH(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step);
 
-void particle_collision_verlet(ParticleSystem* p, BoundingBox *box);
+void particle_collision_verlet(Common* p,int N, double mu, BoundingBox *box);
 
 void particle_collision_cell_linked(ParticleSystem* ps, BoundingBox *box);
 void particle_collision_cell_linked_fastUpdate(ParticleSystem* p, BoundingBox *box);
@@ -43,7 +44,7 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSystem* p,Partic
 /* =========== verlet list related =============== */
 int shouldRefreshNeighborList(ParticleSystem *p, BoundingBox* box);
 
-void checkOoB(ParticleSystem *p, ParticleSystem *tmpP, BoundingBox* box);
+void checkOoB(Common *p, Common *tmpP,int N, BoundingBox* box);
 
 void cpu_dem_verlet_triangles(ParticleSystem* p, ParticleSystem *tmpP, BoundingBox* box,TriangleMesh *mesh, int step);
 void cpu_dem_nosort_triangle(ParticleSystem* ps, ParticleSystem *tmpPs, BoundingBox* box, TriangleMesh* mesh);
@@ -51,17 +52,28 @@ void particle_collision_cell_linked_withSort(ParticleSystem* p,ParticleSystem* t
 
 void particle_collision_cell_linked_noVec3(ParticleSystem* ps, BoundingBox *box);
 
-inline ContactCache calc_normal_force(ParticleSystem *p,int i,int j,Vec3 n,double delMag);
+inline ContactCache calc_normal_force(Common *p,int i,int j,Vec3 n,double delMag);
 
 
+inline ContactCache calc_normal_force(Common *p,int i,int j,double dt, double mu,Vec3 n,double delMag);
+
+
+inline ContactCache calc_normal_force_wall(Common *p,int i,int j,Vec3 n,double delMag);
 inline ContactCache calc_normal_force_wall(ParticleSystem *p,int i,int j,Vec3 n,double delMag);
 
 inline void calc_tangential_force_wall(ParticleSystem *p,int i,int j,ContactCache c);
 
 inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c);
 
+inline void calc_tangential_force_wall(Common *p,int i,int j,double dt, double mu,ContactCache c);
+
+inline void calc_tangential_force(ParticleSystem *p,int i,int j,ContactCache c);
+inline void calc_tangential_force(Common *p,int i,int j,double dt, double mu,ContactCache c);
+
 inline void update_history(ParticleSystem *p,int i);
+inline void update_history(Common *p,int i);
 inline void update_history_wall(ParticleSystem *p,int i);
+inline void update_history_wall(Common *p,int i);
 
 void cpu_dem_sort(ParticleSystem *ps, ParticleSystem *tmpPs, BoundingBox* box, int step);
 void wall_collision_naive(ParticleSystem* ps);

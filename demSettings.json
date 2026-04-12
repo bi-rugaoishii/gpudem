@@ -11,14 +11,14 @@
 
     "walls":{
         "filepaths": [
-            "geometry/box.stl"
+            "geometry/simpleBox.stl"
         ]
     },
 
     "inlet":{
         "inputMode":"shuffle",
         "COMMENT":"allowed input modes are 'shuffle', 'files' ",
-        "numParticle":50000,
+        "numParticle":10,
         "shuffle":{
             "minx":-0.5,
             "maxx": 0.5,
@@ -47,7 +47,7 @@
         "startTime":0,
         "endTime":2.0,
         "outputTiming":0.01,
-        "gpuOn":1
+        "gpuOn":0
     },
 
     "gravity":{

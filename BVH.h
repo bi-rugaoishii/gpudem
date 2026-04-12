@@ -46,10 +46,10 @@ typedef struct BVH{
 
 void initializeBVH(BVH *bvh, int numTriangles, int isGPUon);
 
-void update_neighborlist_wall_nobvh(ParticleSystem *p,TriangleMesh *mesh,BoundingBox *box,double skinR);
-TriangleContactCache dist_triangle_neighbor(ParticleSystem* ps, int i, TriangleMesh* mesh, int j,double skinR);
+void update_neighborlist_wall_nobvh(Common *p,int N,TriangleMesh *mesh,BoundingBox *box,double skinR);
+TriangleContactCache dist_triangle_neighbor(Common* ps, int i, TriangleMesh* mesh, int j,double skinR);
 
-void update_neighborlist_wall(ParticleSystem *p,TriangleMesh *mesh, BVH *bvh,double skinR);
+void update_neighborlist_wall(Common *p,int N,TriangleMesh *mesh, BVH *bvh,double skinR);
 
 void copyToDeviceBVH(BVH *bvh, ParticleSystem *p, int numTriangles);
 

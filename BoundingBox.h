@@ -1,5 +1,4 @@
-#ifndef _BOUNDINGBOX_H_
-#define _BOUNDINGBOX_H_
+#pragma once
 
 #include <cuda_runtime.h>
 #include <cub/cub.cuh>
@@ -7,8 +6,21 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "ParticleSystem.h"
+#include "hardCodedParameters.h"
 #include "cJSON.h"
 struct ParticleSystem;
+struct HostMemory;
+struct DeviceMemory;
+
+template <typename Memory>// typename used later to distinguish gpu and cpu
+struct ParticleSys;
+
+template <>
+struct ParticleSys<HostMemory>;
+
+template <>
+struct ParticleSys<DeviceMemory>;
+
 struct DeviceParticleGroup;
 struct TriangleMesh;
 
@@ -117,21 +129,21 @@ void radixSortUint32(
     uint32_t*  workKey,
     int*       workIndex);
 
-void swap_ps(ParticleSystem *ps, ParticleSystem *tmpps);
+void swap_ps(ParticleSys<HostMemory> *ps, ParticleSys<HostMemory> *tmpps);
 void swap_device_ps_pointer(DeviceParticleGroup **p, DeviceParticleGroup **tmp);
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
 
-void update_neighborlist(ParticleSystem *p,ParticleSystem *tmpP, BoundingBox *box);
+void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpP, BoundingBox *box);
 
 void update_pList(ParticleSystem *p, BoundingBox *box);
 void update_pList_fast(ParticleSystem *p, BoundingBox *box);
-void update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
-void update_pList_withSort_fast(ParticleSystem *p, ParticleSystem *tmpPs,BoundingBox *box);
+void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpPs,BoundingBox *box);
+void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpPs,BoundingBox *box);
 
 void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_inlet_type);
 
-void initialize_BoundingBox(ParticleSystem *p, BoundingBox *box,TriangleMesh* mesh, cJSON *json_inlet, int isGPUon);
+void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,TriangleMesh* mesh, cJSON *json_inlet, int isGPUon);
 void free_BoundingBox(BoundingBox *box, int isGPUon);
 
 /* ============================
@@ -152,4 +164,3 @@ __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);
 void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps);
 
-#endif 
