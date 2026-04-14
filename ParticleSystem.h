@@ -13,6 +13,9 @@ struct BoundingBox;
 struct HostMemory{
     template <typename T>
     static T* allocate(int N){
+            printf("N = %d\n", N);
+            printf("MAX_NEI = %d\n", MAX_NEI);
+            printf("alloc size = %zu\n", (size_t)N * MAX_NEI * sizeof(double)); 
         return static_cast<T*>(malloc(sizeof(T)*N));
     }
 
@@ -24,24 +27,27 @@ struct HostMemory{
 
 struct DeviceMemory{
     template <typename T>
-    static T* allocate(int N){
-        T* ptr;
-        cudaMalloc((void**)&ptr, sizeof(T)*N);
-        return ptr;
-    }
+        static T* allocate(int N){
+            T* ptr;
+            printf("N = %d\n", N);
+            printf("MAX_NEI = %d\n", MAX_NEI);
+            printf("alloc size = %zu\n", (size_t)N * MAX_NEI * sizeof(double)); 
+            cudaMalloc((void**)&ptr, sizeof(T)*N);
+            return ptr;
+        }
 
     template <typename T>
-    static void deallocate(T* ptr){
-        cudaFree(ptr);
-    }
+        static void deallocate(T* ptr){
+            cudaFree(ptr);
+        }
 
 };
 
 /* 
-=======================================
-  interface 
-=======================================
-*/
+   =======================================
+   interface 
+   =======================================
+   */
 
 typedef struct Parameters{
     double dt;
@@ -55,7 +61,7 @@ typedef struct Parameters{
 }Parameters;
 
 typedef struct Common{
-    #define MEMBER(type,name,N) type* name;
+    #define MEMBER(type,name,Np,SAVE_FLAG) type* name;
     #include "ParticleSystemMember_common.def"
     #undef MEMBER
 }Common;
@@ -97,10 +103,10 @@ void deallocate(ParticleSys<HostMemory> *ps);
 void deallocate(ParticleSys<DeviceMemory> *ps);
 
 /*
-============================================================
-GPU専用構造体（SoA）
-============================================================
-*/
+   ============================================================
+   GPU専用構造体（SoA）
+   ============================================================
+   */
 typedef struct DeviceWallGroup{
     int N;
 
@@ -136,7 +142,7 @@ typedef struct DeviceParticleGroup{
     int* isActive; /* flag if particle is OoB */ 
 
     /* ======== tangential force related =========*/
-     /* history of delta tangent */
+    /* history of delta tangent */
     double* deltHisx; 
     double* deltHisy;
     double* deltHisz;
@@ -153,7 +159,7 @@ typedef struct DeviceParticleGroup{
 
     int* isContact; /* flag if a particle has contacted with the neighbor in history*/ 
     int* isContactWall;
-                 
+
     int* numCont; /* number of contact */
     int* numContWall; /* number of contact with walls */
 
@@ -161,8 +167,8 @@ typedef struct DeviceParticleGroup{
 
     int* cellId;
     int* cellx; //coordinate index in structured cell
-    
-                 //
+
+    //
     double dt;
     double mu; //friction
 
@@ -307,6 +313,7 @@ void freeMemory(ParticleSystem* ps, int isGPUon);
    ============================================================
    */
 void copyToDevice(ParticleSystem* ps);
+void copyToDevice(ParticleSys<HostMemory> *ps, ParticleSys<DeviceMemory> *d_ps);
 
 
 /*
@@ -315,6 +322,7 @@ void copyToDevice(ParticleSystem* ps);
    ============================================================
    */
 void copyFromDevice(ParticleSystem* ps);
+void copyFromDevice(ParticleSys<DeviceMemory>* d_ps, ParticleSys<HostMemory>* ps);
 
 /*
    ============================================================

@@ -283,7 +283,7 @@ void swap_ps(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmp){
 }
 
 
-void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
+void copyToDeviceBox(BoundingBox *box, int N){
 
     size_t size = box->N;
 
@@ -316,7 +316,7 @@ void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps){
 
     box->d_box.N = box->N;
 
-    cudaMemcpy(box->d_box.pList,  box->pList,  sizeof(int)*ps->N, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_box.pList,  box->pList,  sizeof(int)*N, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pNum,  box->pNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.usedCells, box->usedCells, sizeof(int) * size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pStart,  box->pStart,  sizeof(int)*size, cudaMemcpyHostToDevice);
@@ -998,6 +998,19 @@ __global__ void dk_print_tmpMorton(DeviceParticleGroup* p){
             p->tmpMortonKey[i]);
 }
 
+__global__ void dk_build_cellCount(Common* p,int N, DeviceBoundingBox* box){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=N || p->isActive[i]!=1){
+        return;
+    }
+
+    int cellId = d_calcCellId(p,i,box);
+    p->cellId[i] = cellId;
+
+    atomicAdd(&box->pNum[cellId],1);
+
+}
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -1012,6 +1025,19 @@ __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* bo
 
 }
 
+__global__ void dk_build_pList(Common* p, int N,DeviceBoundingBox* box){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i>=N || p->isActive[i]!=1){
+        return;
+    }
+
+    int cellId = p->cellId[i];
+    int offset = atomicAdd(&box->cellOffset[cellId],1);
+    int index = box->pStart[cellId] + offset;
+    box->pList[index] = i;
+}
+
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -1023,6 +1049,23 @@ __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
     int offset = atomicAdd(&box->cellOffset[cellId],1);
     int index = box->pStart[cellId] + offset;
     box->pList[index] = i;
+}
+
+__device__ int d_calcCellId(Common* p,int i, DeviceBoundingBox* box){
+    int bi = i*DIM;
+    int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+    int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+    int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+    p->cellx[bi+0] = dx;
+    p->cellx[bi+1] = dy;
+    p->cellx[bi+2] = dz;
+
+    /* for debug */
+    /*
+    printf("recalc i=%d pId=%d ix=%d iy=%d\n", i, p->pId[i], dx, dy);
+    */
+
+    return (box->sizey*dz+dy)*box->sizex+dx;
 }
 
 __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box){
@@ -1055,6 +1098,66 @@ __device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, 
         neiList[startInd+j]=tmp;
     }
 
+}
+
+__global__ void k_update_neighborlist_endsort(Common *p,DeviceBoundingBox *box){
+
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+
+
+    int skinR = box->skinR;
+    if(p->isActive[i]!=1){
+        return;
+    }
+
+    //particle-particle
+    /* cycle through neighbor cells */
+    int bi=i*DIM;
+    int x=p->cellx[bi+0];
+    int y=p->cellx[bi+1];
+    int z=p->cellx[bi+2];
+    int numNei = 0;
+
+    for (int sx=-1; sx<=1; sx++){
+        for (int sy=-1; sy<=1; sy++){
+            for (int sz=-1; sz<=1; sz++){
+                int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
+
+                int start = box->pStart[cellId];
+                int end = start+box->pNum[cellId];
+                for (int k=box->pStart[cellId]; k<end; k++){
+                    int j = box->pList[k];
+                    if (i==j){
+                        continue;
+                    }else{
+                        int bj=j*DIM;
+
+                        Vec3 del;
+                        /* normal points toward particle i */
+                        del.x = p->x[bi+0]- p->x[bj+0];
+                        del.y = p->x[bi+1]- p->x[bj+1];
+                        del.z = p->x[bi+2]- p->x[bj+2];
+                        double distsq = vdot(del,del);
+                        double R = p->r[i]+p->r[j]+skinR;
+                        if (distsq<R*R){
+                            p->neiList[i*MAX_NEI+numNei]=j;
+                            numNei+=1;
+                            if(numNei >= MAX_NEI){
+                                printf("Neighbor over flow!!!!\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }/* neighbor cell search done */
+    p->numNei[i]=numNei;
+    d_sort_neighborlist(p->neiList,i*MAX_NEI,numNei);
+
+    /* set reference position */
+    p->refx[i]=p->x[bi+0];
+    p->refy[i]=p->x[bi+1];
+    p->refz[i]=p->x[bi+2];
 }
 
 __global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box){
@@ -1221,6 +1324,25 @@ void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingB
     dk_build_pList<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
 }
 
+void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gridSize, int blockSize){
+    // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
+
+    /* initialize */
+    cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
+    cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
+    cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
+
+    dk_build_cellCount<<<gridSize,blockSize>>>(&p->p,N,box->d_boxPtr);
+
+    cub::DeviceScan::ExclusiveSum(box->d_box.tmpExSum,
+            box->d_box.scanTmpBytes,
+            box->d_box.pNum,
+            box->d_box.pStart,
+            box->d_box.N);
+
+    dk_build_pList<<<gridSize,blockSize>>>(&p->p,N,box->d_boxPtr);
+
+}
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){
     // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
 

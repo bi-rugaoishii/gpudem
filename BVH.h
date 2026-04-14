@@ -51,7 +51,7 @@ TriangleContactCache dist_triangle_neighbor(Common* ps, int i, TriangleMesh* mes
 
 void update_neighborlist_wall(Common *p,int N,TriangleMesh *mesh, BVH *bvh,double skinR);
 
-void copyToDeviceBVH(BVH *bvh, ParticleSystem *p, int numTriangles);
+void copyToDeviceBVH(BVH *bvh, int numTriangles);
 
 void free_BVH(BVH *bvh, int isGPUon);
 void computeNodeAABB(int start, int end,TriangleMesh *mesh, BVH *bvh,int k);
@@ -61,8 +61,10 @@ void computeNodeAABB(int start, int end,TriangleMesh *mesh, BVH *bvh,int k);
 int buildBVH(BVH* bvh,TriangleMesh *mesh);
 
 /* == for device == */
+__global__ void k_update_neighborlist_wall(Common *p,int N, DeviceTriangleMesh *mesh, DeviceBVH *bvh,double skinR);
 __global__ void k_update_neighborlist_wall(DeviceParticleGroup *p, DeviceTriangleMesh *mesh, DeviceBVH *bvh,double skinR);
 
+__device__ __forceinline__ int d_sphereAABBOverlapNeighbor(Common* p,int i,DeviceBVH *bvh, int j, double skinR);
 __device__ __forceinline__ int d_sphereAABBOverlapNeighbor(DeviceParticleGroup* p,int i,DeviceBVH *bvh, int j, double skinR);
 
 __device__ __forceinline__ TriangleContactCache d_dist_triangle_neighbor(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j,double skinR);

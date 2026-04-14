@@ -11,6 +11,7 @@
 struct ParticleSystem;
 struct HostMemory;
 struct DeviceMemory;
+struct Common;
 
 template <typename Memory>// typename used later to distinguish gpu and cpu
 struct ParticleSys;
@@ -155,12 +156,15 @@ __global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp);
 __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
 __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
 
+__global__ void k_update_neighborlist_endsort(Common *p,DeviceBoundingBox *box);
 __global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box);
  __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box);
 
 void d_update_pList_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize);
 
 __device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box);
+__device__ int d_calcCellId(Common* p,int i, DeviceBoundingBox* box);
 void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);
-void copyToDeviceBox(BoundingBox *box, ParticleSystem *ps);
+void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gridSize, int blockSize);
+void copyToDeviceBox(BoundingBox *box, int N);
 

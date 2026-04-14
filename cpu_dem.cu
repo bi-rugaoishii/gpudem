@@ -444,7 +444,6 @@ void wall_collision_verlet(Common *p,int N,double dt,double mu,TriangleMesh* mes
 
         for (int k=0; k<end; k++){
             int indTri = p->neiListWall[ci+k];
-            printf("indTri %d\n",indTri);
 
 
             // ここで球 vs 三角形の精密判定
@@ -485,7 +484,7 @@ void wall_collision_verlet(Common *p,int N,double dt,double mu,TriangleMesh* mes
                 ContactCache c;
                 c = calc_normal_force_wall(p,i,indTri,tc.n,delmag);
 
-                calc_tangential_force_wall(p,i,dt,mu,indTri,c);
+                calc_tangential_force_wall(p,i,indTri,dt,mu,c);
             }
         }
         update_history_wall(p,i);

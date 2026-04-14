@@ -1,4 +1,5 @@
 #include "ParticleSystem.h"
+#include "hardCodedParameters.h"
 #include <stdio.h>
 #include <random>
 
@@ -164,14 +165,16 @@ void freeMemory(ParticleSystem* ps, int isGPUon){
 /* ==================== Memory Allocation =================== */
 void allocate(ParticleSys<HostMemory> *ps){
     int N=ps->parameters.N;
-    #define MEMBER(type,name,N) ps->p.name = HostMemory::template allocate<type>(N);
+    #define MEMBER(type,name,Np,SAVE_FLAG) ps->p.name = HostMemory::template allocate<type>(Np);
     #include "ParticleSystemMember_common.def"
+    printf("Allocate Done\n");
     #undef MEMBER
 }
 
 void allocate(ParticleSys<DeviceMemory> *ps){
     int N=ps->parameters.N;
-    #define MEMBER(type,name,N) ps->p.name = DeviceMemory::template allocate<type>(N);
+    printf("parameters N=%d\n",N);
+    #define MEMBER(type,name,Np,SAVE_FLAG) ps->p.name = DeviceMemory::template allocate<type>((Np));
     #include "ParticleSystemMember_common.def"
     #undef MEMBER
     cudaMalloc((void**)&ps->deviceOnly.refreshVerletFlag,sizeof(int));
@@ -195,13 +198,13 @@ void allocate(ParticleSys<DeviceMemory> *ps){
 }
 
 void deallocate(ParticleSys<HostMemory> *ps){
-    #define MEMBER(type,name,N) HostMemory::deallocate(ps->p.name);
+    #define MEMBER(type,name,Np,SAVE_FLAG) HostMemory::deallocate(ps->p.name);
     #include "ParticleSystemMember_common.def"
     #undef MEMBER
 }
 
 void deallocate(ParticleSys<DeviceMemory> *ps){
-    #define MEMBER(type,name,N) DeviceMemory::deallocate(ps->p.name);
+    #define MEMBER(type,name,Np,SAVE_FLAG) DeviceMemory::deallocate(ps->p.name);
     #include "ParticleSystemMember_common.def"
     #undef MEMBER
     DeviceMemory::deallocate(ps->deviceOnly.refreshVerletFlag);
@@ -216,125 +219,17 @@ void deallocate(ParticleSys<DeviceMemory> *ps){
    Host→Device転送
    ============================================================
  */
-void copyToDevice(ParticleSystem *ps)
-{
-    size_t size = ps->N * sizeof(double);
-    size_t size_walls = ps->walls.N * sizeof(double);
+void copyToDevice(ParticleSys<HostMemory> *ps, ParticleSys<DeviceMemory> *d_ps){
+    size_t N = ps->parameters.N;
 
-    ps->d_group.dt = ps->dt;
-    ps->d_group.N = ps->N;
-    ps->d_group.walls.N = ps->walls.N;
-    ps->d_group.mu = ps->mu;
+    #define MEMBER(type,name,Np,SAVE_FLAG) cudaMemcpy(d_ps->p.name,ps->p.name,Np*sizeof(type),cudaMemcpyHostToDevice); 
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
 
-    cudaMemcpy(ps->d_group.x,  ps->x,  size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.v,  ps->v,  size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.a,  ps->a,  size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.f,  ps->f,  size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.r,  ps->r,  size,     cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.rsq,ps->rsq,size,     cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.invr,ps->invr,size,   cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.m, ps->m, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.sqrtm, ps->sqrtm, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.invm, ps->invm, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.k, ps->k, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.etaconst, ps->etaconst, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.g, ps->g, sizeof(double)*DIM, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.isActive, ps->isActive,sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.angv, ps->angv, size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.anga, ps->anga, size*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.moi, ps->moi, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.invmoi, ps->invmoi, size, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.mom, ps->mom, size*DIM, cudaMemcpyHostToDevice);
-
-
-    // ===== contact history =====
-
-    cudaMemcpy(ps->d_group.deltHisx, ps->deltHisx,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.deltHisy, ps->deltHisy,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.deltHisz, ps->deltHisz,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.deltHisxWall, ps->deltHisxWall,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.deltHisyWall, ps->deltHisyWall,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.deltHiszWall, ps->deltHiszWall,
-            sizeof(double)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.indHis, ps->indHis,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.numCont, ps->numCont,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.isContact, ps->isContact,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.isContactWall, ps->isContactWall,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.indHisWall, ps->indHisWall,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.indHisWallNow, ps->indHisWallNow,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.indHisVorENow, ps->indHisVorENow,
-            sizeof(int)*ps->N*MAX_NEI, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.numContWall, ps->numContWall,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-
-    // ===== cell / morton =====
-
-    cudaMemcpy(ps->d_group.cellId, ps->cellId,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.cellx, ps->cellx,
-            sizeof(int)*DIM*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.pId, ps->pId,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.mortonKey, ps->mortonKey,
-            sizeof(uint32_t)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.mortonOrder, ps->mortonOrder,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.tmpMortonKey, ps->tmpMortonKey,
-            sizeof(uint32_t)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.tmpMortonOrder, ps->tmpMortonOrder,
-            sizeof(int)*ps->N, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.walls.n,  ps->walls.n,  size_walls*DIM, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.walls.d,  ps->walls.d,  size_walls, cudaMemcpyHostToDevice);
-
-    /* ========== verlet list related ======= */
-    cudaMemcpy(ps->d_group.refx, ps->refx, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.refy, ps->refy, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.refz, ps->refz, size, cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.neiList, ps->neiList, ps->N * MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.numNei, ps->numNei, ps->N * sizeof(int), cudaMemcpyHostToDevice);
-
-    cudaMemcpy(ps->d_group.neiListWall, ps->neiListWall, ps->N * MAX_NEI * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(ps->d_group.numNeiWall, ps->numNeiWall, ps->N * sizeof(int), cudaMemcpyHostToDevice);
-
-    /* ========= structs =========== */
-    cudaMemcpy(ps->d_groupPtr, &ps->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
+    /* ========= parameters =========== */
+    cudaMemcpy(&d_ps->parameters, &ps->parameters, sizeof(Parameters), cudaMemcpyHostToDevice);
+    /* ========= commons  =========== */
+    cudaMemcpy(&d_ps->p, &ps->p, sizeof(Common), cudaMemcpyHostToDevice);
 }
 
 
@@ -343,6 +238,17 @@ void copyToDevice(ParticleSystem *ps)
    Device→Host転送
    ============================================================
  */
+void copyFromDevice(ParticleSys<DeviceMemory>* d_ps, ParticleSys<HostMemory>* ps){
+    size_t N = ps->parameters.N;
+
+    #define MEMBER(type,name,Np,SAVE_FLAG) \
+    if(SAVE_FLAG == SAVE_ON){ \
+        cudaMemcpy(ps->p.name,d_ps->p.name, Np*sizeof(type), cudaMemcpyDeviceToHost);\
+    }
+    #include "ParticleSystemMember_common.def"
+    #undef MEMBER
+}
+
 void copyFromDevice(ParticleSystem* ps)
 {
     size_t size = ps->N * sizeof(double);

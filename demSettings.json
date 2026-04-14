@@ -18,7 +18,7 @@
     "inlet":{
         "inputMode":"shuffle",
         "COMMENT":"allowed input modes are 'shuffle', 'files' ",
-        "numParticle":10,
+        "numParticle":2000,
         "shuffle":{
             "minx":-0.5,
             "maxx": 0.5,
@@ -35,7 +35,7 @@
     "particleTypes":{
         "particle0":{
             "density":1000.,
-            "radius":0.01,
+            "radius":0.03,
             "CoR":0.3,
             "k":5.0e5,
             "mu":0.3
@@ -47,7 +47,7 @@
         "startTime":0,
         "endTime":2.0,
         "outputTiming":0.01,
-        "gpuOn":0
+        "gpuOn":1
     },
 
     "gravity":{

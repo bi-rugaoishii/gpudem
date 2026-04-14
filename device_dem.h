@@ -87,9 +87,11 @@ __global__ void dk_checkOoB(DeviceParticleGroup *p, DeviceBoundingBox* box);
 __global__ void integrateKernel(DeviceParticleGroup* p);
 
 __global__ void check_g_kernel(DeviceParticleGroup* p,DeviceTriangleMesh *mesh);
+__global__ void check_g_kernel(Common* ps,DeviceTriangleMesh *mesh);
 
 __global__ void k_integrate(DeviceParticleGroup* p);
 
+__global__ void k_shouldRefreshNeighborList(Common *p,DeviceOnly *d,int N, DeviceBoundingBox* box);
 __global__ void k_shouldRefreshNeighborList(DeviceParticleGroup *p, DeviceBoundingBox* box);
 
 __global__ void k_collision_verlet_verlet(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
@@ -105,6 +107,7 @@ __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
 */
 
 void device_dem_verlet_verlet_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
+void device_dem_verlet_verlet(ParticleSys<DeviceMemory> p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
 void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);

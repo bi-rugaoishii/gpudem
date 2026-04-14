@@ -87,7 +87,10 @@ int main(){
 
     printf("allocating memory\n");
     ps.parameters.N = cJSON_GetObjectItem(json_inlet,"numParticle")->valueint;
+    printf("N=parameters %d\n",ps.parameters.N);
     tmpPs.parameters.N = ps.parameters.N;
+    d_ps.parameters.N = ps.parameters.N;
+
     ps.parameters.mu = mu;
 
     allocate(&ps);
@@ -210,89 +213,88 @@ int main(){
     printf("created wall neighborlist\n");
 
 
-//    #if USE_GPU
-//    if (isGPUon == 1){
-//        printf("copying memory to device\n");
-//        copyToDevice(&ps);
-//        copyToDevice(&tmpPs);
-//        copyToDeviceBox(&box,&ps);
-//        copyToDeviceBVH(&bvh,&ps,mesh.nTri);
-//        deviceMallocCopyTriangleMesh(&mesh);
-//        printf("copying memory to device done\n");
-//    }
-//    #endif
+    #if USE_GPU
+    if (isGPUon == 1){
+        printf("copying memory to device\n");
+        copyToDevice(&ps,&d_ps);
+        copyToDeviceBox(&box,ps.parameters.N);
+        copyToDeviceBVH(&bvh,mesh.nTri);
+        deviceMallocCopyTriangleMesh(&mesh);
+        printf("copying memory to device done\n");
+    }
+    #endif
 //
 //
 //
     int steps = (int)(end_time/dt);
 
-//    #if USE_GPU
-//    int blockSize =0;
-//    int gridSize =0;
-//    cudaEvent_t d_start, d_stop, d_now;
+    #if USE_GPU
+    int blockSize =0;
+    int gridSize =0;
+    cudaEvent_t d_start, d_stop, d_now;
     clock_t h_start, h_end;
     float ms;
-//    if(isGPUon == 1){
-//        blockSize = 256;
-//        gridSize = (ps.N + blockSize - 1) / blockSize;
-//        printf("grid=%d, block=%d\n", gridSize, blockSize);
-//
-//        check_g_kernel<<<1, 1>>>(ps.d_groupPtr,mesh.d_meshPtr);
-//        cudaDeviceSynchronize();
-//        cudaEventCreate(&d_start);
-//        cudaEventCreate(&d_stop);
-//        cudaEventCreate(&d_now);
-//        cudaEventRecord(d_start);
-//    }else{
+    if(isGPUon == 1){
+        blockSize = 256;
+        gridSize = (ps.parameters.N + blockSize - 1) / blockSize;
+        printf("grid=%d, block=%d\n", gridSize, blockSize);
+
+        check_g_kernel<<<1, 1>>>(&d_ps.p,mesh.d_meshPtr);
+        cudaDeviceSynchronize();
+        cudaEventCreate(&d_start);
+        cudaEventCreate(&d_stop);
+        cudaEventCreate(&d_now);
+        cudaEventRecord(d_start);
+    }else{
         h_start = clock();
-//    }
-//    #endif
-//
-//
-//
+    }
+    #endif
+
+
+
     /* ====== main dem routine ===== */
 
     printf("starting \n");
 
     /* ========== GPU ============= */
-//    if(isGPUon ==1){
-//        for (int step = 1; step <= steps; step++){
-//            #if USE_GPU
-//            /* GPU */
-//
-//            /* if want naive collision*/
-//            //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
-//
-//            //device_dem(&ps, &box, gridSize, blockSize);
-//            //device_dem_triangles(&ps, &box, &mesh,gridSize, blockSize);
-//            //device_dem_verlet_triangles(&ps, &box, &mesh,gridSize, blockSize);
-//            device_dem_verlet_verlet(&ps, &box, &mesh,&bvh,gridSize, blockSize);
-//            //device_dem_verlet_verlet_withSort(&ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
-//
-//            #if OUTPUT
-//            if (step % outStep == 0)
-//            {
-//                cudaDeviceSynchronize();
-//                copyFromDevice(&ps);
-//                #if NONDIM
-//                write_frame_bin(outdir,step,&ps,ps.length_factor);
-//                for (int i=0; i<numWrite; i++){
-//                    write_single_text(outdir,step,&-ps,i);
-//                }
-//                #else
-//                write_frame_bin(outdir,step,&ps,1.0);
-//                #endif
-//
-//                cudaEventRecord(d_now);
-//                cudaEventSynchronize(d_now);
-//
-//                cudaEventElapsedTime(&ms, d_start, d_now);
-//                printf("Output step %d, current time: %f, GPU time: %f s\n", step, (step)*dt,ms/1000.0f);
-//            }
-//        }
-//    }else{
-//        /* ============= CPU ============== */
-//        #endif
+    if(isGPUon ==1){
+        for (int step = 1; step <= steps; step++){
+            #if USE_GPU
+            /* GPU */
+
+            /* if want naive collision*/
+            //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
+
+            //device_dem(&d_ps, &box, gridSize, blockSize);
+            //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
+            //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
+            device_dem_verlet_verlet(d_ps, &box, &mesh,&bvh,gridSize, blockSize);
+            //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+
+            #if OUTPUT
+            if (step % outStep == 0)
+            {
+                cudaDeviceSynchronize();
+                copyFromDevice(&d_ps,&ps);
+                #if NONDIM
+                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,ps.parameters.length_factor);
+                for (int i=0; i<numWrite; i++){
+                    write_single_text(outdir,step,&ps.p,&ps.parameters,i);
+                }
+                #else
+                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,1.0);
+                #endif
+
+                cudaEventRecord(d_now);
+                cudaEventSynchronize(d_now);
+
+                cudaEventElapsedTime(&ms, d_start, d_now);
+                printf("Output step %d, current time: %f, GPU time: %f s\n", step, (step)*dt,ms/1000.0f);
+            }
+        }
+    }else{
+        /* ============= CPU ============== */
+        #endif
         for (int step = 1; step <= steps; step++){
             /* CPU */
             // cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
@@ -321,39 +323,31 @@ int main(){
                 printf("Output step %d,current time: %f s, CPU time: %f s\n", step,(step)*dt,ms/1000.);
             }
             #endif
-//            #endif
+            #endif
         }
-//    }
-//
-//#if USE_GPU
-//    if(isGPUon == 1){
-//        cudaEventRecord(d_stop);
-//        cudaEventSynchronize(d_stop);
-//        cudaEventElapsedTime(&ms,d_start, d_stop);
-//        printf("GPU time: %f s\n",ms/1000.);
-//    }else{
-//        h_end = clock();
-//        ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
-//        printf("CPU time: %f s\n",ms/1000.);
-//    }
-//#endif
-//
-//
-//    /* === free memories === */
-//
-//    freeMemory(&ps, isGPUon);
-//    freeMemory(&tmpPs, isGPUon);
-//
-//    free_TriangleMesh(&mesh, isGPUon);
-//    free_BoundingBox(&box, isGPUon);
-//    free_BVH(&bvh, isGPUon);
-//
-//
-//#if USE_GPU
-//    if(isGPUon==1){
-//        cudaDeviceReset();
-//    }
-//#endif
+    }
+
+#if USE_GPU
+    if(isGPUon == 1){
+        cudaEventRecord(d_stop);
+        cudaEventSynchronize(d_stop);
+        cudaEventElapsedTime(&ms,d_start, d_stop);
+        printf("GPU time: %f s\n",ms/1000.);
+    }else{
+        h_end = clock();
+        ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
+        printf("CPU time: %f s\n",ms/1000.);
+    }
+#endif
+
+
+    /* === free memories === */
+
+#if USE_GPU
+    if(isGPUon==1){
+        cudaDeviceReset();
+    }
+#endif
     printf("deallocating memories\n");
     deallocate(&ps);
     deallocate(&tmpPs);
