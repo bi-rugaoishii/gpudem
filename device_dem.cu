@@ -1027,6 +1027,9 @@ void device_dem_verlet_verlet_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<
 }
 
 void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
+    printf("N in device = %d\n",p->N);
+    printf("dt in device = %f\n",p->dt);
+    printf("mu in device = %f\n",p->mu);
 
     /* initialize force */
     cudaMemset(p->f, 0, sizeof(double)*DIM*p->N);
@@ -1056,7 +1059,9 @@ void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,Tri
 
         printf("sort neighborlist\n");
         k_update_neighborlist_endsort<<<gridSize, blockSize>>>(p->d_self,box->d_boxPtr);
+        printf("sort done\n");
         k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_self,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);
+        printf("update neighborlist");
     }
 
     /*
