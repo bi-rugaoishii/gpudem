@@ -32,7 +32,6 @@ int main(){
 
     ParticleSys<HostMemory> ps;
     ParticleSys<HostMemory> tmpPs;
-    ParticleSys<DeviceMemory> d_ps;
 
 
     /* copy particle system for later swap */
@@ -86,17 +85,14 @@ int main(){
     //ps.N = 10000;
 
     printf("allocating memory\n");
-    ps.parameters.N = cJSON_GetObjectItem(json_inlet,"numParticle")->valueint;
-    printf("N=parameters %d\n",ps.parameters.N);
-    tmpPs.parameters.N = ps.parameters.N;
-    d_ps.parameters.N = ps.parameters.N;
-
-    ps.parameters.mu = mu;
+    ps.N = cJSON_GetObjectItem(json_inlet,"numParticle")->valueint;
+    printf("N=parameters %d\n",ps.N);
+    tmpPs.N = ps.N;
+    ps.mu = mu;
 
     allocate(&ps);
     allocate(&tmpPs);
 
-    allocate(&d_ps);
 
     /* read triangles */
     printf("\n Loading Triangles\n");
@@ -118,7 +114,7 @@ int main(){
     initializeParticles(&ps,json_inlet,r,m,k,res);
     initializeTmpParticles(&tmpPs,json_inlet,r,m,k,res); 
     printf("initalizing particles done\n");
-    printf("eta const[0] = %f\n",ps.p.etaconst[0]);
+    printf("eta const[0] = %f\n",ps.etaconst[0]);
 
 
 
@@ -126,10 +122,10 @@ int main(){
 
     cJSON *json_gravity = cJSON_GetObjectItem(jsonSettings,"gravity");
 
-    ps.p.g[0] = cJSON_GetObjectItem(json_gravity,"x")->valuedouble;
-    ps.p.g[1] = cJSON_GetObjectItem(json_gravity,"y")->valuedouble;
-    ps.p.g[2] = cJSON_GetObjectItem(json_gravity,"z")->valuedouble;
-    printf("g=%f %f %f\n", ps.p.g[0],ps.p.g[1],ps.p.g[2]);
+    ps.g[0] = cJSON_GetObjectItem(json_gravity,"x")->valuedouble;
+    ps.g[1] = cJSON_GetObjectItem(json_gravity,"y")->valuedouble;
+    ps.g[2] = cJSON_GetObjectItem(json_gravity,"z")->valuedouble;
+    printf("g=%f %f %f\n", ps.g[0],ps.g[1],ps.g[2]);
 
     /* set time step */
     double timestepFactor = cJSON_GetObjectItem(json_others,"dtFactor")->valuedouble;
@@ -141,7 +137,7 @@ int main(){
     dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
     printf("Outstep = %d,dt = %e\n",outStep,dt);
 
-    ps.parameters.dt=dt;
+    ps.dt=dt;
 
 
     const char *inlet_type = cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring;
@@ -187,8 +183,8 @@ int main(){
    // nondimensionalize(&tmpPs,&box,&mesh);
     printf("nondimensionalizing done \n");
     printf("\n");
-    printf("g after nondim is %f %f %f \n",ps.p.g[0],ps.p.g[1],ps.p.g[2]);
-    printf("m[0]:%f r[0]:%f dt:%f \n",ps.p.m[0],ps.p.r[0],ps.parameters.dt);
+    printf("g after nondim is %f %f %f \n",ps.g[0],ps.g[1],ps.g[2]);
+    printf("m[0]:%f r[0]:%f dt:%f \n",ps.m[0],ps.r[0],ps.dt);
     printf("\n");
     #endif
 
@@ -208,24 +204,31 @@ int main(){
      */
 
     printf("\nCreating wall neighborlist\n");
-    update_neighborlist_wall(&ps.p,ps.parameters.N,&mesh,&bvh,box.skinR);
+    update_neighborlist_wall(&ps,&mesh,&bvh,box.skinR);
     //update_neighborlist_wall_nobvh(&ps,&mesh,&box,box.skinR);
     printf("created wall neighborlist\n");
 
 
+    /* === Memory Allocation for gpu === */
+
+    ParticleSys<DeviceMemory> d_ps;
+    d_ps.N = ps.N;
+    d_ps.dt = ps.dt;
+    d_ps.mu = ps.mu;
     #if USE_GPU
     if (isGPUon == 1){
+        allocate(&d_ps);
         printf("copying memory to device\n");
         copyToDevice(&ps,&d_ps);
-        copyToDeviceBox(&box,ps.parameters.N);
+        copyToDeviceBox(&box,&ps);
         copyToDeviceBVH(&bvh,mesh.nTri);
         deviceMallocCopyTriangleMesh(&mesh);
         printf("copying memory to device done\n");
     }
     #endif
-//
-//
-//
+    
+    
+    
     int steps = (int)(end_time/dt);
 
     #if USE_GPU
@@ -236,10 +239,10 @@ int main(){
     float ms;
     if(isGPUon == 1){
         blockSize = 256;
-        gridSize = (ps.parameters.N + blockSize - 1) / blockSize;
+        gridSize = (ps.N + blockSize - 1) / blockSize;
         printf("grid=%d, block=%d\n", gridSize, blockSize);
 
-        check_g_kernel<<<1, 1>>>(&d_ps.p,mesh.d_meshPtr);
+        check_g_kernel<<<1, 1>>>(d_ps.d_self,mesh.d_meshPtr);
         cudaDeviceSynchronize();
         cudaEventCreate(&d_start);
         cudaEventCreate(&d_stop);
@@ -268,7 +271,7 @@ int main(){
             //device_dem(&d_ps, &box, gridSize, blockSize);
             //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
             //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
-            device_dem_verlet_verlet(d_ps, &box, &mesh,&bvh,gridSize, blockSize);
+            device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
             //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
 
             #if OUTPUT
@@ -277,12 +280,12 @@ int main(){
                 cudaDeviceSynchronize();
                 copyFromDevice(&d_ps,&ps);
                 #if NONDIM
-                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,ps.parameters.length_factor);
+                write_frame_bin(outdir,step,&ps,ps.length_factor);
                 for (int i=0; i<numWrite; i++){
-                    write_single_text(outdir,step,&ps.p,&ps.parameters,i);
+                    write_single_text(outdir,step,&ps,i);
                 }
                 #else
-                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,1.0);
+                write_frame_bin(outdir,step,&ps,1.0);
                 #endif
 
                 cudaEventRecord(d_now);
@@ -304,19 +307,19 @@ int main(){
             // cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
             // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
             cpu_dem_verlet_verlet(&ps,&tmpPs, &box,&mesh, &bvh,step);
-            checkOoB(&ps.p,&tmpPs.p,ps.parameters.N,&box);
+            checkOoB(&ps,&tmpPs,&box);
 
             #if OUTPUT
             if (step % outStep == 0){
                 //  writeParticlesVTKBinary(&ps, step);
                 #if NONDIM
                 //writeParticlesDimensionalizeVTK(&ps, step);
-                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,ps.parameters.length_factor);
+                write_frame_bin(outdir,step,&ps,ps.length_factor);
                 for (int i=0; i<numWrite; i++){
-                    write_single_text(outdir,step,&ps.p,&ps.parameters,i);
+                    write_single_text(outdir,step,&ps,i);
                 }
                 #else
-                write_frame_bin(outdir,step,&ps.p,ps.parameters.N,1.0);
+                write_frame_bin(outdir,step,&ps,1.0);
                 #endif
                 h_end = clock();
                 ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
@@ -351,7 +354,12 @@ int main(){
     printf("deallocating memories\n");
     deallocate(&ps);
     deallocate(&tmpPs);
+#if USE_GPU
+    if(isGPUon==1){
     deallocate(&d_ps);
+    }
+#endif
+
     cJSON_Delete(jsonSettings);
     free_TriangleMesh(&mesh, isGPUon);
     free_BoundingBox(&box, isGPUon);

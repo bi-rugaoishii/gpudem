@@ -96,10 +96,10 @@ void write_initialPos_csv(const char* dir,ParticleSys<HostMemory>* p){
         return;
     }
 
-    for (int i=0; i<p->parameters.N; i++){
-        double x=(p->p.x[i*3+0]);
-        double y=(p->p.x[i*3+1]);
-        double z=(p->p.x[i*3+2]);
+    for (int i=0; i<p->N; i++){
+        double x=(p->x[i*3+0]);
+        double y=(p->x[i*3+1]);
+        double z=(p->x[i*3+2]);
 
 
         fprintf(fp,"%f %f %f\n",x,y,z);
@@ -112,13 +112,13 @@ void write_initialPos_csv(const char* dir,ParticleSys<HostMemory>* p){
     fclose(fp);
 }
 
-void write_single_text(const char* dir,int step,Common* p,Parameters *para,int pid){
+void write_single_text(const char* dir,int step,ParticleSys<HostMemory>* p,int pid){
     char filename[256];
 
     sprintf(filename,"%s/pid%d.txt",dir,pid);
-    int N=para->N;
-    double time_factor = para->time_factor;
-    double length_factor = para->length_factor;
+    int N=p->N;
+    double time_factor = p->time_factor;
+    double length_factor = p->length_factor;
 
     FILE* fp=fopen(filename,"a");
 
@@ -133,7 +133,7 @@ void write_single_text(const char* dir,int step,Common* p,Parameters *para,int p
         if (p->pId[i]!= pid){
             continue;
         }else{
-            double dt = para->dt*time_factor; 
+            double dt = p->dt*time_factor; 
             double time = dt*(double)step;
 
             double x=(p->x[i*3+0]*length_factor);
@@ -169,59 +169,6 @@ void write_single_text(const char* dir,int step,Common* p,Parameters *para,int p
     fclose(fp);
 }
 
-void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
-    char filename[256];
-
-    sprintf(filename,"%s/pid%d.txt",dir,pid);
-
-    FILE* fp=fopen(filename,"a");
-
-    if(fp==NULL)
-    {
-        printf("ERROR: cannot open %s\n",filename);
-        return;
-    }
-
-
-    for(int i=0; i<p->N; i++){
-        if (p->pId[i]!= pid){
-            continue;
-        }else{
-            double dt = p->dt*p->time_factor; 
-            double time = dt*(double)step;
-
-            double x=(p->x[i*3+0]*p->length_factor);
-            double y=(p->x[i*3+1]*p->length_factor);
-            double z=(p->x[i*3+2]*p->length_factor);
-
-
-            double ax=(p->a[i*3+0]*p->length_factor/(p->time_factor*p->time_factor));
-            double ay=(p->a[i*3+1]*p->length_factor/(p->time_factor*p->time_factor));
-            double az=(p->a[i*3+2]*p->length_factor/(p->time_factor*p->time_factor));
-
-            double vx=(p->v[i*3+0]*p->length_factor/p->time_factor);
-            double vy=(p->v[i*3+1]*p->length_factor/p->time_factor);
-            double vz=(p->v[i*3+2]*p->length_factor/p->time_factor);
-
-
-            double angax=(p->anga[i*3+0]/(p->time_factor*p->time_factor));
-            double angay=(p->anga[i*3+1]/(p->time_factor*p->time_factor));
-            double angaz=(p->anga[i*3+2]/(p->time_factor*p->time_factor));
-
-            double angvx=(p->angv[i*3+0]/(p->time_factor));
-            double angvy=(p->angv[i*3+1]/(p->time_factor));
-            double angvz=(p->angv[i*3+2]/(p->time_factor));
-
-            int isActive=p->isActive[i];
-            fprintf(fp,"%f %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d\n",time,pid,x,y,z,vx,vy,vz,ax,ay,az,angvx,angvy,angvz,angax,angay,angaz,isActive);
-            break;
-        }
-    }
-
-
-
-    fclose(fp);
-}
 
 //void write_frame_bin_all(
 //        const char* dir,
@@ -259,26 +206,26 @@ void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
 //    double* m=(double*)malloc(sizeof(double)*N);
 //    int* isActive=(int*)malloc(sizeof(int)*N);
 //    double* angv=(double*)malloc(sizeof(double)*N*3);
-//    double* deltHisx = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
-//    double* deltHisy = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
-//    double* deltHisz = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
+//    double* deltHisx = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
+//    double* deltHisy = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
+//    double* deltHisz = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
 //
-//    double* deltHisxWall = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
-//    double* deltHisyWall = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
-//    double* deltHiszWall = (double*)malloc(sizeof(double)*p->N*p->MAX_NEI);
+//    double* deltHisxWall = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
+//    double* deltHisyWall = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
+//    double* deltHiszWall = (double*)malloc(sizeof(double)*p->N*MAX_NEI);
 //
-//    int* indHis = (int*)malloc(sizeof(int)*p->N*p->MAX_NEI);
+//    int* indHis = (int*)malloc(sizeof(int)*p->N*MAX_NEI);
 //    int* numCont = (int*)malloc(sizeof(int)*p->N);
 //
-//    int* indHisWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+//    int* indHisWall = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 //    int* numContWall = (int*)malloc(sizeof(int)*ps->N);
 //    int* pId = (int*)malloc(sizeof(int)*ps->N);
 //    double* refx = (double*)malloc(size);
 //    double* refy = (double*)malloc(size);
 //    double* refz = (double*)malloc(size);
-//    int* neiList = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+//    int* neiList = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 //    int* numNei = (int*)malloc(sizeof(int)*ps->N);
-//    int* neiListWall = (int*)malloc(sizeof(int)*ps->N*ps->MAX_NEI);
+//    int* neiListWall = (int*)malloc(sizeof(int)*ps->N*MAX_NEI);
 //    int* numNeiWall = (int*)malloc(sizeof(int)*ps->N);
 //
 //    int i;
@@ -312,8 +259,10 @@ void write_single_text(const char* dir,int step,ParticleSystem* p,int pid){
 void write_frame_bin(
         const char* dir,
         int step,
-        Common* p,int N,const double length_factor)
+        ParticleSys<HostMemory>* p,const double length_factor)
 {
+    int N=p->N;
+
     char filename[256];
 
     build_filename(filename,dir,step);

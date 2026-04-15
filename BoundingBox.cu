@@ -91,13 +91,13 @@ void radixSortUint32(
     *indexPtr = srcIdx;
 }
 
-void swap_device_ps_pointer(DeviceParticleGroup** p, DeviceParticleGroup** tmpP){
-    DeviceParticleGroup* tmp = *p;
+void swap_device_ps_pointer(ParticleSys<DeviceMemory>** p, ParticleSys<DeviceMemory>** tmpP){
+    ParticleSys<DeviceMemory>* tmp = *p;
     *p = *tmpP;
     *tmpP = tmp;
 }
 
-void swap_device_ps_member_pointer(DeviceParticleGroup* p, DeviceParticleGroup* tmp){
+void swap_device_ps_member_pointer(ParticleSys<DeviceMemory>* p, ParticleSys<DeviceMemory>* tmp){
     double* td;
     int*    ti;
    // uint32_t* tu;
@@ -156,77 +156,77 @@ void swap_device_ps_member_pointer(DeviceParticleGroup* p, DeviceParticleGroup* 
 }
 
 void swap_ps(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmp){
-    int N = p->parameters.N;
+    int N = p->N;
 
 
     for (int i=0; i<N; i++){
-        int src = p->p.mortonOrder[i];
+        int src = p->mortonOrder[i];
 
         // --- position ---
-        tmp->p.x[i*3+0] = p->p.x[src*3+0];
-        tmp->p.x[i*3+1] = p->p.x[src*3+1];
-        tmp->p.x[i*3+2] = p->p.x[src*3+2];
+        tmp->x[i*3+0] = p->x[src*3+0];
+        tmp->x[i*3+1] = p->x[src*3+1];
+        tmp->x[i*3+2] = p->x[src*3+2];
 
         // --- velocity ---
-        tmp->p.v[i*3+0] = p->p.v[src*3+0];
-        tmp->p.v[i*3+1] = p->p.v[src*3+1];
-        tmp->p.v[i*3+2] = p->p.v[src*3+2];
+        tmp->v[i*3+0] = p->v[src*3+0];
+        tmp->v[i*3+1] = p->v[src*3+1];
+        tmp->v[i*3+2] = p->v[src*3+2];
 
         // --- ang velocity ---
-        tmp->p.angv[i*3+0] = p->p.angv[src*3+0];
-        tmp->p.angv[i*3+1] = p->p.angv[src*3+1];
-        tmp->p.angv[i*3+2] = p->p.angv[src*3+2];
+        tmp->angv[i*3+0] = p->angv[src*3+0];
+        tmp->angv[i*3+1] = p->angv[src*3+1];
+        tmp->angv[i*3+2] = p->angv[src*3+2];
 
         // --- scalar ---
-        tmp->p.r[i] = p->p.r[src];
-        tmp->p.rsq[i] = p->p.rsq[src];
-        tmp->p.invr[i] = p->p.invr[src];
+        tmp->r[i] = p->r[src];
+        tmp->rsq[i] = p->rsq[src];
+        tmp->invr[i] = p->invr[src];
 
-        tmp->p.m[i] = p->p.m[src];
-        tmp->p.sqrtm[i] = p->p.sqrtm[src];
-        tmp->p.invm[i] = p->p.invm[src];
-        tmp->p.moi[i] = p->p.moi[src];
-        tmp->p.invmoi[i] = p->p.invmoi[src];
-        tmp->p.etaconst[i] = p->p.etaconst[src];
+        tmp->m[i] = p->m[src];
+        tmp->sqrtm[i] = p->sqrtm[src];
+        tmp->invm[i] = p->invm[src];
+        tmp->moi[i] = p->moi[src];
+        tmp->invmoi[i] = p->invmoi[src];
+        tmp->etaconst[i] = p->etaconst[src];
 
-        tmp->p.isActive[i] = p->p.isActive[src];
+        tmp->isActive[i] = p->isActive[src];
 
         int bi = i*MAX_NEI;
         int bsrc = src*MAX_NEI;
         for (int j=0; j<MAX_NEI; j++){
             // ---- contact history (particle) ----
-            tmp->p.deltHisx[bi+j] = p->p.deltHisx[bsrc+j];
-            tmp->p.deltHisy[bi+j] = p->p.deltHisy[bsrc+j];
-            tmp->p.deltHisz[bi+j] = p->p.deltHisz[bsrc+j];
+            tmp->deltHisx[bi+j] = p->deltHisx[bsrc+j];
+            tmp->deltHisy[bi+j] = p->deltHisy[bsrc+j];
+            tmp->deltHisz[bi+j] = p->deltHisz[bsrc+j];
 
-            tmp->p.isContact[bi+j] = p->p.isContact[bsrc+j];
+            tmp->isContact[bi+j] = p->isContact[bsrc+j];
 
             /* get the after order index of contact particle */
-            tmp->p.indHis[bi+j] = p->p.indHis[bsrc+j];
+            tmp->indHis[bi+j] = p->indHis[bsrc+j];
 
             // ---- contact history (wall) ----
-            tmp->p.deltHisxWall[bi+j] = p->p.deltHisxWall[bsrc+j];
-            tmp->p.deltHisyWall[bi+j] = p->p.deltHisyWall[bsrc+j];
-            tmp->p.deltHiszWall[bi+j] = p->p.deltHiszWall[bsrc+j];
-            tmp->p.isContactWall[bi+j] = p->p.isContactWall[bsrc+j];
-            tmp->p.indHisWall[bi+j] = p->p.indHisWall[bsrc+j];
+            tmp->deltHisxWall[bi+j] = p->deltHisxWall[bsrc+j];
+            tmp->deltHisyWall[bi+j] = p->deltHisyWall[bsrc+j];
+            tmp->deltHiszWall[bi+j] = p->deltHiszWall[bsrc+j];
+            tmp->isContactWall[bi+j] = p->isContactWall[bsrc+j];
+            tmp->indHisWall[bi+j] = p->indHisWall[bsrc+j];
 
         }
 
         // ---- number of contact ----
-        tmp->p.numCont[i]     = p->p.numCont[src];
-        tmp->p.numContWall[i] = p->p.numContWall[src];
+        tmp->numCont[i]     = p->numCont[src];
+        tmp->numContWall[i] = p->numContWall[src];
 
         // ---- cell info ----
-        tmp->p.cellId[i] = p->p.cellId[src];
-        tmp->p.cellx[i*DIM+0]  = p->p.cellx[src*DIM+0];
-        tmp->p.cellx[i*DIM+1]  = p->p.cellx[src*DIM+1];
-        tmp->p.cellx[i*DIM+2]  = p->p.cellx[src*DIM+2];
+        tmp->cellId[i] = p->cellId[src];
+        tmp->cellx[i*DIM+0]  = p->cellx[src*DIM+0];
+        tmp->cellx[i*DIM+1]  = p->cellx[src*DIM+1];
+        tmp->cellx[i*DIM+2]  = p->cellx[src*DIM+2];
 
 
         // ---- morton key is already swapped----
-        //tmp->p.mortonKey[i] = p->p.mortonKey[src];
-        tmp->p.pId[i] = p->p.pId[src];
+        //tmp->mortonKey[i] = p->mortonKey[src];
+        tmp->pId[i] = p->pId[src];
     }
 
 
@@ -235,47 +235,47 @@ void swap_ps(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmp){
     int*    ti;
     //uint32_t* tu;
 
-    td=p->p.x; p->p.x=tmp->p.x; tmp->p.x=td;
-    td=p->p.v; p->p.v=tmp->p.v; tmp->p.v=td;
-    td=p->p.r; p->p.r=tmp->p.r; tmp->p.r=td;
-    td=p->p.rsq; p->p.rsq=tmp->p.rsq; tmp->p.rsq=td;
-    td=p->p.invr; p->p.invr=tmp->p.invr; tmp->p.invr=td;
+    td=p->x; p->x=tmp->x; tmp->x=td;
+    td=p->v; p->v=tmp->v; tmp->v=td;
+    td=p->r; p->r=tmp->r; tmp->r=td;
+    td=p->rsq; p->rsq=tmp->rsq; tmp->rsq=td;
+    td=p->invr; p->invr=tmp->invr; tmp->invr=td;
 
-    td=p->p.m; p->p.m=tmp->p.m; tmp->p.m=td;
-    td=p->p.invm; p->p.invm=tmp->p.invm; tmp->p.invm=td;
-    td=p->p.sqrtm; p->p.sqrtm=tmp->p.sqrtm; tmp->p.sqrtm=td;
-    td=p->p.moi; p->p.moi=tmp->p.moi; tmp->p.moi=td;
-    td=p->p.invmoi; p->p.invmoi=tmp->p.invmoi; tmp->p.invmoi=td;
-    td=p->p.etaconst; p->p.etaconst=tmp->p.etaconst; tmp->p.etaconst=td;
+    td=p->m; p->m=tmp->m; tmp->m=td;
+    td=p->invm; p->invm=tmp->invm; tmp->invm=td;
+    td=p->sqrtm; p->sqrtm=tmp->sqrtm; tmp->sqrtm=td;
+    td=p->moi; p->moi=tmp->moi; tmp->moi=td;
+    td=p->invmoi; p->invmoi=tmp->invmoi; tmp->invmoi=td;
+    td=p->etaconst; p->etaconst=tmp->etaconst; tmp->etaconst=td;
 
-    td=p->p.angv; p->p.angv=tmp->p.angv; tmp->p.angv=td;
+    td=p->angv; p->angv=tmp->angv; tmp->angv=td;
     // ---- contact history ----
-    td=p->p.deltHisx;     p->p.deltHisx=tmp->p.deltHisx;     tmp->p.deltHisx=td;
-    td=p->p.deltHisy;     p->p.deltHisy=tmp->p.deltHisy;     tmp->p.deltHisy=td;
-    td=p->p.deltHisz;     p->p.deltHisz=tmp->p.deltHisz;     tmp->p.deltHisz=td;
+    td=p->deltHisx;     p->deltHisx=tmp->deltHisx;     tmp->deltHisx=td;
+    td=p->deltHisy;     p->deltHisy=tmp->deltHisy;     tmp->deltHisy=td;
+    td=p->deltHisz;     p->deltHisz=tmp->deltHisz;     tmp->deltHisz=td;
 
-    td=p->p.deltHisxWall; p->p.deltHisxWall=tmp->p.deltHisxWall; tmp->p.deltHisxWall=td;
-    td=p->p.deltHisyWall; p->p.deltHisyWall=tmp->p.deltHisyWall; tmp->p.deltHisyWall=td;
-    td=p->p.deltHiszWall; p->p.deltHiszWall=tmp->p.deltHiszWall; tmp->p.deltHiszWall=td;
+    td=p->deltHisxWall; p->deltHisxWall=tmp->deltHisxWall; tmp->deltHisxWall=td;
+    td=p->deltHisyWall; p->deltHisyWall=tmp->deltHisyWall; tmp->deltHisyWall=td;
+    td=p->deltHiszWall; p->deltHiszWall=tmp->deltHiszWall; tmp->deltHiszWall=td;
 
-    ti = p->p.isContact;      p->p.isContact = tmp->p.isContact;      tmp->p.isContact = ti;
-    ti = p->p.indHis;         p->p.indHis = tmp->p.indHis;            tmp->p.indHis = ti;
+    ti = p->isContact;      p->isContact = tmp->isContact;      tmp->isContact = ti;
+    ti = p->indHis;         p->indHis = tmp->indHis;            tmp->indHis = ti;
 
-    ti = p->p.isContactWall;  p->p.isContactWall = tmp->p.isContactWall; tmp->p.isContactWall = ti;
-    ti = p->p.indHisWall;     p->p.indHisWall = tmp->p.indHisWall;    tmp->p.indHisWall = ti;
+    ti = p->isContactWall;  p->isContactWall = tmp->isContactWall; tmp->isContactWall = ti;
+    ti = p->indHisWall;     p->indHisWall = tmp->indHisWall;    tmp->indHisWall = ti;
 
     // ---- contact number ----
-    ti=p->p.numCont;      p->p.numCont=tmp->p.numCont;      tmp->p.numCont=ti;
-    ti=p->p.numContWall;  p->p.numContWall=tmp->p.numContWall; tmp->p.numContWall=ti;
+    ti=p->numCont;      p->numCont=tmp->numCont;      tmp->numCont=ti;
+    ti=p->numContWall;  p->numContWall=tmp->numContWall; tmp->numContWall=ti;
 
     // ---- cell info ----
-    ti=p->p.cellId;       p->p.cellId=tmp->p.cellId;       tmp->p.cellId=ti;
-    ti=p->p.cellx;        p->p.cellx=tmp->p.cellx;         tmp->p.cellx=ti;
+    ti=p->cellId;       p->cellId=tmp->cellId;       tmp->cellId=ti;
+    ti=p->cellx;        p->cellx=tmp->cellx;         tmp->cellx=ti;
 
     // ---- particle id ----
-    ti=p->p.pId;          p->p.pId=tmp->p.pId;             tmp->p.pId=ti;
+    ti=p->pId;          p->pId=tmp->pId;             tmp->pId=ti;
 
-    ti=p->p.isActive;       p->p.isActive=tmp->p.isActive;       tmp->p.isActive=ti;
+    ti=p->isActive;       p->isActive=tmp->isActive;       tmp->isActive=ti;
 
     // ---- morton key is already swapped----
     //tu=p->mortonKey;    p->mortonKey=tmp->mortonKey; tmp->mortonKey=tu;
@@ -283,7 +283,7 @@ void swap_ps(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmp){
 }
 
 
-void copyToDeviceBox(BoundingBox *box, int N){
+void copyToDeviceBox(BoundingBox *box, ParticleSys<HostMemory> *ps){
 
     size_t size = box->N;
 
@@ -316,7 +316,7 @@ void copyToDeviceBox(BoundingBox *box, int N){
 
     box->d_box.N = box->N;
 
-    cudaMemcpy(box->d_box.pList,  box->pList,  sizeof(int)*N, cudaMemcpyHostToDevice);
+    cudaMemcpy(box->d_box.pList,  box->pList,  sizeof(int)*ps->N, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pNum,  box->pNum,  sizeof(int)*size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.usedCells, box->usedCells, sizeof(int) * size, cudaMemcpyHostToDevice);
     cudaMemcpy(box->d_box.pStart,  box->pStart,  sizeof(int)*size, cudaMemcpyHostToDevice);
@@ -356,9 +356,9 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     /* find maximum radius */
 
     double maxr=0.;
-    for (int i=0; i<p->parameters.N; i++){
-        if (maxr<p->p.r[i]){
-            maxr=p->p.r[i];
+    for (int i=0; i<p->N; i++){
+        if (maxr<p->r[i]){
+            maxr=p->r[i];
         }
     }
 
@@ -386,7 +386,7 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     int sizeBox= box->sizex*box->sizey*box->sizez;
     box->N= sizeBox;
 
-    box->pList = (int*)malloc(sizeof(int)*p->parameters.N);
+    box->pList = (int*)malloc(sizeof(int)*p->N);
     box->pNum = (int*)calloc(sizeBox,sizeof(int));
     box->pStart = (int*)calloc(sizeBox,sizeof(int));
     box->cellOffset = (int*)calloc(sizeBox,sizeof(int));
@@ -404,7 +404,7 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     if (isGPUon==1){
         box->d_box.N= sizeBox;
         box->d_box.MAX_TRI = box->MAX_TRI;
-        cudaMalloc(&box->d_box.pList, sizeof(int)*p->parameters.N);
+        cudaMalloc(&box->d_box.pList, sizeof(int)*p->N);
         cudaMalloc(&box->d_box.pNum, sizeof(int)*sizeBox);
         cudaMalloc(&box->d_box.usedCells, sizeof(int) * sizeBox);
 
@@ -470,16 +470,16 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
     //update_pList_fast(p,box);
 
     int skinR = box->skinR;
-    for (int i=0; i<p->parameters.N; i++){
-        if(p->p.isActive[i]!=1){
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
             continue;
         }
         //particle-particle
         /* cycle through neighbor cells */
         int bi=i*DIM;
-        int x=p->p.cellx[bi+0];
-        int y=p->p.cellx[bi+1];
-        int z=p->p.cellx[bi+2];
+        int x=p->cellx[bi+0];
+        int y=p->cellx[bi+1];
+        int z=p->cellx[bi+2];
         int numNei = 0;
 
         for (int sx=-1; sx<=1; sx++){
@@ -498,13 +498,13 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
 
                             Vec3 del;
                             /* normal points toward particle i */
-                            del.x = p->p.x[bi+0]- p->p.x[bj+0];
-                            del.y = p->p.x[bi+1]- p->p.x[bj+1];
-                            del.z = p->p.x[bi+2]- p->p.x[bj+2];
+                            del.x = p->x[bi+0]- p->x[bj+0];
+                            del.y = p->x[bi+1]- p->x[bj+1];
+                            del.z = p->x[bi+2]- p->x[bj+2];
                             double distsq = vdot(del,del);
-                            double R = p->p.r[i]+p->p.r[j]+skinR;
+                            double R = p->r[i]+p->r[j]+skinR;
                             if (distsq<R*R){
-                                p->p.neiList[i*MAX_NEI+numNei]=j;
+                                p->neiList[i*MAX_NEI+numNei]=j;
                                 numNei+=1;
                                 if(numNei >= MAX_NEI){
                                     printf("Neighbor over flow!!!!\n");
@@ -515,13 +515,13 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
                 }
             }
         }/* neighbor cell search done */
-        p->p.numNei[i]=numNei;
+        p->numNei[i]=numNei;
         
 
         /* set reference position */
-        p->p.refx[i]=p->p.x[bi+0];
-        p->p.refy[i]=p->p.x[bi+1];
-        p->p.refz[i]=p->p.x[bi+2];
+        p->refx[i]=p->x[bi+0];
+        p->refy[i]=p->x[bi+1];
+        p->refz[i]=p->x[bi+2];
     }
 }
 
@@ -536,25 +536,24 @@ void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemo
         box->cellOffset[cid] = 0;
     }
 
-    for(int i=0;i<p->parameters.N;i++){
-        p->p.mortonOrder[i] = i;
+    for(int i=0;i<p->N;i++){
+        p->mortonOrder[i] = i;
     }
     /* get cellId and get mortonkey*/
-    int N = p->parameters.N;
-    for (int i=0; i<N; i++){
+    for (int i=0; i<p->N; i++){
         int bi = i*DIM;
-        int dx = floor((p->p.x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->p.x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->p.x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-        p->p.cellx[bi+0] = dx;
-        p->p.cellx[bi+1] = dy;
-        p->p.cellx[bi+2] = dz;
-        p->p.cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
-        p->p.mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
+        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[bi+0] = dx;
+        p->cellx[bi+1] = dy;
+        p->cellx[bi+2] = dz;
+        p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
+        p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
     }
 
     /* ========= sort and reorder ========= */
-    radixSortUint32(&p->p.mortonKey,&p->p.mortonOrder,p->parameters.N,p->p.tmpMortonKey,p->p.tmpMortonOrder);
+    radixSortUint32(&p->mortonKey,&p->mortonOrder,p->N,p->tmpMortonKey,p->tmpMortonOrder);
 
     swap_ps(p, tmpPs);
 
@@ -564,11 +563,11 @@ void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemo
 
     box->numUsedCells = 0;
 
-    for (int i=0; i<N; i++){
-        if (p->p.isActive[i]!=1){
+    for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
             continue;
         }
-        int cellId = p->p.cellId[i];
+        int cellId = p->cellId[i];
 
         if (box->pNum[cellId]==0){
             box->usedCells[box->numUsedCells] = cellId;
@@ -587,12 +586,12 @@ void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemo
     }
 
 
-    for (int i=0; i<N; i++){
-        if (p->p.isActive[i]!=1){
+    for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
             continue;
         }
 
-        int cellId = p->p.cellId[i];
+        int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
 
@@ -611,27 +610,26 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
         box->pStart[i] = 0;
     }
 
-    int N= p->parameters.N;
-    for(int i=0;i<N;i++){
-        p->p.mortonOrder[i] = i;
+    for(int i=0;i<p->N;i++){
+        p->mortonOrder[i] = i;
     }
 
 
     /* get cellId and get mortonkey*/
-    for (int i=0; i<N; i++){
+    for (int i=0; i<p->N; i++){
         int bi=i*DIM;
-        int dx = floor((p->p.x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->p.x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->p.x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-        p->p.cellx[bi+0] = dx;
-        p->p.cellx[bi+1] = dy;
-        p->p.cellx[bi+2] = dz;
-        p->p.cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
-        p->p.mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
+        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        p->cellx[bi+0] = dx;
+        p->cellx[bi+1] = dy;
+        p->cellx[bi+2] = dz;
+        p->cellId[i] = (box->sizey*dz+dy)*box->sizex+dx;
+        p->mortonKey[i]=morton3D((uint32_t)dx,(uint32_t)dy,(uint32_t)dz);
     }
 
     /* ========= sort and reorder ========= */
-    radixSortUint32(&p->p.mortonKey,&p->p.mortonOrder,N,p->p.tmpMortonKey,p->p.tmpMortonOrder);
+    radixSortUint32(&p->mortonKey,&p->mortonOrder,p->N,p->tmpMortonKey,p->tmpMortonOrder);
 
     swap_ps(p, tmpPs);
 
@@ -639,11 +637,11 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
 
     /* count number of particle in cell */
 
-    for (int i=0; i<N; i++){
-        if (p->p.isActive[i]!=1){
+    for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
             continue;
         }
-        int cellId = p->p.cellId[i];
+        int cellId = p->cellId[i];
         box->pNum[cellId] +=1;
     }
 
@@ -656,11 +654,11 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
         box->cellOffset[i] = 0;
     }
 
-    for (int i=0; i<N; i++){
-        if (p->p.isActive[i]!=1){
+    for (int i=0; i<p->N; i++){
+        if (p->isActive[i]!=1){
             continue;
         }
-        int cellId = p->p.cellId[i];
+        int cellId = p->cellId[i];
         int startId = box->pStart[cellId];
         int offset = box->cellOffset[cellId];
 
@@ -707,7 +705,7 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
     }
 }
 
-void update_pList_fast(ParticleSystem *p, BoundingBox *box){
+void update_pList_fast(ParticleSys<HostMemory> *p, BoundingBox *box){
 
     /* initialize */
     for (int i=0; i<box->numUsedCells; i++){
@@ -775,7 +773,7 @@ void update_pList_fast(ParticleSystem *p, BoundingBox *box){
 
 }
 
-void update_pList(ParticleSystem *p, BoundingBox *box){
+void update_pList(ParticleSys<HostMemory> *p, BoundingBox *box){
     /* initialize */
     for (int i=0; i<box->N; i++){
         box->pNum[i] = 0;
@@ -837,7 +835,7 @@ void update_pList(ParticleSystem *p, BoundingBox *box){
    device  related functions
    ===================================
  */
-__global__ void checkConsistency(DeviceParticleGroup* p){
+__global__ void checkConsistency(ParticleSys<DeviceMemory>* p){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if(i >= p->N) return;
 
@@ -860,11 +858,11 @@ __global__ void checkConsistency(DeviceParticleGroup* p){
     }
 }
 
-__global__ void check(DeviceParticleGroup* p){
+__global__ void check(ParticleSys<DeviceMemory>* p){
     printf("device mortonKey ptr: %p\n", p->mortonKey);
 }
 
-__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp){
+__global__ void d_swap_ps(ParticleSys<DeviceMemory> *p, ParticleSys<DeviceMemory> *tmp){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N){
@@ -943,7 +941,7 @@ __global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp){
 
 }
 
-__global__ void dk_morton_key(DeviceParticleGroup* p, DeviceBoundingBox* box){
+__global__ void dk_morton_key(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box){
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N){
         return;
@@ -961,7 +959,7 @@ __global__ void dk_morton_key(DeviceParticleGroup* p, DeviceBoundingBox* box){
 
 }
 
-__global__ void dk_print_N(DeviceParticleGroup* p, int N){
+__global__ void dk_print_N(ParticleSys<DeviceMemory>* p, int N){
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=N){
         return;
@@ -973,7 +971,7 @@ __global__ void dk_print_N(DeviceParticleGroup* p, int N){
 
 }
 
-__global__ void dk_print(DeviceParticleGroup* p){
+__global__ void dk_print(ParticleSys<DeviceMemory>* p){
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N){
         return;
@@ -985,7 +983,7 @@ __global__ void dk_print(DeviceParticleGroup* p){
             i, p->pId[i], p->cellx[bi+0], p->cellx[bi+1],p->cellx[bi+2],
             p->mortonKey[i]);
 }
-__global__ void dk_print_tmpMorton(DeviceParticleGroup* p){
+__global__ void dk_print_tmpMorton(ParticleSys<DeviceMemory>* p){
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N){
         return;
@@ -998,20 +996,7 @@ __global__ void dk_print_tmpMorton(DeviceParticleGroup* p){
             p->tmpMortonKey[i]);
 }
 
-__global__ void dk_build_cellCount(Common* p,int N, DeviceBoundingBox* box){
-
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=N || p->isActive[i]!=1){
-        return;
-    }
-
-    int cellId = d_calcCellId(p,i,box);
-    p->cellId[i] = cellId;
-
-    atomicAdd(&box->pNum[cellId],1);
-
-}
-__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box){
+__global__ void dk_build_cellCount(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N || p->isActive[i]!=1){
@@ -1025,20 +1010,7 @@ __global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* bo
 
 }
 
-__global__ void dk_build_pList(Common* p, int N,DeviceBoundingBox* box){
-
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-    if(i>=N || p->isActive[i]!=1){
-        return;
-    }
-
-    int cellId = p->cellId[i];
-    int offset = atomicAdd(&box->cellOffset[cellId],1);
-    int index = box->pStart[cellId] + offset;
-    box->pList[index] = i;
-}
-
-__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
+__global__ void dk_build_pList(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
     if(i>=p->N || p->isActive[i]!=1){
@@ -1051,24 +1023,7 @@ __global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box){
     box->pList[index] = i;
 }
 
-__device__ int d_calcCellId(Common* p,int i, DeviceBoundingBox* box){
-    int bi = i*DIM;
-    int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-    int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-    int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
-    p->cellx[bi+0] = dx;
-    p->cellx[bi+1] = dy;
-    p->cellx[bi+2] = dz;
-
-    /* for debug */
-    /*
-    printf("recalc i=%d pId=%d ix=%d iy=%d\n", i, p->pId[i], dx, dy);
-    */
-
-    return (box->sizey*dz+dy)*box->sizex+dx;
-}
-
-__device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box){
+__device__ int d_calcCellId(ParticleSys<DeviceMemory>* p,int i, DeviceBoundingBox* box){
     int bi = i*DIM;
     int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
     int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
@@ -1100,7 +1055,7 @@ __device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, 
 
 }
 
-__global__ void k_update_neighborlist_endsort(Common *p,DeviceBoundingBox *box){
+__global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -1160,67 +1115,7 @@ __global__ void k_update_neighborlist_endsort(Common *p,DeviceBoundingBox *box){
     p->refz[i]=p->x[bi+2];
 }
 
-__global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box){
-
-    int i = blockIdx.x*blockDim.x + threadIdx.x;
-
-
-    int skinR = box->skinR;
-    if(p->isActive[i]!=1){
-        return;
-    }
-
-    //particle-particle
-    /* cycle through neighbor cells */
-    int bi=i*DIM;
-    int x=p->cellx[bi+0];
-    int y=p->cellx[bi+1];
-    int z=p->cellx[bi+2];
-    int numNei = 0;
-
-    for (int sx=-1; sx<=1; sx++){
-        for (int sy=-1; sy<=1; sy++){
-            for (int sz=-1; sz<=1; sz++){
-                int cellId = (box->sizey*(z+sz)+y+sy)*box->sizex+x+sx;
-
-                int start = box->pStart[cellId];
-                int end = start+box->pNum[cellId];
-                for (int k=box->pStart[cellId]; k<end; k++){
-                    int j = box->pList[k];
-                    if (i==j){
-                        continue;
-                    }else{
-                        int bj=j*DIM;
-
-                        Vec3 del;
-                        /* normal points toward particle i */
-                        del.x = p->x[bi+0]- p->x[bj+0];
-                        del.y = p->x[bi+1]- p->x[bj+1];
-                        del.z = p->x[bi+2]- p->x[bj+2];
-                        double distsq = vdot(del,del);
-                        double R = p->r[i]+p->r[j]+skinR;
-                        if (distsq<R*R){
-                            p->neiList[i*MAX_NEI+numNei]=j;
-                            numNei+=1;
-                            if(numNei >= MAX_NEI){
-                                printf("Neighbor over flow!!!!\n");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }/* neighbor cell search done */
-    p->numNei[i]=numNei;
-    d_sort_neighborlist(p->neiList,i*MAX_NEI,numNei);
-
-    /* set reference position */
-    p->refx[i]=p->x[bi+0];
-    p->refy[i]=p->x[bi+1];
-    p->refz[i]=p->x[bi+2];
-}
-
-__global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box){
+__global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -1279,38 +1174,38 @@ __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *
     p->refz[i]=p->x[bi+2];
 }
 
-void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize){
+void d_update_pList_withSort(ParticleSys<DeviceMemory> *p, ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,int gridSize, int blockSize){
 
     /* initialize */
     cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
 
-    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_self,box->d_boxPtr);
 
 
-    dk_morton_key<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+    dk_morton_key<<<gridSize,blockSize>>>(p->d_self,box->d_boxPtr);
 
 
 
     cub::DeviceRadixSort::SortPairs(
-            p->d_group.tmp_storage,
-            p->d_group.tmp_bytes,
-            p->d_group.mortonKey,
-            p->d_group.tmpMortonKey,
-            p->d_group.mortonOrder,
-            p->d_group.tmpMortonOrder,
+            p->tmp_storage,
+            p->tmp_bytes,
+            p->mortonKey,
+            p->tmpMortonKey,
+            p->mortonOrder,
+            p->tmpMortonOrder,
             p->N);
 
 
     cudaDeviceSynchronize();
-    d_swap_ps<<<gridSize,blockSize>>>(p->d_groupPtr, tmpPs->d_groupPtr);
+    d_swap_ps<<<gridSize,blockSize>>>(p->d_self, tmpPs->d_self);
 
 
-    swap_device_ps_member_pointer(&p->d_group,&tmpPs->d_group);
-    cudaMemcpy(p->d_groupPtr, &p->d_group, sizeof(DeviceParticleGroup), cudaMemcpyHostToDevice);
-    cudaMemcpy(tmpPs->d_groupPtr, &tmpPs->d_group,
-            sizeof(DeviceParticleGroup),
+    swap_device_ps_member_pointer(p,tmpPs);
+    cudaMemcpy(p->d_self, p, sizeof(ParticleSys<DeviceMemory>), cudaMemcpyHostToDevice);
+    cudaMemcpy(tmpPs->d_self, tmpPs,
+            sizeof(ParticleSys<DeviceMemory>),
             cudaMemcpyHostToDevice);
 
 
@@ -1321,10 +1216,10 @@ void d_update_pList_withSort(ParticleSystem *p, ParticleSystem *tmpPs, BoundingB
             box->d_box.pStart,
             box->d_box.N);
 
-    dk_build_pList<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+    dk_build_pList<<<gridSize,blockSize>>>(p->d_self,box->d_boxPtr);
 }
 
-void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gridSize, int blockSize){
+void d_update_pList(ParticleSys<DeviceMemory> *p, BoundingBox *box,int gridSize, int blockSize){
     // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
 
     /* initialize */
@@ -1332,7 +1227,7 @@ void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gri
     cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
     cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
 
-    dk_build_cellCount<<<gridSize,blockSize>>>(&p->p,N,box->d_boxPtr);
+    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_self,box->d_boxPtr);
 
     cub::DeviceScan::ExclusiveSum(box->d_box.tmpExSum,
             box->d_box.scanTmpBytes,
@@ -1340,25 +1235,6 @@ void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gri
             box->d_box.pStart,
             box->d_box.N);
 
-    dk_build_pList<<<gridSize,blockSize>>>(&p->p,N,box->d_boxPtr);
-
-}
-void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize){
-    // printf("N=%d MAX_NEI=%d numCell=%d\n", p->d_group.N, p->d_group.MAX_NEI, box->N);
-
-    /* initialize */
-    cudaMemset(box->d_box.pNum, 0, sizeof(int)*box->N);
-    cudaMemset(box->d_box.pStart, 0, sizeof(int)*box->N);
-    cudaMemset(box->d_box.cellOffset, 0, sizeof(int)*box->N);
-
-    dk_build_cellCount<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
-
-    cub::DeviceScan::ExclusiveSum(box->d_box.tmpExSum,
-            box->d_box.scanTmpBytes,
-            box->d_box.pNum,
-            box->d_box.pStart,
-            box->d_box.N);
-
-    dk_build_pList<<<gridSize,blockSize>>>(p->d_groupPtr,box->d_boxPtr);
+    dk_build_pList<<<gridSize,blockSize>>>(p->d_self,box->d_boxPtr);
 
 }

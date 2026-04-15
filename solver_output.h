@@ -27,21 +27,21 @@ solver_output_init が呼ばれていること
 void write_header_text(const char* dir,int step,ParticleSys<HostMemory>* p,int pid);
 
 void write_single_text(const char* dir,int step,ParticleSys<HostMemory>* p,int pid);
-void write_single_text(const char* dir,int step,Common* p,Parameters *para,int pid);
+void write_single_text(const char* dir,int step,ParticleSys<HostMemory>* p,int pid);
 
 void write_initialPos_csv(const char* dir,ParticleSys<HostMemory>* p);
 
 void write_frame_bin_all(
     const char* dir,
     int step,
-    ParticleSystem *p,
+    ParticleSys<HostMemory> *p,
     const double length_factor
 );
 
 void write_frame_bin(
         const char* dir,
         int step,
-        Common* p,int N,const double length_factor);
+        ParticleSys<HostMemory>* p, const double length_factor);
 
 
 #endif

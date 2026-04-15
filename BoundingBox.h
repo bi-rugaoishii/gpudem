@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _BOUNDINGBOX_H_
+#define _BOUNDINGBOX_H_
 
 #include <cuda_runtime.h>
 #include <cub/cub.cuh>
@@ -6,23 +7,20 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "ParticleSystem.h"
-#include "hardCodedParameters.h"
 #include "cJSON.h"
-struct ParticleSystem;
+
 struct HostMemory;
 struct DeviceMemory;
-struct Common;
 
-template <typename Memory>// typename used later to distinguish gpu and cpu
+template <typename Memory>
 struct ParticleSys;
 
-template <>
+template<>
 struct ParticleSys<HostMemory>;
 
-template <>
+template<>
 struct ParticleSys<DeviceMemory>;
 
-struct DeviceParticleGroup;
 struct TriangleMesh;
 
 /*
@@ -131,14 +129,14 @@ void radixSortUint32(
     int*       workIndex);
 
 void swap_ps(ParticleSys<HostMemory> *ps, ParticleSys<HostMemory> *tmpps);
-void swap_device_ps_pointer(DeviceParticleGroup **p, DeviceParticleGroup **tmp);
+void swap_device_ps_pointer(ParticleSys<DeviceMemory> **p, ParticleSys<DeviceMemory> **tmp);
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
 
 void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpP, BoundingBox *box);
 
-void update_pList(ParticleSystem *p, BoundingBox *box);
-void update_pList_fast(ParticleSystem *p, BoundingBox *box);
+void update_pList(ParticleSys<HostMemory> *p, BoundingBox *box);
+void update_pList_fast(ParticleSys<HostMemory> *p, BoundingBox *box);
 void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpPs,BoundingBox *box);
 void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpPs,BoundingBox *box);
 
@@ -152,19 +150,17 @@ void free_BoundingBox(BoundingBox *box, int isGPUon);
  * ============================*/
 
 __device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei);
-__global__ void d_swap_ps(DeviceParticleGroup *p, DeviceParticleGroup *tmp);
-__global__ void dk_build_cellCount(DeviceParticleGroup* p, DeviceBoundingBox* box);
-__global__ void dk_build_pList(DeviceParticleGroup* p, DeviceBoundingBox* box);
+__global__ void d_swap_ps(ParticleSys<DeviceMemory> *p, ParticleSys<DeviceMemory> *tmp);
+__global__ void dk_build_cellCount(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box);
+__global__ void dk_build_pList(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box);
 
-__global__ void k_update_neighborlist_endsort(Common *p,DeviceBoundingBox *box);
-__global__ void k_update_neighborlist_endsort(DeviceParticleGroup *p,DeviceBoundingBox *box);
- __global__ void k_update_neighborlist(DeviceParticleGroup *p,DeviceBoundingBox *box);
+__global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box);
+ __global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box);
 
-void d_update_pList_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,int gridSize, int blockSize);
+void d_update_pList_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,int gridSize, int blockSize);
 
-__device__ int d_calcCellId(DeviceParticleGroup* p,int i, DeviceBoundingBox* box);
-__device__ int d_calcCellId(Common* p,int i, DeviceBoundingBox* box);
-void d_update_pList(ParticleSystem *p, BoundingBox *box,int gridSize, int blockSize);
-void d_update_pList(ParticleSys<DeviceMemory> *p,int N, BoundingBox *box,int gridSize, int blockSize);
-void copyToDeviceBox(BoundingBox *box, int N);
+__device__ int d_calcCellId(ParticleSys<DeviceMemory>* p,int i, DeviceBoundingBox* box);
+void d_update_pList(ParticleSys<DeviceMemory> *p, BoundingBox *box,int gridSize, int blockSize);
+void copyToDeviceBox(BoundingBox *box, ParticleSys<HostMemory> *ps);
 
+#endif 

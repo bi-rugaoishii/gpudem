@@ -1,9 +1,9 @@
 CC = nvcc
 CC_C = gcc
 ARCH = sm_70
-#CFLAGS = -O3 
+CFLAGS = -O3 
 GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false
-CFLAGS = -O0 -g -G
+#CFLAGS = -O0 -g -G
 #CFLAGS = -O3  -pg
 #CFLAGS = -O0  -g 
 #CFLAGS = -Xcompiler "-fsanitize=address -fno-omit-frame-pointer" -O0  -g  

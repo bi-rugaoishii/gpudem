@@ -16,67 +16,66 @@
 
 
 /* =========== triangle related ====== */
-__device__ TriangleContactCache d_dist_triangle(DeviceParticleGroup* ps, int i, DeviceTriangleMesh* mesh, int j);
+__device__ __forceinline__
+TriangleContactCache d_dist_triangle(ParticleSys<DeviceMemory>* ps, int i, DeviceTriangleMesh* mesh, int j);
 
-__device__ __forceinline__ void d_particle_collision_verlet(DeviceParticleGroup* p, int i ,DeviceBoundingBox *box);
+__device__ __forceinline__ void d_particle_collision_verlet(ParticleSys<DeviceMemory>* p, int i ,DeviceBoundingBox *box);
 
 __device__ __forceinline__
-void d_wall_collision_triangles(DeviceParticleGroup* p,int i,DeviceBoundingBox *box, DeviceTriangleMesh* mesh);
+void d_wall_collision_triangles(ParticleSys<DeviceMemory>* p,int i,DeviceBoundingBox *box, DeviceTriangleMesh* mesh);
 
 __device__ __forceinline__
-void d_wall_collision_verlet(DeviceParticleGroup* p,int i,DeviceTriangleMesh* mesh);
+void d_wall_collision_verlet(ParticleSys<DeviceMemory>* p,int i,DeviceTriangleMesh* mesh);
 
 
 __device__ __forceinline__
-void updateAcceleration(DeviceParticleGroup* p,int i);
+void updateAcceleration(ParticleSys<DeviceMemory>* p,int i);
 
 __device__ __forceinline__
-void updateVelocity(DeviceParticleGroup* p,int i);
+void updateVelocity(ParticleSys<DeviceMemory>* p,int i);
 
 
 /* 位置更新（オイラー法） */
 __device__ __forceinline__
-void updatePosition(DeviceParticleGroup* p,
+void updatePosition(ParticleSys<DeviceMemory>* p,
                     int i);
 
 
 /* 床衝突処理 */
 __device__ __forceinline__
-void resolveFloorCollision(DeviceParticleGroup* p,
+void resolveFloorCollision(ParticleSys<DeviceMemory>* p,
                            int i,
                            double restitution);
 
 __device__ __forceinline__
-ContactCache d_calc_normal_force_wall(DeviceParticleGroup *p,int i,int j,Vec3 n,double delMag);
+ContactCache d_calc_normal_force_wall(ParticleSys<DeviceMemory> *p,int i,int j,Vec3 n,double delMag);
 
 __device__ __forceinline__
-ContactCache d_calc_normal_force(DeviceParticleGroup* p,int i,int j,Vec3 n,double delMag);
-
-__device__ void d_calc_tangential_force_wall(DeviceParticleGroup *p,int i,int j,ContactCache c);
-
-__device__ void d_calc_tangential_force(DeviceParticleGroup *p,int i,int j,ContactCache c);
+ContactCache d_calc_normal_force(ParticleSys<DeviceMemory>* p,int i,int j,Vec3 n,double delMag);
 
 __device__ __forceinline__
-void d_update_history_wall(DeviceParticleGroup *p,int i);
+void d_calc_tangential_force_wall(ParticleSys<DeviceMemory> *p,int i,int j,ContactCache c);
 
 __device__ __forceinline__
-void d_wall_collision_naive(DeviceParticleGroup* ps,int i);
+void d_calc_tangential_force(ParticleSys<DeviceMemory> *p,int i,int j,ContactCache c);
 
 __device__ __forceinline__
-void d_update_history(DeviceParticleGroup *p,int i);
+void d_update_history_wall(ParticleSys<DeviceMemory> *p,int i);
 
 
 __device__ __forceinline__
-void d_particle_collision_cell_linked(DeviceParticleGroup* p, int i, DeviceBoundingBox* box);
+void d_update_history(ParticleSys<DeviceMemory> *p,int i);
 
 
 __device__ __forceinline__
-void d_particle_collision_cell_linked_noVec(DeviceParticleGroup* p, int i, DeviceBoundingBox* box);
+void d_particle_collision_cell_linked(ParticleSys<DeviceMemory>* p, int i, DeviceBoundingBox* box);
+
 
 __device__ __forceinline__
-void d_particle_collision_naive(DeviceParticleGroup* ps, int i);
+void d_particle_collision_cell_linked_noVec(ParticleSys<DeviceMemory>* p, int i, DeviceBoundingBox* box);
+
 /* ============== check Out of Bounds ============  */
-__global__ void dk_checkOoB(DeviceParticleGroup *p, DeviceBoundingBox* box);
+__global__ void dk_checkOoB(ParticleSys<DeviceMemory> *p, DeviceBoundingBox* box);
 
 
 /*
@@ -84,21 +83,19 @@ __global__ void dk_checkOoB(DeviceParticleGroup *p, DeviceBoundingBox* box);
 カーネル
 ============================================================
 */
-__global__ void integrateKernel(DeviceParticleGroup* p);
+__global__ void integrateKernel(ParticleSys<DeviceMemory>* p);
 
-__global__ void check_g_kernel(DeviceParticleGroup* p,DeviceTriangleMesh *mesh);
-__global__ void check_g_kernel(Common* ps,DeviceTriangleMesh *mesh);
+__global__ void check_g_kernel(ParticleSys<DeviceMemory>* p,DeviceTriangleMesh *mesh);
 
-__global__ void k_integrate(DeviceParticleGroup* p);
+__global__ void k_integrate(ParticleSys<DeviceMemory>* p);
 
-__global__ void k_shouldRefreshNeighborList(Common *p,DeviceOnly *d,int N, DeviceBoundingBox* box);
-__global__ void k_shouldRefreshNeighborList(DeviceParticleGroup *p, DeviceBoundingBox* box);
+__global__ void k_shouldRefreshNeighborList(ParticleSys<DeviceMemory> *p, DeviceBoundingBox* box);
 
-__global__ void k_collision_verlet_verlet(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
+__global__ void k_collision_verlet_verlet(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
 
-__global__ void k_collision_triangle(DeviceParticleGroup* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
+__global__ void k_collision_triangle(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box,DeviceTriangleMesh* mesh);
 
-__global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
+__global__ void k_collision(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box);
 
 /*
    ======================================================
@@ -106,14 +103,13 @@ __global__ void k_collision(DeviceParticleGroup* p, DeviceBoundingBox* box);
    ======================================================
 */
 
-void device_dem_verlet_verlet_withSort(ParticleSystem *p,ParticleSystem *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
-void device_dem_verlet_verlet(ParticleSys<DeviceMemory> p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
-void device_dem_verlet_verlet(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
+void device_dem_verlet_verlet_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
+void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
-void device_dem_verlet_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
+void device_dem_verlet_triangles(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
 
 
-void device_dem_triangles(ParticleSystem *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
+void device_dem_triangles(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);
 
-void device_dem(ParticleSystem *p, BoundingBox *box, int gridSize, int blockSize);
+void device_dem(ParticleSys<DeviceMemory> *p, BoundingBox *box, int gridSize, int blockSize);
 #endif

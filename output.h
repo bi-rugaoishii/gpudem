@@ -16,7 +16,7 @@
 出力
 ============================================================
 */
-void writeParticles(ParticleSystem* ps, int step);
+void writeParticles(ParticleSys<HostMemory>* ps, int step);
 
 /*
 ============================================================
@@ -28,14 +28,14 @@ VTK Binary出力（ParaView用・高速）
    エンディアン変換（little → big）
 ============================================================ */
 void swapBytes(void* data, size_t size);
-void writeParticlesVTKBinary(ParticleSystem* ps, int step);
+void writeParticlesVTKBinary(ParticleSys<HostMemory>* ps, int step);
 
 /*
 ============================================================
 VTK出力（ParaView用）
 ============================================================
 */
-void writeParticlesVTK(ParticleSystem* ps, int step);
-void writeParticlesDimensionalizeVTK(ParticleSystem* ps, int step);
+void writeParticlesVTK(ParticleSys<HostMemory>* ps, int step);
+void writeParticlesDimensionalizeVTK(ParticleSys<HostMemory>* ps, int step);
 
 #endif
