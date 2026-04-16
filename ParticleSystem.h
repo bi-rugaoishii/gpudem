@@ -13,9 +13,6 @@ struct BoundingBox;
 struct HostMemory{
     template <typename T>
     static T* allocate(int N){
-            printf("N = %d\n", N);
-            printf("MAX_NEI = %d\n", MAX_NEI);
-            printf("alloc size = %zu\n", (size_t)N * MAX_NEI * sizeof(double)); 
         return static_cast<T*>(malloc(sizeof(T)*N));
     }
 
@@ -29,9 +26,6 @@ struct DeviceMemory{
     template <typename T>
         static T* allocate(int N){
             T* ptr;
-            printf("N = %d\n", N);
-            printf("MAX_NEI = %d\n", MAX_NEI);
-            printf("alloc size = %zu\n", (size_t)N * MAX_NEI * sizeof(double)); 
             cudaMalloc((void**)&ptr, sizeof(T)*N);
             return ptr;
         }
