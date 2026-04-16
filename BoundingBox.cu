@@ -1059,11 +1059,9 @@ __global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,Devic
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 
+    if (i >= p->N || p->isActive[i]!=1) return;
 
     int skinR = box->skinR;
-    if(p->isActive[i]!=1){
-        return;
-    }
 
     //particle-particle
     /* cycle through neighbor cells */
@@ -1119,11 +1117,9 @@ __global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundin
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 
+    if (i >= p->N || p->isActive[i]!=1) return;
 
     int skinR = box->skinR;
-    if(p->isActive[i]!=1){
-        return;
-    }
 
     //particle-particle
     /* cycle through neighbor cells */

@@ -18,7 +18,7 @@
     "inlet":{
         "inputMode":"shuffle",
         "COMMENT":"allowed input modes are 'shuffle', 'files' ",
-        "numParticle":2000,
+        "numParticle":50000,
         "shuffle":{
             "minx":-0.5,
             "maxx": 0.5,
@@ -35,7 +35,7 @@
     "particleTypes":{
         "particle0":{
             "density":1000.,
-            "radius":0.03,
+            "radius":0.01,
             "CoR":0.3,
             "k":5.0e5,
             "mu":0.3

@@ -10,7 +10,6 @@ void allocate(ParticleSys<HostMemory> *ps){
     int N=ps->N;
     #define MEMBER(type,name,Np,SAVE_FLAG) ps->name = HostMemory::template allocate<type>(Np);
     #include "memberList/ParticleSystemMember_common.def"
-    printf("Allocate Done\n");
     #undef MEMBER
 }
 
@@ -21,7 +20,6 @@ void allocate(ParticleSys<DeviceMemory> *d_ps){
     ps.dt=d_ps->dt;
     ps.mu=d_ps->mu;
 
-    printf("parameters N=%d\n",N);
     #define MEMBER(type,name,Np,SAVE_FLAG) ps.name = DeviceMemory::template allocate<type>((Np)); \
     d_ps->name = ps.name;
 
