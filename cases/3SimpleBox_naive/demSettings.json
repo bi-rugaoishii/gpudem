@@ -37,13 +37,13 @@
             "density":1000.,
             "radius":0.8,
             "CoR":0.3,
-            "k":1.0e9,
+            "k":1.0e7,
             "mu":0.3
         }
     },
     "others":{
         "seed":1,
-        "dtFactor":100,
+        "dtFactor":1000,
         "startTime":0,
         "endTime":10.0,
         "outputTiming":0.01,

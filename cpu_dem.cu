@@ -697,6 +697,7 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
     double fnsq = vdot(c.fn,c.fn);
 
 
+    /* == debug == */
     if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
         if (ftsq!=0.){
             Vec3 t;
@@ -713,29 +714,28 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
         }
     }   
 
-    /* == debug == */
     /*
-       if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
-       if (ftsq!=0.){
-       Vec3 t;
-       t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+    if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
+        if (ftsq!=0.){
+            Vec3 t;
+            t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
 
 
-       double fnnorm = sqrt(fnsq);
-       ft = vscalar(p->mu*fnnorm,t);
-       delt_new = vscalar(-1./(p->k[i]*kco),ft);
-       }else{
-       ft.x =0.;
-       ft.y =0.;
-       ft.z =0.;
-       }
-       }else{
-    // add damping //
-    ft.x -= c.eta*c.vt.x;
-    ft.y -= c.eta*c.vt.y;
-    ft.z -= c.eta*c.vt.z;
+            double fnnorm = sqrt(fnsq);
+            ft = vscalar(p->mu*fnnorm,t);
+            delt_new = vscalar(-1./(p->k[i]*kco),ft);
+        }else{
+            ft.x =0.;
+            ft.y =0.;
+            ft.z =0.;
+        }
+    }else{
+        // add damping //
+        ft.x -= c.eta*c.vt.x;
+        ft.y -= c.eta*c.vt.y;
+        ft.z -= c.eta*c.vt.z;
     }
-     */
+    */
 
     /* === debug ===*/
     /*
@@ -896,7 +896,7 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     }else{
 
         /* add damping */
-        /* commented out for == debug */
+        /* == removed for debug */
         /*
         ft.x -= c.eta*c.vt.x;
         ft.y -= c.eta*c.vt.y;
@@ -1002,6 +1002,11 @@ inline ContactCache calc_normal_force(ParticleSys<HostMemory> *p,int i,int j,Vec
 
     double m_eff = 1./(p->invm[i]+p->invm[j]);
     double eta = p->etaconst[i]*sqrt(m_eff);
+
+    /* == debug == */
+    //printf("eta=%e\n",eta);
+
+
     result.eta = eta;
 
     result.fn.x = -p->k[i]*del.x - eta*result.vn_rel.x;

@@ -22,7 +22,7 @@
         "shuffle":{
             "minx":-0.4,
             "maxx": 0.4,
-            "miny":0.5,
+            "miny":0.2,
             "maxy":4.0,
             "minz":-0.4,
             "maxz":0.4
@@ -37,15 +37,15 @@
             "density":1000.,
             "radius":0.1,
             "CoR":0.3,
-            "k":1.0e9,
+            "k":1.0e7,
             "mu":0.3
         }
     },
     "others":{
         "seed":1,
-        "dtFactor":15,
+        "dtFactor":30,
         "startTime":0,
-        "endTime":20.0,
+        "endTime":10.0,
         "outputTiming":0.01,
         "gpuOn":0
     },

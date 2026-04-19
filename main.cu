@@ -15,7 +15,7 @@
 #include "Vec3.h"
 #include "settings_loader.h"
 #define OUTPUT 1
-#define NONDIM 1
+#define NONDIM 0
 
 
 
