@@ -691,7 +691,6 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
                     /** put this paragraph if want to use the cell linked list triangles*/
                     /*
                     int tNum = box->tNum[cellId];
-
                     box->tList[cellId*box->MAX_TRI+tNum]=i;
                     if (box->tNum[cellId]>= box->MAX_TRI){
                         printf("!!!!!!!Too many triangles in a cell!!!!\n");

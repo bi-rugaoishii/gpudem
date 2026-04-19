@@ -129,7 +129,7 @@ int main(){
 
     /* set time step */
     double timestepFactor = cJSON_GetObjectItem(json_others,"dtFactor")->valuedouble;
-    double dt = sqrt(m/k)/timestepFactor;
+    double dt = 2.*PI*sqrt(m/k)/timestepFactor;
     printf("dt = %e\n",dt);
     double out_time = cJSON_GetObjectItem(json_others,"outputTiming")->valuedouble;
     double end_time = cJSON_GetObjectItem(json_others,"endTime")->valuedouble;
@@ -271,7 +271,8 @@ int main(){
             //device_dem(&d_ps, &box, gridSize, blockSize);
             //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
             //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
-            device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
+            //device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
+            device_dem_naive(&d_ps,&box,&mesh,&bvh,gridSize, blockSize);
             //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
 
             #if OUTPUT
@@ -302,11 +303,11 @@ int main(){
             /* CPU */
             // cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
             //cpu_dem_sort(&ps, &tmpPs, &box, step);
-            //  cpu_dem_naive_triangle(&ps, &box, &mesh);
+              cpu_dem_naive_triangle(&ps, &box, &mesh);
             //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
             // cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
             // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
-            cpu_dem_verlet_verlet(&ps,&tmpPs, &box,&mesh, &bvh,step);
+            //cpu_dem_verlet_verlet(&ps,&tmpPs, &box,&mesh, &bvh,step);
             checkOoB(&ps,&tmpPs,&box);
 
             #if OUTPUT
@@ -320,6 +321,9 @@ int main(){
                 }
                 #else
                 write_frame_bin(outdir,step,&ps,1.0);
+                for (int i=0; i<numWrite; i++){
+                    write_single_text(outdir,step,&ps,i);
+                }
                 #endif
                 h_end = clock();
                 ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
@@ -356,7 +360,7 @@ int main(){
     deallocate(&tmpPs);
 #if USE_GPU
     if(isGPUon==1){
-    deallocate(&d_ps);
+        deallocate(&d_ps);
     }
 #endif
 

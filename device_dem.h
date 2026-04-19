@@ -40,6 +40,8 @@ __device__ __forceinline__
 void updatePosition(ParticleSys<DeviceMemory>* p,
                     int i);
 
+__global__
+void k_wall_collision_triangles_naive(ParticleSys<HostMemory>* p,DeviceTriangleMesh* mesh);
 
 /* 床衝突処理 */
 __device__ __forceinline__
@@ -102,6 +104,8 @@ __global__ void k_collision(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box
    main routine 
    ======================================================
 */
+
+void device_dem_naive(ParticleSys<DeviceMemory> *p,BoundingBox *box, TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
 void device_dem_verlet_verlet_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);

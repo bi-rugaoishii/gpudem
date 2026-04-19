@@ -1,6 +1,5 @@
 #include "device_dem.h"
 #define DIM 3
-#define SMALL_NUM 1e-15
 
 
 /*
@@ -497,6 +496,124 @@ void d_calc_tangential_force_wall(ParticleSys<DeviceMemory> *p,int i,int j,Conta
 }
 
 
+__global__
+void k_wall_collision_triangles_naive(ParticleSys<DeviceMemory>* p,DeviceTriangleMesh* mesh){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= p->N || p->isActive[i]!=1) return;
+
+    //particle-triangle
+    /* cycle through neighbor cells */
+
+    int numContVorENow = 0;
+    int numContWallNow = 0;
+    for(int j=0; j<mesh->nTri; j++){
+        int indTri = j;
+
+        int wasHitBefore = 0;
+        /* check if the triangle was already hit */
+        for (int k=0; k<numContWallNow; k++){
+            if (indTri == p->indHisWallNow[i*MAX_NEI+k]){
+                wasHitBefore =1;
+                continue;
+            }
+        }
+        if (wasHitBefore == 1){
+            continue;
+        }
+
+
+        TriangleContactCache tc;
+        tc = d_dist_triangle(p,i,mesh,indTri); 
+
+        if(tc.dist<p->r[i]){
+            double delmag;
+            if(tc.hitAt==-1){ //hit at face
+                delmag = p->r[i]-tc.dist;
+            }else{ //hit as face or edge
+                int end = numContVorENow;
+                int hadDuplicate=0;
+
+                for (int k=0; k<end; k++){
+                    if(p->indHisVorENow[i*MAX_NEI+k]==tc.hitAt){
+                        //printf("duplicate collision of vertex or edge!!\n");
+                        hadDuplicate=1;
+                        break;
+                    }
+                }
+
+                if(hadDuplicate ==1){
+                    continue;
+
+                }
+
+                delmag = p->r[i]-tc.dist;
+
+
+                p->indHisVorENow[i*MAX_NEI+end] = tc.hitAt;
+                numContVorENow+=1;
+            }
+            if (delmag*p->invr[i]*0.5>0.1){
+                printf("overlap over 10%% with wall!!!!\n");
+            }
+
+            ContactCache c;
+            c = d_calc_normal_force_wall(p,i,j,tc.n,delmag);
+            //d_calc_tangential_force_wall(p,i,j,c);
+            int numWall = numContWallNow;
+            p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
+            numContWallNow+=1;
+        }
+    }
+    d_update_history_wall(p,i);
+}
+
+__global__
+void k_particle_collision_naive(ParticleSys<DeviceMemory>* p){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i >= p->N || p->isActive[i]!=1) return;
+
+    //particle-particle
+    int bi=i*DIM;
+    for (int j=0; j<p->N; j++){
+        if (i==j){
+            continue;
+        }else{
+            int bj=j*DIM;
+
+            Vec3 del;
+            /* normal points toward particle i */
+            del.x = p->x[bi+0]- p->x[bj+0];
+            del.y = p->x[bi+1]- p->x[bj+1];
+            del.z = p->x[bi+2]- p->x[bj+2];
+            double distsq = vdot(del,del);
+            double R = p->r[i]+p->r[j];
+
+            if (distsq<R*R){
+                double dist = sqrt(distsq);
+                double delMag = R-dist;
+                if (delMag*p->invr[i]*0.5>0.05){
+                    printf("overlap over 5%%!!!!\n");
+                    printf("overlap is %f %%\n",delMag*p->invr[i]*0.5*100.);
+                }
+                /* ======================================================
+                   Force Calculation
+                   ======================================================*/
+                /* get normal direction */
+                Vec3 n;
+                n.x = del.x/dist;
+                n.y = del.y/dist;
+                n.z = del.z/dist;
+                ContactCache c;
+                c = d_calc_normal_force(p,i,j,n,delMag);
+                d_calc_tangential_force(p,i,j,c);
+
+            }
+        }
+    }
+    d_update_history(p,i);
+}
+
 __device__ __forceinline__
 void d_calc_tangential_force(ParticleSys<DeviceMemory> *p,int i,int j,ContactCache c){
 
@@ -568,10 +685,10 @@ void d_calc_tangential_force(ParticleSys<DeviceMemory> *p,int i,int j,ContactCac
             delt_new = vscalar(-1./p->k[i],ft);
 
             /* for debugging
-            double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
-            printf("ft after scaling %f %f %f\n", ft.x*force_factor,ft.y*force_factor,ft.z*force_factor);
-            printf("ratio after scaling %f \n", sqrt(vdot(ft,ft))/(p->mu*fnnorm));
-            */
+               double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+               printf("ft after scaling %f %f %f\n", ft.x*force_factor,ft.y*force_factor,ft.z*force_factor);
+               printf("ratio after scaling %f \n", sqrt(vdot(ft,ft))/(p->mu*fnnorm));
+             */
 
         }else{
             ft.x =0.;
@@ -606,14 +723,14 @@ void d_calc_tangential_force(ParticleSys<DeviceMemory> *p,int i,int j,ContactCac
 
     /* ========= for debug ==========*/
     /*
-    double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
-    double velocity_factor = p->length_factor/p->time_factor;
-    printf("vt = %f %f %f\n",velocity_factor*c.vt.x,velocity_factor*c.vt.y,velocity_factor*c.vt.z);
-    printf("vtmag = %f \n",velocity_factor*sqrt(vdot(c.vt,c.vt)));
-    printf("fn = %f %f %f\n",force_factor*c.fn.x,force_factor*c.fn.y,force_factor*c.fn.z);
-    printf("ft = %f %f %f\n",force_factor*ft.x,force_factor*ft.y,force_factor*ft.z);
-    printf("\n");
-    */
+       double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+       double velocity_factor = p->length_factor/p->time_factor;
+       printf("vt = %f %f %f\n",velocity_factor*c.vt.x,velocity_factor*c.vt.y,velocity_factor*c.vt.z);
+       printf("vtmag = %f \n",velocity_factor*sqrt(vdot(c.vt,c.vt)));
+       printf("fn = %f %f %f\n",force_factor*c.fn.x,force_factor*c.fn.y,force_factor*c.fn.z);
+       printf("ft = %f %f %f\n",force_factor*ft.x,force_factor*ft.y,force_factor*ft.z);
+       printf("\n");
+     */
     /* ========= for debug ==========*/
 
 }
@@ -627,6 +744,8 @@ void d_update_history_wall(ParticleSys<DeviceMemory> *p,int i){
         if (p->isContactWall[ci+k]==0){ 
             /* particle contact lost */
             int last = p->numContWall[i]-1;
+            p->indHisWall[ci+k] = p->indHisWall[ci+last];
+
             p->deltHisxWall[ci+k] = p->deltHisxWall[ci+last];
             p->deltHisyWall[ci+k] = p->deltHisyWall[ci+last];
             p->deltHiszWall[ci+k] = p->deltHiszWall[ci+last];
@@ -649,6 +768,9 @@ void d_update_history(ParticleSys<DeviceMemory> *p,int i){
         if (p->isContact[ci+k]==0){ 
             /* particle contact lost */
             int last = p->numCont[i]-1;
+
+            p->indHis[ci+k] = p->indHis[ci+last];
+
             p->deltHisx[ci+k] = p->deltHisx[ci+last];
             p->deltHisy[ci+k] = p->deltHisy[ci+last];
             p->deltHisz[ci+k] = p->deltHisz[ci+last];
@@ -770,7 +892,7 @@ void d_particle_collision_cell_linked(ParticleSys<DeviceMemory>* p, int i, Devic
                             c = d_calc_normal_force(p,i,j,n,delMag);
 
 
-                             d_calc_tangential_force(p,i,j,c);
+                            d_calc_tangential_force(p,i,j,c);
 
                         }
                     }
@@ -934,6 +1056,7 @@ __global__ void k_integrate(ParticleSys<DeviceMemory>* p){
 
 
     // angular acceleration
+    /* ==== temporarly commented out debug ===== */
     p->anga[bi+0] = p->mom[bi+0]*p->invmoi[i];
     p->anga[bi+1] = p->mom[bi+1]*p->invmoi[i];
     p->anga[bi+2] = p->mom[bi+2]*p->invmoi[i];
@@ -1026,6 +1149,28 @@ void device_dem_verlet_verlet_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<
 
 }
 
+void device_dem_naive(ParticleSys<DeviceMemory> *p,BoundingBox *box, TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
+
+    /* initialize force */
+    cudaMemset(p->f, 0, sizeof(double)*DIM*p->N);
+    cudaMemset(p->mom, 0, sizeof(double)*DIM*p->N);
+    cudaMemset(p->isContact, 0, sizeof(int)*p->N*MAX_NEI);
+    cudaMemset(p->isContactWall, 0, sizeof(int)*p->N*MAX_NEI);
+
+    k_particle_collision_naive<<<gridSize,blockSize>>>(p->d_self);
+    k_wall_collision_triangles_naive<<<gridSize,blockSize>>>(p->d_self,mesh->d_meshPtr);
+    k_integrate<<<gridSize, blockSize>>>(p->d_self);
+
+    dk_checkOoB<<<gridSize, blockSize>>>(p->d_self,box->d_boxPtr);
+
+
+    /*
+       cudaError_t err = cudaGetLastError();
+       printf("CUDA error = %s\n", cudaGetErrorString(err));
+     */
+    //    cudaDeviceSynchronize();
+
+}
 void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize){
 
     /* initialize force */
@@ -1058,7 +1203,7 @@ void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,Tri
         k_update_neighborlist_endsort<<<gridSize, blockSize>>>(p->d_self,box->d_boxPtr);
         printf("sort done\n");
         k_update_neighborlist_wall<<<gridSize, blockSize>>>(p->d_self,mesh->d_meshPtr,bvh->d_bvhPtr, box->skinR);
-        printf("update neighborlist");
+        printf("update neighborlist\n");
     }
 
     /*
@@ -1104,7 +1249,7 @@ void device_dem_verlet_triangles(ParticleSys<DeviceMemory> *p, BoundingBox *box,
 
 void device_dem_triangles(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize){
 
-    
+
     /* initialize force */
     cudaMemset(p->f, 0, sizeof(double)*DIM*p->N);
     cudaMemset(p->mom, 0, sizeof(double)*DIM*p->N);

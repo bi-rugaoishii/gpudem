@@ -1,5 +1,4 @@
 #include "cpu_dem.h"
-#define SMALL_NUM 1e-15
 
 /*
 ============================================================
@@ -71,6 +70,7 @@ TriangleContactCache dist_triangle(ParticleSys<HostMemory>* ps, int i, TriangleM
         return res;
     }
 
+    
     /* ========== vertices ========== */
 
     if (v<=0. && w<=0.0){
@@ -368,6 +368,80 @@ void wall_collision_BVH(ParticleSys<HostMemory>* p,TriangleMesh* mesh,BVH* bvh){
 }
 
 
+void wall_collision_triangles_naive(ParticleSys<HostMemory>* p,TriangleMesh* mesh){
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+        //particle-triangle
+        /* cycle through neighbor cells */
+
+        int numContVorENow = 0;
+        int numContWallNow = 0;
+        for(int j=0; j<mesh->nTri; j++){
+            int indTri = j;
+
+            int wasHitBefore = 0;
+            /* check if the triangle was already hit */
+            for (int k=0; k<numContWallNow; k++){
+                if (indTri == p->indHisWallNow[i*MAX_NEI+k]){
+                    wasHitBefore =1;
+                    continue;
+                }
+            }
+            if (wasHitBefore == 1){
+                continue;
+            }
+
+
+            TriangleContactCache tc;
+            tc = dist_triangle(p,i,mesh,indTri); 
+
+            if(tc.dist<p->r[i]){
+                double delmag;
+                if(tc.hitAt==-1){ //hit at face
+                    delmag = p->r[i]-tc.dist;
+                }else{ //hit as face or edge
+                    int end = numContVorENow;
+                    int hadDuplicate=0;
+
+                    for (int k=0; k<end; k++){
+                        if(p->indHisVorENow[i*MAX_NEI+k]==tc.hitAt){
+                            //printf("duplicate collision of vertex or edge!!\n");
+                            hadDuplicate=1;
+                            break;
+                        }
+                    }
+
+                    if(hadDuplicate ==1){
+                        continue;
+
+                    }
+
+                    delmag = p->r[i]-tc.dist;
+
+
+                    p->indHisVorENow[i*MAX_NEI+end] = tc.hitAt;
+                    numContVorENow+=1;
+                }
+                if (delmag*p->invr[i]*0.5>0.1){
+                    printf("overlap over 10%% with wall!!!!\n");
+                }
+
+                ContactCache c;
+                c = calc_normal_force_wall(p,i,j,tc.n,delmag);
+
+                calc_tangential_force_wall(p,i,j,c);
+
+                int numWall = numContWallNow;
+                p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
+                numContWallNow+=1;
+            }
+        }
+        update_history_wall(p,i);
+    }
+}
+
 void wall_collision_triangles(ParticleSys<HostMemory>* p,BoundingBox *box, TriangleMesh* mesh){
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
@@ -511,6 +585,9 @@ inline void update_history(ParticleSys<HostMemory> *p,int i){
         if (p->isContact[ci+k]==0){ 
             /* particle contact lost */
             int last = p->numCont[i]-1;
+
+            p->indHis[ci+k] = p->indHis[ci+last];
+
             p->deltHisx[ci+k] = p->deltHisx[ci+last];
             p->deltHisy[ci+k] = p->deltHisy[ci+last];
             p->deltHisz[ci+k] = p->deltHisz[ci+last];
@@ -533,6 +610,9 @@ inline void update_history_wall(ParticleSys<HostMemory> *p,int i){
         if (p->isContactWall[ci+k]==0){ 
             /* particle contact lost */
             int last = p->numContWall[i]-1;
+
+            p->indHisWall[ci+k] = p->indHisWall[ci+last];
+
             p->deltHisxWall[ci+k] = p->deltHisxWall[ci+last];
             p->deltHisyWall[ci+k] = p->deltHisyWall[ci+last];
             p->deltHiszWall[ci+k] = p->deltHiszWall[ci+last];
@@ -593,7 +673,6 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
     /* get new delta t*/
     Vec3 delt_new;
 
-        
     delt_new.x =delt_old.x + c.vt.x*dt;
     delt_new.y =delt_old.y + c.vt.y*dt;
     delt_new.z =delt_old.z + c.vt.z*dt;
@@ -603,29 +682,104 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
 
     Vec3 ft;
 
+    /* == debug == */
+    double kco=0.28;
 
-    ft = vscalar(-p->k[i],delt_new);
+    ft = vscalar(-p->k[i]*kco,delt_new);
+
+    /* == debug == */
+    ft.x -= c.eta*c.vt.x;
+    ft.y -= c.eta*c.vt.y;
+    ft.z -= c.eta*c.vt.z;
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
 
-    if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
-        Vec3 t; /* tangential normal vector */
-        t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+    if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
+        if (ftsq!=0.){
+            Vec3 t;
+            t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
 
-        double fnnorm = sqrt(fnsq);
-        ft = vscalar(p->mu*fnnorm,t);
-        delt_new = vscalar(-1./p->k[i],ft);
-    }else{
-        /* add damping */
-        ft.x -= c.eta*c.vt.x;
-        ft.y -= c.eta*c.vt.y;
-        ft.z -= c.eta*c.vt.z;
+
+            double fnnorm = sqrt(fnsq);
+            ft = vscalar(p->mu*fnnorm,t);
+            delt_new = vscalar(-1./(p->k[i]*kco),ft);
+        }else{
+            ft.x =0.;
+            ft.y =0.;
+            ft.z =0.;
+        }
+    }   
+
+    /* == debug == */
+    /*
+       if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
+       if (ftsq!=0.){
+       Vec3 t;
+       t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
+
+
+       double fnnorm = sqrt(fnsq);
+       ft = vscalar(p->mu*fnnorm,t);
+       delt_new = vscalar(-1./(p->k[i]*kco),ft);
+       }else{
+       ft.x =0.;
+       ft.y =0.;
+       ft.z =0.;
+       }
+       }else{
+    // add damping //
+    ft.x -= c.eta*c.vt.x;
+    ft.y -= c.eta*c.vt.y;
+    ft.z -= c.eta*c.vt.z;
     }
+     */
 
+    /* === debug ===*/
+    /*
+       if (vdot(ft,c.vt)>0.){
+       printf("Pt=%e\n", vdot(ft, c.vt));
+       }
+     */
 
+    /* == debug == */
+    /*
+       if (p->pId[i] == 0) {
+       printf("forWall\n");
+       double Pt = vdot(ft, c.vt);
+       double fnorm = sqrt(vdot(c.fn, c.fn));
+       double ft_norm = sqrt(vdot(ft, ft));
+       double delt_new_norm = sqrt(vdot(delt_new,delt_new));
+       double Ft_spring_mag = sqrt(vdot(vscalar(p->k[i],delt_new),vscalar(p->k[i],delt_new)));
+       double Ft_damp_mag = sqrt(vdot(vscalar(c.eta,c.vt),vscalar(c.eta,c.vt)));
+       Vec3 vt_normalize = vnormalize(c.vt);
+       Vec3 ft_normalize = vnormalize(ft);
+       printf("step %d Pt=%e delt_mag=%e |ft|=%e mu|fn|=%e\n",
+       p->steps, Pt,delt_new_norm,ft_norm, p->mu * fnorm);
+       printf("deltx = %e, delty = %e, deltz = %e\n", delt_new.x,delt_new.y, delt_new.z);
+       printf("Ft_damp_mag = %e, Ft_spring = %e\n",Ft_damp_mag, Ft_spring_mag);
+       printf("Fn = %e\n", sqrt(vdot(c.fn,c.fn)));
+       printf("vt.x = %e vt.y = %e vt.z = %e\n",c.vt.x,c.vt.y,c.vt.z);
+       printf("Ftnorm dot vtnorm %e\n",vdot(ft_normalize,vt_normalize));
+       printf("vt dot n = %e\n", vdot(c.vt, c.n));
+       Vec3 t_prev = vnormalize(delt_new);
+       Vec3 t_now  = vnormalize(c.vt);
+       printf("|Ft| / (mu*|Fn|) = %e\n", ft_norm / (p->mu * fnorm));
+       printf("delt_new_norm dot vt_norm %e\n",vdot(t_prev,t_now));
+       printf("angle delt_new vt = %e\n", acos(vdot(t_prev, t_now)));
+       double align = vdot(vnormalize(delt_new), vnormalize(c.vt));
+       printf("align = %e\n", align);
+       printf("i=%d j=%d slot=%d \n\n",
+       p->pId[i], j, neiInd);
+       }
+     */
+
+    /* ======== add force ========== */
+    p->f[bi+0] += ft.x;
+    p->f[bi+1] += ft.y;
+    p->f[bi+2] += ft.z;
 
     /* ======== add angular acceleration ========== */
     Vec3 mom;
@@ -636,10 +790,6 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
     p->mom[bi+1] += mom.y;
     p->mom[bi+2] += mom.z;
 
-    /* ======== add force ========== */
-    p->f[bi+0] += ft.x;
-    p->f[bi+1] += ft.y;
-    p->f[bi+2] += ft.z;
 
 
     /* ====== refresh history ======= */
@@ -660,11 +810,13 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     int neiInd=0;
     int pId = p->pId[j];
 
+
     for (int k=0; k<p->numCont[i]; k++){
         if (pId == p->indHis[ci+k]){ /* if the contact particle is in the history */
             isInHis =1;
             neiInd=k;
             p->isContact[ci+neiInd]=1;
+
             break;
         }
     }
@@ -687,11 +839,11 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     delt_old.z = p->deltHisz[ci+neiInd];
 
 
+
     double dt = p->dt;
 
     /* get new delta t*/
     Vec3 delt_new;
-
 
     delt_new.x =delt_old.x + c.vt.x*dt;
     delt_new.y =delt_old.y + c.vt.y*dt;
@@ -703,26 +855,38 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     Vec3 ft;
 
 
-    ft = vscalar(-p->k[i],delt_new);
+    /* == debug == */
+    double kco=0.28;
+
+    ft = vscalar(-p->k[i]*kco,delt_new);
+
+    /* == debug == */
+    ft.x -= c.eta*c.vt.x;
+    ft.y -= c.eta*c.vt.y;
+    ft.z -= c.eta*c.vt.z;
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
     if(ftsq>(p->mu*p->mu)*fnsq){ /* slip */
+
         if (ftsq!=0.){
             Vec3 t;
+
+
             t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
 
             double fnnorm = sqrt(fnsq);
             ft = vscalar(p->mu*fnnorm,t);
-            delt_new = vscalar(-1./p->k[i],ft);
+            delt_new = vscalar(-1./(p->k[i]*kco),ft);
+
 
             /* for debugging
-            double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
-            printf("ft after scaling %f %f %f\n", ft.x*force_factor,ft.y*force_factor,ft.z*force_factor);
-            printf("ratio after scaling %f \n", sqrt(vdot(ft,ft))/(p->mu*fnnorm));
-            */
+               double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+               printf("ft after scaling %f %f %f\n", ft.x*force_factor,ft.y*force_factor,ft.z*force_factor);
+               printf("ratio after scaling %f \n", sqrt(vdot(ft,ft))/(p->mu*fnnorm));
+             */
 
         }else{
             ft.x =0.;
@@ -730,10 +894,14 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
             ft.z =0.;
         }
     }else{
+
         /* add damping */
+        /* commented out for == debug */
+        /*
         ft.x -= c.eta*c.vt.x;
         ft.y -= c.eta*c.vt.y;
         ft.z -= c.eta*c.vt.z;
+        */
     }
 
     /* ======== add force ========== */
@@ -750,6 +918,47 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     p->mom[bi+1] += mom.y;
     p->mom[bi+2] += mom.z;
 
+    /* == debug === */
+    /*
+       double n2 = vdot(c.n,c.n);
+       printf("at step %d, n2=%e ", p->steps,n2);
+       printf("delt·n = %e\n", vdot(delt_old, c.n));
+       printf("contact: i=%d j=%d delt=%e %e %e\n", i, j, delt_new.x, delt_new.y, delt_new.z);
+       printf("deltnew·n = %e\n", vdot(delt_new, c.n));
+       printf("\n");
+     */
+
+    /* == debug == */
+    /*
+       if (p->pId[i] == 0 && p->pId[j]== 1) {
+       double Pt = vdot(ft, c.vt);
+       double fnorm = sqrt(vdot(c.fn, c.fn));
+       double ft_norm = sqrt(vdot(ft, ft));
+       double delt_new_norm = sqrt(vdot(delt_new,delt_new));
+       double Ft_spring_mag = sqrt(vdot(vscalar(p->k[i],delt_new),vscalar(p->k[i],delt_new)));
+       double Ft_damp_mag = sqrt(vdot(vscalar(c.eta,c.vt),vscalar(c.eta,c.vt)));
+       Vec3 vt_normalize = vnormalize(c.vt);
+       Vec3 ft_normalize = vnormalize(ft);
+       printf("step %d Pt=%e delt_mag=%e |ft|=%e mu|fn|=%e\n",
+       p->steps, Pt,delt_new_norm,ft_norm, p->mu * fnorm);
+       printf("deltx = %e, delty = %e, deltz = %e\n", delt_new.x,delt_new.y, delt_new.z);
+       printf("Ft_damp_mag = %e, Ft_spring = %e\n",Ft_damp_mag, Ft_spring_mag);
+       printf("Fn = %e\n", sqrt(vdot(c.fn,c.fn)));
+       printf("vt.x = %e vt.y = %e vt.z = %e\n",c.vt.x,c.vt.y,c.vt.z);
+       printf("Ftnorm dot vtnorm %e\n",vdot(ft_normalize,vt_normalize));
+       printf("vt dot n = %e\n", vdot(c.vt, c.n));
+       Vec3 t_prev = vnormalize(delt_new);
+       Vec3 t_now  = vnormalize(c.vt);
+       printf("|Ft| / (mu*|Fn|) = %e\n", ft_norm / (p->mu * fnorm));
+       printf("delt_new_norm dot vt_norm %e\n",vdot(t_prev,t_now));
+       printf("angle delt_new vt = %e\n", acos(vdot(t_prev, t_now)));
+       double align = vdot(vnormalize(delt_new), vnormalize(c.vt));
+       printf("align = %e\n", align);
+       printf("i=%d j=%d slot=%d \n\n",
+       p->pId[i], pId, neiInd);
+       }
+     */
+
     /* ====== refresh history ======= */
     p->deltHisx[ci+neiInd] = delt_new.x;
     p->deltHisy[ci+neiInd] = delt_new.y;
@@ -757,14 +966,14 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
 
     /* ========= for debug ==========*/
     /*
-    double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
-    double velocity_factor = p->length_factor/p->time_factor;
-    printf("vt = %f %f %f\n",velocity_factor*c.vt.x,velocity_factor*c.vt.y,velocity_factor*c.vt.z);
-    printf("vtmag = %f \n",velocity_factor*sqrt(vdot(c.vt,c.vt)));
-    printf("fn = %f %f %f\n",force_factor*c.fn.x,force_factor*c.fn.y,force_factor*c.fn.z);
-    printf("ft = %f %f %f\n",force_factor*ft.x,force_factor*ft.y,force_factor*ft.z);
-    printf("\n");
-    */
+       double force_factor = p->mass_factor*p->length_factor/(p->time_factor*p->time_factor);
+       double velocity_factor = p->length_factor/p->time_factor;
+       printf("vt = %f %f %f\n",velocity_factor*c.vt.x,velocity_factor*c.vt.y,velocity_factor*c.vt.z);
+       printf("vtmag = %f \n",velocity_factor*sqrt(vdot(c.vt,c.vt)));
+       printf("fn = %f %f %f\n",force_factor*c.fn.x,force_factor*c.fn.y,force_factor*c.fn.z);
+       printf("ft = %f %f %f\n",force_factor*ft.x,force_factor*ft.y,force_factor*ft.z);
+       printf("\n");
+     */
     /* ========= for debug ==========*/
 
 }
@@ -810,6 +1019,7 @@ inline ContactCache calc_normal_force(ParticleSys<HostMemory> *p,int i,int j,Vec
 
     Vec3 vt;
     vt=vsub(v_rel,result.vn_rel);
+
     result.vt=vadd(vt,vrot);
 
     /* add force */
@@ -1320,6 +1530,25 @@ int shouldRefreshNeighborList(ParticleSys<HostMemory> *p, BoundingBox* box){
     return flag;
 }
 
+double kineticEnergy(ParticleSys<HostMemory> *p){
+    double kineticEne = 0.0;
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+
+        int bi=i*DIM;
+
+        Vec3 v;
+        v.x = p->v[bi+0];
+        v.y = p->v[bi+1];
+        v.z = p->v[bi+2];
+        kineticEne += 0.5*vdot(v,v)+-1.*p->g[1]*p->x[bi+1];
+    }
+
+    return kineticEne;
+}
+
 /* ============== check Out of Bounds ============  */
 
 void checkOoB(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpP, BoundingBox* box){
@@ -1599,10 +1828,9 @@ void cpu_dem_naive_triangle(ParticleSys<HostMemory>* ps, BoundingBox* box, Trian
 
 
 
-    update_pList_fast(ps,box);
     particle_collision_naive(ps);
 
-    wall_collision_triangles(ps,box,mesh);
+    wall_collision_triangles_naive(ps,mesh);
 
     /* update */
     for (int i = 0; i < ps->N; i++)
@@ -1617,15 +1845,29 @@ void cpu_dem_naive_triangle(ParticleSys<HostMemory>* ps, BoundingBox* box, Trian
         ps->a[bi+2] = ps->f[bi+2]*ps->invm[i]+ps->g[2];
 
         // velocity
-        ps->v[bi+0] += ps->a[bi+0] * ps->dt;
-        ps->v[bi+1] += ps->a[bi+1] * ps->dt;
-        ps->v[bi+2] += ps->a[bi+2] * ps->dt;
+        Vec3 tmp_v;
+        tmp_v.x = ps->v[bi+0];
+        tmp_v.y = ps->v[bi+1];
+        tmp_v.z = ps->v[bi+2];
+
+        /* === debug === */
+        tmp_v.x  += ps->a[bi+0] * ps->dt;
+        tmp_v.y  += ps->a[bi+1] * ps->dt;
+        tmp_v.z  += ps->a[bi+2] * ps->dt;
+
+
+        ps->v[bi+0] = tmp_v.x;
+        ps->v[bi+1] = tmp_v.y;
+        ps->v[bi+2] = tmp_v.z;
+
 
         // position
-        ps->x[bi+0] += ps->v[bi+0] * ps->dt;
-        ps->x[bi+1] += ps->v[bi+1] * ps->dt;
-        ps->x[bi+2] += ps->v[bi+2] * ps->dt;
+        ps->x[bi+0] += tmp_v.x * ps->dt;
+        ps->x[bi+1] += tmp_v.y * ps->dt;
+        ps->x[bi+2] += tmp_v.z * ps->dt;
 
+
+        /* == debug == */
         // angular acceleration
         ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
         ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];
@@ -1637,6 +1879,10 @@ void cpu_dem_naive_triangle(ParticleSys<HostMemory>* ps, BoundingBox* box, Trian
         ps->angv[bi+2] += ps->anga[bi+2] * ps->dt;
 
     }
+    //printf("Energy %8.6e \n",kineticEnergy(ps));
+
+    ps->steps +=1;
+
 }
 
 void cpu_dem_nosort_triangle(ParticleSys<HostMemory>* ps, ParticleSys<HostMemory> *tmpPs, BoundingBox* box,TriangleMesh *mesh){

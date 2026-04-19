@@ -102,7 +102,7 @@ void write_initialPos_csv(const char* dir,ParticleSys<HostMemory>* p){
         double z=(p->x[i*3+2]);
 
 
-        fprintf(fp,"%f %f %f\n",x,y,z);
+        fprintf(fp,"%d 1 %f 1000. %f %f %f\n",i+1,p->r[i]*2.0,x,y,z);
     }
 
 

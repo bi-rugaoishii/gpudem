@@ -34,6 +34,14 @@ inline Vec3 vscalar(double a,Vec3 b){
 }
 
 __host__ __device__
+inline Vec3 vnormalize(Vec3 a){
+    double d = vdot(a,a);
+    d=sqrt(d);
+    
+    return vscalar(1./(d+1e-16),a);
+}
+
+__host__ __device__
 inline Vec3 vadd(Vec3 a,Vec3 b){
     Vec3 c;
     c.x = a.x+b.x;

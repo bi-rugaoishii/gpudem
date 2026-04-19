@@ -190,6 +190,12 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
     int seed = 1;
     std::mt19937 mt(seed);
     std::uniform_real_distribution<double> uni(0,1);
+    // intialize step //
+    ps->steps = 0;
+
+    ps->length_factor = 1.0;
+    ps->mass_factor = 1.0;
+    ps->time_factor = 1.0;
 
 
     if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"shuffle")==0){
@@ -309,6 +315,7 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
                }
              */
             /* ======== for temporarly check========= */
+
 
             ps->angv[i*DIM+0] = 0.;
             ps->angv[i*DIM+1] = 0.;

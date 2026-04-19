@@ -47,6 +47,7 @@ struct ParticleSysShared {
     double dt;
     double mu;
     int N;
+    int steps;
 
     double time_factor;
     double length_factor;
