@@ -133,6 +133,7 @@ void swap_device_ps_pointer(ParticleSys<DeviceMemory> **p, ParticleSys<DeviceMem
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh);
 
+void update_neighborlist_brute(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box);
 void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpP, BoundingBox *box);
 
 void update_pList(ParticleSys<HostMemory> *p, BoundingBox *box);
@@ -141,6 +142,7 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
 void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpPs,BoundingBox *box);
 
 void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_inlet_type);
+
 
 void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,TriangleMesh* mesh, cJSON *json_inlet, int isGPUon);
 void free_BoundingBox(BoundingBox *box, int isGPUon);

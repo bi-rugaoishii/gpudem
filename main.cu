@@ -66,6 +66,12 @@ int main(){
 
     cJSON *json_others = cJSON_GetObjectItem(jsonSettings,"others");
     int isGPUon =  cJSON_GetObjectItem(json_others,"gpuOn")->valueint;
+    int isBruteOn =  cJSON_GetObjectItem(json_others,"bruteOn")->valueint;
+    
+    if(isBruteOn ==1){
+        printf("BRUTE FORCE MODE!!!!USED ONLY FOR DEBUGGING PURPOSE!!!\n");
+    }
+
 
     cJSON *json_walls = cJSON_GetObjectItem(jsonSettings,"walls");
 
@@ -264,16 +270,20 @@ int main(){
         for (int step = 1; step <= steps; step++){
             #if USE_GPU
             /* GPU */
+            if(isBruteOn==1){
+                device_dem_naive(&d_ps,&box,&mesh,&bvh,gridSize, blockSize);
 
-            /* if want naive collision*/
-            //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
+            }else{
+                /* if want naive collision*/
+                //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
 
-            //device_dem(&d_ps, &box, gridSize, blockSize);
-            //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
-            //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
-            //device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
-            device_dem_naive(&d_ps,&box,&mesh,&bvh,gridSize, blockSize);
-            //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+                //device_dem(&d_ps, &box, gridSize, blockSize);
+                //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
+                //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
+                device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
+                //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+            }
+
 
             #if OUTPUT
             if (step % outStep == 0)
@@ -287,6 +297,9 @@ int main(){
                 }
                 #else
                 write_frame_bin(outdir,step,&ps,1.0);
+                for (int i=0; i<numWrite; i++){
+                    write_single_text(outdir,step,&ps,i);
+                }
                 #endif
 
                 cudaEventRecord(d_now);
@@ -301,20 +314,23 @@ int main(){
         #endif
         for (int step = 1; step <= steps; step++){
             /* CPU */
-            // cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
-            //cpu_dem_sort(&ps, &tmpPs, &box, step);
-              cpu_dem_naive_triangle(&ps, &box, &mesh);
-            //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
-            // cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
-            // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
-            //cpu_dem_verlet_verlet(&ps,&tmpPs, &box,&mesh, &bvh,step);
-            checkOoB(&ps,&tmpPs,&box);
+            if(isBruteOn==1){
+                cpu_dem_naive_triangle(&ps, &box, &mesh);
+            }else{
+                // cpu_dem_nosort_triangle(&ps, &tmpPs, &box,&mesh);
+                //cpu_dem_sort(&ps, &tmpPs, &box, step);
+                //cpu_dem_sort_triangles(&ps, &tmpPs, &box,&mesh, step);
+                //cpu_dem_verlet_triangles(&ps, &tmpPs, &box,&mesh, step);
+                // cpu_dem_verlet_BVH(&ps, &tmpPs, &box,&mesh, &bvh,step);
+                cpu_dem_verlet_verlet(&ps,&tmpPs, &box,&mesh, &bvh,step);
 
+            }
+
+            checkOoB(&ps,&tmpPs,&box);
             #if OUTPUT
             if (step % outStep == 0){
                 //  writeParticlesVTKBinary(&ps, step);
                 #if NONDIM
-                //writeParticlesDimensionalizeVTK(&ps, step);
                 write_frame_bin(outdir,step,&ps,ps.length_factor);
                 for (int i=0; i<numWrite; i++){
                     write_single_text(outdir,step,&ps,i);

@@ -371,8 +371,8 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     box->dz = maxr*4. ;
 
     /* verlet list related */
-    box->skinR = maxr;
-    box->refreshThresh = maxr*0.5;
+    box->skinR = 2.0*maxr;
+    box->refreshThresh = maxr*0.3;
     box->refreshThreshSq = box->refreshThresh*box->refreshThresh;
 
     box->invdx = 1./box->dx;
@@ -465,6 +465,52 @@ void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_in
 
 }
 
+void update_neighborlist_brute(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box){
+
+    int skinR = box->skinR;
+
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1){
+            continue;
+        }
+        //particle-particle
+        /* cycle through neighbor cells */
+        int bi=i*DIM;
+        int numNei = 0;
+
+        for (int j=0; j<p->N; j++){
+            if (i==j || p->isActive[j]!=1){
+                continue;
+            }else{
+                int bj=j*DIM;
+
+                Vec3 del;
+                /* normal points toward particle i */
+                del.x = p->x[bi+0]- p->x[bj+0];
+                del.y = p->x[bi+1]- p->x[bj+1];
+                del.z = p->x[bi+2]- p->x[bj+2];
+                double distsq = vdot(del,del);
+                double R = p->r[i]+p->r[j]+skinR;
+                if (distsq<R*R){
+                    p->neiList[i*MAX_NEI+numNei]=j;
+                    numNei+=1;
+                    if(numNei >= MAX_NEI){
+                        printf("Neighbor over flow!!!!\n");
+                    }
+                }
+            }
+        }/* neighbor cell search done */
+        p->numNei[i]=numNei;
+
+
+        /* set reference position */
+        p->refx[i]=p->x[bi+0];
+        p->refy[i]=p->x[bi+1];
+        p->refz[i]=p->x[bi+2];
+    }
+}
+
+
 void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box){
     update_pList_withSort_fast(p,tmpPs,box);
     //update_pList_fast(p,box);
@@ -516,7 +562,7 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
             }
         }/* neighbor cell search done */
         p->numNei[i]=numNei;
-        
+
 
         /* set reference position */
         p->refx[i]=p->x[bi+0];
@@ -690,12 +736,12 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
 
                     /** put this paragraph if want to use the cell linked list triangles*/
                     /*
-                    int tNum = box->tNum[cellId];
-                    box->tList[cellId*box->MAX_TRI+tNum]=i;
-                    if (box->tNum[cellId]>= box->MAX_TRI){
-                        printf("!!!!!!!Too many triangles in a cell!!!!\n");
-                    }
-                    */
+                       int tNum = box->tNum[cellId];
+                       box->tList[cellId*box->MAX_TRI+tNum]=i;
+                       if (box->tNum[cellId]>= box->MAX_TRI){
+                       printf("!!!!!!!Too many triangles in a cell!!!!\n");
+                       }
+                     */
 
                     box->tNum[cellId]++;
                 }
@@ -841,19 +887,19 @@ __global__ void checkConsistency(ParticleSys<DeviceMemory>* p){
     int bi = i * DIM;
 
     uint32_t key = morton3D(
-        (uint32_t)p->cellx[bi+0],
-        (uint32_t)p->cellx[bi+1],
-        (uint32_t)p->cellx[bi+2]
-    );
+            (uint32_t)p->cellx[bi+0],
+            (uint32_t)p->cellx[bi+1],
+            (uint32_t)p->cellx[bi+2]
+            );
 
     if(key != p->mortonKey[i]){
         printf("ERROR at i=%d pId=%d\n", i, p->pId[i]);
         printf("cellx=(%d,%d,%d) key=%u but mortonKey=%u\n",
-            p->cellx[bi+0],
-            p->cellx[bi+1],
-            p->cellx[bi+2],
-            key,
-            p->mortonKey[i]);
+                p->cellx[bi+0],
+                p->cellx[bi+1],
+                p->cellx[bi+2],
+                key,
+                p->mortonKey[i]);
     }
 }
 
@@ -952,8 +998,8 @@ __global__ void dk_morton_key(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* b
 
     /* for debug */
     /*
-    printf("ix=%d iy=%d iz=%d, key=%d\n",p->cellx[bi+0],p->cellx[bi+1],p->cellx[bi+2],p->mortonKey[i]);
-    */
+       printf("ix=%d iy=%d iz=%d, key=%d\n",p->cellx[bi+0],p->cellx[bi+1],p->cellx[bi+2],p->mortonKey[i]);
+     */
 
 
 }
@@ -1033,8 +1079,8 @@ __device__ int d_calcCellId(ParticleSys<DeviceMemory>* p,int i, DeviceBoundingBo
 
     /* for debug */
     /*
-    printf("recalc i=%d pId=%d ix=%d iy=%d\n", i, p->pId[i], dx, dy);
-    */
+       printf("recalc i=%d pId=%d ix=%d iy=%d\n", i, p->pId[i], dx, dy);
+     */
 
     return (box->sizey*dz+dy)*box->sizex+dx;
 }

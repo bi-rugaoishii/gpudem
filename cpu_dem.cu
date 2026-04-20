@@ -682,22 +682,15 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
 
     Vec3 ft;
 
-    /* == debug == */
-    double kco=0.28;
 
-    ft = vscalar(-p->k[i]*kco,delt_new);
+    ft = vscalar(-p->k[i],delt_new);
 
-    /* == debug == */
-    ft.x -= c.eta*c.vt.x;
-    ft.y -= c.eta*c.vt.y;
-    ft.z -= c.eta*c.vt.z;
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
     double fnsq = vdot(c.fn,c.fn);
 
 
-    /* == debug == */
     if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
         if (ftsq!=0.){
             Vec3 t;
@@ -706,24 +699,7 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
 
             double fnnorm = sqrt(fnsq);
             ft = vscalar(p->mu*fnnorm,t);
-            delt_new = vscalar(-1./(p->k[i]*kco),ft);
-        }else{
-            ft.x =0.;
-            ft.y =0.;
-            ft.z =0.;
-        }
-    }   
-
-    /*
-    if(ftsq>(p->mu*p->mu)*fnsq){ // slip //
-        if (ftsq!=0.){
-            Vec3 t;
-            t = vscalar(1./(sqrt(ftsq)+SMALL_NUM),ft); 
-
-
-            double fnnorm = sqrt(fnsq);
-            ft = vscalar(p->mu*fnnorm,t);
-            delt_new = vscalar(-1./(p->k[i]*kco),ft);
+            delt_new = vscalar(-1./(p->k[i]),ft);
         }else{
             ft.x =0.;
             ft.y =0.;
@@ -735,7 +711,6 @@ inline void calc_tangential_force_wall(ParticleSys<HostMemory> *p,int i,int j,Co
         ft.y -= c.eta*c.vt.y;
         ft.z -= c.eta*c.vt.z;
     }
-    */
 
     /* === debug ===*/
     /*
@@ -855,15 +830,9 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     Vec3 ft;
 
 
-    /* == debug == */
-    double kco=0.28;
 
-    ft = vscalar(-p->k[i]*kco,delt_new);
+    ft = vscalar(-p->k[i],delt_new);
 
-    /* == debug == */
-    ft.x -= c.eta*c.vt.x;
-    ft.y -= c.eta*c.vt.y;
-    ft.z -= c.eta*c.vt.z;
 
     /* ========== Friction ============ */
     double ftsq = vdot(ft,ft);
@@ -879,7 +848,7 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
 
             double fnnorm = sqrt(fnsq);
             ft = vscalar(p->mu*fnnorm,t);
-            delt_new = vscalar(-1./(p->k[i]*kco),ft);
+            delt_new = vscalar(-1./(p->k[i]),ft);
 
 
             /* for debugging
@@ -896,12 +865,9 @@ inline void calc_tangential_force(ParticleSys<HostMemory> *p,int i,int j,Contact
     }else{
 
         /* add damping */
-        /* == removed for debug */
-        /*
         ft.x -= c.eta*c.vt.x;
         ft.y -= c.eta*c.vt.y;
         ft.z -= c.eta*c.vt.z;
-        */
     }
 
     /* ======== add force ========== */
@@ -1110,6 +1076,7 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSys<HostMemory>*
 }
 
 void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
+
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -1137,8 +1104,6 @@ void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
 
 
             if (distsq<R*R){
-
-
                 double dist = sqrt(distsq);
                 double delMag = R-dist;
                 if (delMag*p->invr[i]*0.5>0.05){
@@ -1166,6 +1131,46 @@ void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
         /* update contact history */
         update_history(p,i);
     }
+
+    /* === debug == */
+    for (int i=0; i<p->N; i++){
+        if(p->isActive[i]!=1) continue;
+
+        int bi = i*DIM;
+
+        for (int j=0; j<p->N; j++){
+            if(i==j || p->isActive[j]!=1) continue;
+
+            int bj = j*DIM;
+
+            Vec3 del;
+            del.x = p->x[bi+0]- p->x[bj+0];
+            del.y = p->x[bi+1]- p->x[bj+1];
+            del.z = p->x[bi+2]- p->x[bj+2];
+
+            double distsq = vdot(del,del);
+            double R = p->r[i]+p->r[j];
+
+            bool trueNeighbor = (distsq < R*R);
+
+            // リストに存在するか
+            bool inList = false;
+            for(int k=0;k<p->numNei[i];k++){
+                if(p->neiList[i*MAX_NEI+k]==j){
+                    inList = true;
+                    break;
+                }
+            }
+
+            if(trueNeighbor && !inList){
+                printf("MISS: i=%d j=%d\n", i, j);
+            }
+            if(!trueNeighbor && inList){
+                printf("FALSE: i=%d j=%d\n", i, j);
+            }
+        }
+    }
+    /* === debug done == */
 }
 
 void particle_collision_cell_linked_withSort(ParticleSys<HostMemory>* p,ParticleSys<HostMemory>* tmpPs, BoundingBox *box){
@@ -1515,6 +1520,8 @@ void particle_collision_naive(ParticleSys<HostMemory>* p){
 int shouldRefreshNeighborList(ParticleSys<HostMemory> *p, BoundingBox* box){
     int flag = 0;
     double threshSq = box->refreshThreshSq;
+
+
     for(int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -1593,7 +1600,9 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
 
     particle_collision_verlet(p,box);
 
-    wall_collision_verlet(p,mesh);
+
+    //wall_collision_verlet(p,mesh);
+    wall_collision_triangles_naive(p,mesh);
 
     /* update */
     for (int i = 0; i < p->N; i++){
@@ -1629,9 +1638,15 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
 
     int flag = shouldRefreshNeighborList(p,box);
     if (flag ==1){
-        update_neighborlist(p,tmpP,box);
-        update_neighborlist_wall(p,mesh,bvh,box->skinR);
+
+        /* == debug == */
+        printf("bruteForce!\n");
+        update_neighborlist_brute(p,tmpP,box);
+
+        // update_neighborlist(p,tmpP,box);
+        //update_neighborlist_wall(p,mesh,bvh,box->skinR);
         //update_neighborlist_wall_nobvh(p,mesh,box,box->skinR);
+
     }
 
 
