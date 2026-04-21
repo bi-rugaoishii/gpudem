@@ -1,4 +1,5 @@
 #include "BVH.h"
+#include "BoundingBox.h"
 
 typedef struct {
     int start;
@@ -532,6 +533,10 @@ __global__ void k_update_neighborlist_wall(ParticleSys<DeviceMemory> *p, DeviceT
         }
     }
     p->numNeiWall[i]=numNei;
+
+    /* == sort for reproducibility== */
+    d_sort_neighborlist(p->neiListWall,i*MAX_NEI,numNei);
+
 }
 
 __device__ __forceinline__ int d_sphereAABBOverlapNeighbor(ParticleSys<DeviceMemory>* p,int i,DeviceBVH *bvh, int j, double skinR){
@@ -610,6 +615,10 @@ void update_neighborlist_wall(ParticleSys<HostMemory> *p,TriangleMesh *mesh, BVH
             }
         }
         p->numNeiWall[i]=numNei;
+
+        /* == sort for reproducibility == */
+        insertSort(p->neiListWall,i*MAX_NEI,numNei);
+
     }
 }
 

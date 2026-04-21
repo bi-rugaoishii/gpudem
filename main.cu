@@ -274,8 +274,6 @@ int main(){
                 device_dem_naive(&d_ps,&box,&mesh,&bvh,gridSize, blockSize);
 
             }else{
-                /* if want naive collision*/
-                //integrateKernel<<<gridSize, blockSize>>>(ps.d_group);
 
                 //device_dem(&d_ps, &box, gridSize, blockSize);
                 //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);

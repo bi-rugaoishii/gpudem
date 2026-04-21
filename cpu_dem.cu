@@ -429,9 +429,9 @@ void wall_collision_triangles_naive(ParticleSys<HostMemory>* p,TriangleMesh* mes
                 }
 
                 ContactCache c;
-                c = calc_normal_force_wall(p,i,j,tc.n,delmag);
+                c = calc_normal_force_wall(p,i,indTri,tc.n,delmag);
 
-                calc_tangential_force_wall(p,i,j,c);
+                calc_tangential_force_wall(p,i,indTri,c);
 
                 int numWall = numContWallNow;
                 p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
@@ -511,8 +511,8 @@ void wall_collision_triangles(ParticleSys<HostMemory>* p,BoundingBox *box, Trian
                             }
 
                             ContactCache c;
-                            c = calc_normal_force_wall(p,i,j,tc.n,delmag);
-                            calc_tangential_force_wall(p,i,j,c);
+                            c = calc_normal_force_wall(p,i,indTri,tc.n,delmag);
+                            calc_tangential_force_wall(p,i,indTri,c);
                             int numWall = numContWallNow;
                             p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
                             numContWallNow+=1;
@@ -1133,6 +1133,7 @@ void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
     }
 
     /* === debug == */
+    /*
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1) continue;
 
@@ -1170,6 +1171,7 @@ void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
             }
         }
     }
+    */
     /* === debug done == */
 }
 
@@ -1476,7 +1478,7 @@ void particle_collision_naive(ParticleSys<HostMemory>* p){
         //particle-particle
         int bi=i*DIM;
         for (int j=0; j<p->N; j++){
-            if (i==j){
+            if (i==j || p->isActive[j]!=1){
                 continue;
             }else{
                 int bj=j*DIM;
@@ -1601,8 +1603,8 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
     particle_collision_verlet(p,box);
 
 
-    //wall_collision_verlet(p,mesh);
-    wall_collision_triangles_naive(p,mesh);
+    wall_collision_verlet(p,mesh);
+    //wall_collision_triangles_naive(p,mesh);
 
     /* update */
     for (int i = 0; i < p->N; i++){
@@ -1640,11 +1642,11 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
     if (flag ==1){
 
         /* == debug == */
-        printf("bruteForce!\n");
-        update_neighborlist_brute(p,tmpP,box);
+        //printf("bruteForce!\n");
+       //update_neighborlist_brute(p,tmpP,box);
 
-        // update_neighborlist(p,tmpP,box);
-        //update_neighborlist_wall(p,mesh,bvh,box->skinR);
+        update_neighborlist(p,tmpP,box);
+        update_neighborlist_wall(p,mesh,bvh,box->skinR);
         //update_neighborlist_wall_nobvh(p,mesh,box,box->skinR);
 
     }
@@ -1887,7 +1889,6 @@ void cpu_dem_naive_triangle(ParticleSys<HostMemory>* ps, BoundingBox* box, Trian
         ps->x[bi+2] += tmp_v.z * ps->dt;
 
 
-        /* == debug == */
         // angular acceleration
         ps->anga[bi+0] = ps->mom[bi+0]*ps->invmoi[i];
         ps->anga[bi+1] = ps->mom[bi+1]*ps->invmoi[i];

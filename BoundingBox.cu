@@ -13,6 +13,17 @@ int compare_int(const void *a, const void *b){
     return 0;
 }
 
+void insertSort(int *array,  int start, int end){ 
+    for(int i=1; i<end; i++){
+        int k=i;
+        int tmpEl = array[start+i];
+        while(i>0 && array[start+k-1]>tmpEl){
+            array[start+k]=array[start+k-1];
+            k--;
+        }
+        array[start+k]=tmpEl;
+    }
+}
 
 // ======================================================
 // ポインタスワップ版 radix sort（最速設計）
@@ -371,8 +382,8 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     box->dz = maxr*4. ;
 
     /* verlet list related */
-    box->skinR = 2.0*maxr;
-    box->refreshThresh = maxr*0.3;
+    box->skinR = maxr;
+    box->refreshThresh = maxr*0.5;
     box->refreshThreshSq = box->refreshThresh*box->refreshThresh;
 
     box->invdx = 1./box->dx;
@@ -467,7 +478,7 @@ void calc_BoundingBoxLimits(BoundingBox *box, TriangleMesh *mesh, cJSON *json_in
 
 void update_neighborlist_brute(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box){
 
-    int skinR = box->skinR;
+    double skinR = box->skinR;
 
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
@@ -512,10 +523,10 @@ void update_neighborlist_brute(ParticleSys<HostMemory> *p,ParticleSys<HostMemory
 
 
 void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box){
-    update_pList_withSort_fast(p,tmpPs,box);
-    //update_pList_fast(p,box);
+    //update_pList_withSort_fast(p,tmpPs,box);
+    update_pList_fast(p,box);
 
-    int skinR = box->skinR;
+    double skinR = box->skinR;
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -537,7 +548,7 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
                     int end = start+box->pNum[cellId];
                     for (int k=box->pStart[cellId]; k<end; k++){
                         int j = box->pList[k];
-                        if (i==j){
+                        if (i==j || p->isActive[j]!=1){
                             continue;
                         }else{
                             int bj=j*DIM;
@@ -562,6 +573,7 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
             }
         }/* neighbor cell search done */
         p->numNei[i]=numNei;
+        insertSort(p->neiList,i*MAX_NEI,numNei);
 
 
         /* set reference position */
@@ -1085,28 +1097,13 @@ __device__ int d_calcCellId(ParticleSys<DeviceMemory>* p,int i, DeviceBoundingBo
     return (box->sizey*dz+dy)*box->sizex+dx;
 }
 
-__device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei){
-
-
-    for (int i=1; i<numNei; i++){
-        int j=i;
-        int tmp=neiList[startInd+i];
-        while(j>0 && neiList[startInd+j-1]>tmp){
-            neiList[startInd+j]=neiList[startInd+j-1];
-            j--;
-        }
-        neiList[startInd+j]=tmp;
-    }
-
-}
-
 __global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box){
 
     int i = blockIdx.x*blockDim.x + threadIdx.x;
 
     if (i >= p->N || p->isActive[i]!=1) return;
 
-    int skinR = box->skinR;
+    double skinR = box->skinR;
 
     //particle-particle
     /* cycle through neighbor cells */
@@ -1125,7 +1122,7 @@ __global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,Devic
                 int end = start+box->pNum[cellId];
                 for (int k=box->pStart[cellId]; k<end; k++){
                     int j = box->pList[k];
-                    if (i==j){
+                    if (i==j || p->isActive[j]!=1){
                         continue;
                     }else{
                         int bj=j*DIM;
@@ -1164,7 +1161,7 @@ __global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundin
 
     if (i >= p->N || p->isActive[i]!=1) return;
 
-    int skinR = box->skinR;
+    double skinR = box->skinR;
 
     //particle-particle
     /* cycle through neighbor cells */
@@ -1183,7 +1180,7 @@ __global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundin
                 int end = start+box->pNum[cellId];
                 for (int k=box->pStart[cellId]; k<end; k++){
                     int j = box->pList[k];
-                    if (i==j){
+                    if (i==j || p->isActive[j]!=1){
                         continue;
                     }else{
                         int bj=j*DIM;

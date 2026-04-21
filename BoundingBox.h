@@ -105,7 +105,20 @@ typedef struct BoundingBox{
  * =====================
  */
 
+void insertSort(int *array,  int start, int end);
 int compare_int(const void *a, const void *b);
+
+__device__ __forceinline__ void d_sort_neighborlist(int *neiList, int startInd, int numNei){
+    for (int i=1; i<numNei; i++){
+        int j=i;
+        int tmp=neiList[startInd+i];
+        while(j>0 && neiList[startInd+j-1]>tmp){
+            neiList[startInd+j]=neiList[startInd+j-1];
+            j--;
+        }
+        neiList[startInd+j]=tmp;
+    }
+}
 
 /* ============ Morton key related ================ */
 
@@ -122,11 +135,11 @@ __device__ __host__ __forceinline__  uint32_t morton3D(uint32_t ix, uint32_t iy,
 }
 
 void radixSortUint32(
-    uint32_t** keyPtr,
-    int**      indexPtr,
-    int N,
-    uint32_t*  workKey,
-    int*       workIndex);
+        uint32_t** keyPtr,
+        int**      indexPtr,
+        int N,
+        uint32_t*  workKey,
+        int*       workIndex);
 
 void swap_ps(ParticleSys<HostMemory> *ps, ParticleSys<HostMemory> *tmpps);
 void swap_device_ps_pointer(ParticleSys<DeviceMemory> **p, ParticleSys<DeviceMemory> **tmp);
@@ -157,7 +170,7 @@ __global__ void dk_build_cellCount(ParticleSys<DeviceMemory>* p, DeviceBoundingB
 __global__ void dk_build_pList(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box);
 
 __global__ void k_update_neighborlist_endsort(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box);
- __global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box);
+__global__ void k_update_neighborlist(ParticleSys<DeviceMemory> *p,DeviceBoundingBox *box);
 
 void d_update_pList_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,int gridSize, int blockSize);
 

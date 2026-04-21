@@ -557,8 +557,9 @@ void k_wall_collision_triangles_naive(ParticleSys<DeviceMemory>* p,DeviceTriangl
             }
 
             ContactCache c;
-            c = d_calc_normal_force_wall(p,i,j,tc.n,delmag);
-            //d_calc_tangential_force_wall(p,i,j,c);
+            c = d_calc_normal_force_wall(p,i,indTri,tc.n,delmag);
+            d_calc_tangential_force_wall(p,i,indTri,c);
+
             int numWall = numContWallNow;
             p->indHisWallNow[i*MAX_NEI+numWall] = indTri;
             numContWallNow+=1;
