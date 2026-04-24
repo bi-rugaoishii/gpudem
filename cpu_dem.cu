@@ -1,4 +1,5 @@
 #include "cpu_dem.h"
+#include "omp.h"
 
 /*
 ============================================================
@@ -235,6 +236,8 @@ static inline int sphereAABBOverlap(ParticleSys<HostMemory>* p,int i,BVH *bvh, i
 }
 
 void wall_collision_verlet(ParticleSys<HostMemory>* p,TriangleMesh* mesh){
+
+    #pragma omp parallel for
     for(int i=0; i<p->N; i++){
 
         if(p->isActive[i]!=1){
@@ -369,6 +372,7 @@ void wall_collision_BVH(ParticleSys<HostMemory>* p,TriangleMesh* mesh,BVH* bvh){
 
 
 void wall_collision_triangles_naive(ParticleSys<HostMemory>* p,TriangleMesh* mesh){
+    #pragma omp parallel for
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -443,6 +447,8 @@ void wall_collision_triangles_naive(ParticleSys<HostMemory>* p,TriangleMesh* mes
 }
 
 void wall_collision_triangles(ParticleSys<HostMemory>* p,BoundingBox *box, TriangleMesh* mesh){
+
+    #pragma omp parallel for
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -1077,6 +1083,7 @@ void particle_collision_cell_linked_withSort_fastUpdate(ParticleSys<HostMemory>*
 
 void particle_collision_verlet(ParticleSys<HostMemory>* p, BoundingBox *box){
 
+    #pragma omp parallel for
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -1585,14 +1592,18 @@ void checkOoB(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *tmpP, Boundin
 
 void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *tmpP, BoundingBox* box,TriangleMesh *mesh,BVH *bvh, int step){
 
+
+    #pragma omp parallel for
     for (int i=0; i<p->N*DIM; i++){
         p->f[i]=0.;
     }
 
+    #pragma omp parallel for
     for (int i=0; i<p->N*DIM; i++){
         p->mom[i]=0.;
     }
 
+    #pragma omp parallel for
     for (int i=0; i<p->N*MAX_NEI; i++){
         p->isContact[i]=0;
         p->isContactWall[i]=0;
@@ -1607,6 +1618,8 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
     //wall_collision_triangles_naive(p,mesh);
 
     /* update */
+
+    #pragma omp parallel for
     for (int i = 0; i < p->N; i++){
         if (p->isActive[i]!=1){
             continue;
@@ -1643,7 +1656,7 @@ void cpu_dem_verlet_verlet(ParticleSys<HostMemory>* p, ParticleSys<HostMemory> *
 
         /* == debug == */
         //printf("bruteForce!\n");
-       //update_neighborlist_brute(p,tmpP,box);
+        //update_neighborlist_brute(p,tmpP,box);
 
         update_neighborlist(p,tmpP,box);
         update_neighborlist_wall(p,mesh,bvh,box->skinR);

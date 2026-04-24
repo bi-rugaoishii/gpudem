@@ -1,7 +1,7 @@
 CC = nvcc
 CC_C = gcc
-ARCH = sm_70
-CFLAGS = -O3 
+ARCH = sm_70 
+CFLAGS = -O3 -Xcompiler "-Wconversion  -Werror -fopenmp -march=native"  
 GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false
 #CFLAGS = -O0 -g -G
 #CFLAGS = -O3  -pg

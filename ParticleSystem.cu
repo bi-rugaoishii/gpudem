@@ -1,5 +1,6 @@
 #include "ParticleSystem.h"
 #include "hardCodedParameters.h"
+#include "csv.h"
 #include <stdio.h>
 #include <random>
 
@@ -109,8 +110,9 @@ void copyFromDevice(ParticleSys<DeviceMemory>* d_ps, ParticleSys<HostMemory>* ps
    初期化
    ============================================================
  */
-void initializeTmpParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double k,double res)
+void initializeTmpParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double E,double res)
 {
+    double k =4./3.*(E*0.5)*sqrt(r*0.5)*sqrt(0.05*r);
     for (int i = 0; i < ps->N; i++){
         ps->x[i*DIM+0] = 0.;
         ps->x[i*DIM+1] = 0.;
@@ -184,7 +186,7 @@ void initializeTmpParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, doubl
     }
 }
 
-void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double k,double res)
+void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r,double m,double E,double res)
 {
     int max_trials = 1000; // 1粒子あたりの再配置試行回数
     int seed = 1;
@@ -197,6 +199,8 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
     ps->mass_factor = 1.0;
     ps->time_factor = 1.0;
 
+    double k =4./3.*(E*0.5)*sqrt(r*0.5)*sqrt(0.05*r);
+    printf("k= %e\n",k);
 
     if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"shuffle")==0){
 
@@ -348,8 +352,141 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
             }
         }
     }else if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"file")==0){
-        printf("to be created...");
-        abort();
+
+        printf("reading particle files\n");
+        cJSON *json_file=cJSON_GetObjectItem(json_inlet,"file");
+
+        const char *filename = cJSON_GetObjectItem(json_file,"name")->valuestring;
+        printf("filename = %s\n",filename);
+
+        /* == check if file exists == */
+        FILE* fp = fopen(filename, "r");
+        if (!fp) {
+            perror("fopen");
+            abort();
+            return;
+        }
+        fclose(fp);
+
+        io::LineReader inRead(filename);
+
+        int lineCounter =0;
+        while(char *line =inRead.next_line()){
+            lineCounter++;
+        }
+
+        lineCounter--; //skip headers
+
+
+        if(lineCounter!=ps->N){
+            printf("Number of particles mismatch with %d in file and %d in settings\n",lineCounter, ps->N);
+            abort();
+        }
+
+        io::CSVReader<6> inCSV(filename);
+        inCSV.read_header(io::ignore_no_column,"x","y","z","vx","vy","vz");
+        double x,y,z,vx,vy,vz;
+        int counter=0;
+
+        double maxx=-1.e16;
+        double maxy=-1.e16;
+        double maxz=-1.e16;
+
+        double minx=1.e16;
+        double miny=1.e16;
+        double minz=1.e16;
+
+        while(inCSV.read_row(x,y,z,vx,vy,vz)){
+
+            ps->x[counter*DIM+0]=x;
+            ps->x[counter*DIM+1]=y;
+            ps->x[counter*DIM+2]=z;
+
+            ps->v[counter*DIM+0]=vx;
+            ps->v[counter*DIM+1]=vy;
+            ps->v[counter*DIM+2]=vz;
+
+            if(maxx<x){
+                maxx=x;
+            }
+
+            if(maxy<y){
+                maxy=y;
+            }
+
+            if(maxz<z){
+                maxz=z;
+            }
+
+            if(minx>x){
+                minx=x;
+            }
+
+            if(miny>y){
+                miny=y;
+            }
+
+            if(minz>z){
+                minz=z;
+            }
+
+            counter++;
+        }
+
+        cJSON_AddNumberToObject(json_file,"minx",minx);
+        cJSON_AddNumberToObject(json_file,"miny",miny);
+        cJSON_AddNumberToObject(json_file,"minz",minz);
+        cJSON_AddNumberToObject(json_file,"maxx",maxx);
+        cJSON_AddNumberToObject(json_file,"maxy",maxy);
+        cJSON_AddNumberToObject(json_file,"maxz",maxz);
+
+        for(int i=0; i<ps->N; i++){
+            ps->r[i] = r;
+            ps->rsq[i] = ps->r[i]*ps->r[i];
+            ps->invr[i] = 1./ps->r[i];
+            ps->k[i] = k;
+            ps->m[i] = m;
+            ps->sqrtm[i] = sqrt(m);
+            ps->invm[i] = 1./m;
+            ps->etaconst[i]=-2.*log(res)*sqrt(ps->k[i]/(3.1415*3.1415+log(res)*log(res)));
+            ps->cellId[i] = -1;
+            ps->isActive[i] = 1;
+
+
+            ps->numCont[i] = 0;
+            ps->numContWall[i] = 0;
+
+            ps->angv[i*DIM+0] = 0.;
+            ps->angv[i*DIM+1] = 0.;
+            ps->angv[i*DIM+2] = 0.;
+
+            ps->anga[i*DIM+0] = 0.;
+            ps->anga[i*DIM+1] = 0.;
+            ps->anga[i*DIM+2] = 0.;
+
+            ps->moi[i] = 2./5. * ps->m[i]*ps->rsq[i];
+            ps->invmoi[i] = 1./ps->moi[i];
+
+            ps->pId[i] = i;
+
+
+            for (int j=0; j<MAX_NEI; j++){
+                ps->indHis[i*MAX_NEI+j] = -1;
+                ps->indHisWall[i*MAX_NEI+j] = -1;
+                ps->indHisWallNow[i*MAX_NEI+j] = -1;
+
+                ps->isContact[i*MAX_NEI+j] = -1;
+                ps->isContactWall[i*MAX_NEI+j] = -1;
+
+                ps->deltHisx[i*MAX_NEI+j] = 0.;
+                ps->deltHisy[i*MAX_NEI+j] = 0.;
+                ps->deltHisz[i*MAX_NEI+j] = 0.;
+                ps->deltHisxWall[i*MAX_NEI+j] = 0.;
+                ps->deltHisyWall[i*MAX_NEI+j] = 0.;
+                ps->deltHiszWall[i*MAX_NEI+j] = 0.;
+            }
+        }
+
 
     }else{
         printf("no proper input mode defined!\n");

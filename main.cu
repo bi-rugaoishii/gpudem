@@ -8,6 +8,7 @@
 #include "BoundingBox.h"
 #include "device_dem.h"
 #include "cpu_dem.h"
+#include "omp.h"
 #include "output.h"
 #include "TriangleMesh.h"
 #include "BVH.h"
@@ -29,6 +30,7 @@
 int main(){
     setvbuf(stdout,NULL,_IOLBF,0);
     setvbuf(stderr,NULL,_IONBF,0);
+    printf("OMP threads: %d\n", omp_get_num_threads());
 
     ParticleSys<HostMemory> ps;
     ParticleSys<HostMemory> tmpPs;
@@ -59,7 +61,7 @@ int main(){
     double r       = cJSON_GetObjectItem(particle0,"radius")->valuedouble;
     double res     = cJSON_GetObjectItem(particle0,"CoR")->valuedouble;
     double density = cJSON_GetObjectItem(particle0,"density")->valuedouble;
-    double k       = cJSON_GetObjectItem(particle0,"k")->valuedouble;
+    double E = cJSON_GetObjectItem(particle0,"YoungModulus")->valuedouble;
     double mu      = cJSON_GetObjectItem(particle0,"mu")->valuedouble;
     double m = density * 3.14 * r * r * r * 4. / 3.;
 
@@ -92,7 +94,7 @@ int main(){
 
     printf("allocating memory\n");
     ps.N = cJSON_GetObjectItem(json_inlet,"numParticle")->valueint;
-    printf("N=parameters %d\n",ps.N);
+    printf("N= %d\n",ps.N);
     tmpPs.N = ps.N;
     ps.mu = mu;
 
@@ -117,8 +119,8 @@ int main(){
 
 
     printf("initalizing particles\n");
-    initializeParticles(&ps,json_inlet,r,m,k,res);
-    initializeTmpParticles(&tmpPs,json_inlet,r,m,k,res); 
+    initializeParticles(&ps,json_inlet,r,m,E,res);
+    initializeTmpParticles(&tmpPs,json_inlet,r,m,E,res); 
     printf("initalizing particles done\n");
     printf("eta const[0] = %f\n",ps.etaconst[0]);
 
@@ -135,11 +137,11 @@ int main(){
 
     /* set time step */
     double timestepFactor = cJSON_GetObjectItem(json_others,"dtFactor")->valuedouble;
-    double dt = 2.*PI*sqrt(m/k)/timestepFactor;
+    double dt = 2.*PI*sqrt(m/ps.k[0])/timestepFactor; 
     printf("dt = %e\n",dt);
     double out_time = cJSON_GetObjectItem(json_others,"outputTiming")->valuedouble;
     double end_time = cJSON_GetObjectItem(json_others,"endTime")->valuedouble;
-    int outStep = floor(out_time/dt);
+    int outStep = (int)floor(out_time/dt);
     dt = out_time/(double)outStep; // chooses closest dt such that closest to initial set dt and is multiple of out_time
     printf("Outstep = %d,dt = %e\n",outStep,dt);
 
@@ -241,7 +243,7 @@ int main(){
     int blockSize =0;
     int gridSize =0;
     cudaEvent_t d_start, d_stop, d_now;
-    clock_t h_start, h_end;
+    double h_start, h_end;
     float ms;
     if(isGPUon == 1){
         blockSize = 256;
@@ -255,7 +257,7 @@ int main(){
         cudaEventCreate(&d_now);
         cudaEventRecord(d_start);
     }else{
-        h_start = clock();
+        h_start = omp_get_wtime();
     }
     #endif
 
@@ -339,9 +341,9 @@ int main(){
                     write_single_text(outdir,step,&ps,i);
                 }
                 #endif
-                h_end = clock();
-                ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
-                printf("Output step %d,current time: %f s, CPU time: %f s\n", step,(step)*dt,ms/1000.);
+                h_end = omp_get_wtime();
+                ms = (float)(h_end-h_start);
+                printf("Output step %d,current time: %f s, CPU time: %f s\n", step,(step)*dt,ms);
             }
             #endif
             #endif
@@ -355,9 +357,9 @@ int main(){
         cudaEventElapsedTime(&ms,d_start, d_stop);
         printf("GPU time: %f s\n",ms/1000.);
     }else{
-        h_end = clock();
-        ms = (double)(h_end-h_start)*1000./CLOCKS_PER_SEC;;
-        printf("CPU time: %f s\n",ms/1000.);
+        h_end = omp_get_wtime();
+        ms = (float)(h_end-h_start);
+        printf("CPU time: %f s\n",ms);
     }
 #endif
 

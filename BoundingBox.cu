@@ -1,4 +1,5 @@
 #include "BoundingBox.h"
+#include "omp.h"
 #include "ParticleSystem.h"
 
 /* =========== used for sort =========== */
@@ -390,9 +391,9 @@ void initialize_BoundingBox(ParticleSys<HostMemory> *p, BoundingBox *box,Triangl
     box->invdy = 1./box->dy;
     box->invdz = 1./box->dz;
 
-    box->sizex = ceil(box->rangex/box->dx) +2;
-    box->sizey = ceil(box->rangey/box->dy) +2;
-    box->sizez = ceil(box->rangez/box->dz) +2;
+    box->sizex = (int)ceil(box->rangex/box->dx) +2;
+    box->sizey = (int)ceil(box->rangey/box->dy) +2;
+    box->sizez = (int)ceil(box->rangez/box->dz) +2;
 
     int sizeBox= box->sizex*box->sizey*box->sizez;
     box->N= sizeBox;
@@ -600,9 +601,9 @@ void update_pList_withSort_fast(ParticleSys<HostMemory> *p, ParticleSys<HostMemo
     /* get cellId and get mortonkey*/
     for (int i=0; i<p->N; i++){
         int bi = i*DIM;
-        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        int dx = (int)floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = (int)floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = (int)floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
         p->cellx[bi+0] = dx;
         p->cellx[bi+1] = dy;
         p->cellx[bi+2] = dz;
@@ -676,9 +677,9 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
     /* get cellId and get mortonkey*/
     for (int i=0; i<p->N; i++){
         int bi=i*DIM;
-        int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        int dx = (int)floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = (int)floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = (int)floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
         p->cellx[bi+0] = dx;
         p->cellx[bi+1] = dy;
         p->cellx[bi+2] = dz;
@@ -729,13 +730,13 @@ void update_pList_withSort(ParticleSys<HostMemory> *p, ParticleSys<HostMemory> *
 
 void update_tList(BoundingBox *box, TriangleMesh *mesh){
     for (int i=0; i<mesh->nTri; i++){
-        int sx = floor((mesh->minx[i]-box->minx)*box->invdx)+1;
-        int sy = floor((mesh->miny[i]-box->miny)*box->invdy)+1;
-        int sz = floor((mesh->minz[i]-box->minz)*box->invdz)+1;
+        int sx = (int)floor((mesh->minx[i]-box->minx)*box->invdx)+1;
+        int sy = (int)floor((mesh->miny[i]-box->miny)*box->invdy)+1;
+        int sz = (int)floor((mesh->minz[i]-box->minz)*box->invdz)+1;
 
-        int ex = ceil((mesh->maxx[i]-box->minx)*box->invdx)+1;
-        int ey = ceil((mesh->maxy[i]-box->miny)*box->invdy)+1;
-        int ez = ceil((mesh->maxz[i]-box->minz)*box->invdz)+1;
+        int ex = (int)ceil((mesh->maxx[i]-box->minx)*box->invdx)+1;
+        int ey = (int)ceil((mesh->maxy[i]-box->miny)*box->invdy)+1;
+        int ez = (int)ceil((mesh->maxz[i]-box->minz)*box->invdz)+1;
 
         for (int dz=sz; dz<=ez; dz++){
             for (int dy=sy; dy<=ey; dy++){
@@ -778,9 +779,9 @@ void update_pList_fast(ParticleSys<HostMemory> *p, BoundingBox *box){
         if (p->isActive[i]!=1){
             continue;
         }
-        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        int dx = (int)floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = (int)floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = (int)floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
         p->cellx[i*DIM+0] = dx;
         p->cellx[i*DIM+1] = dy;
         p->cellx[i*DIM+2] = dz;
@@ -845,9 +846,9 @@ void update_pList(ParticleSys<HostMemory> *p, BoundingBox *box){
         if (p->isActive[i]!=1){
             continue;
         }
-        int dx = floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-        int dy = floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-        int dz = floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+        int dx = (int)floor((p->x[i*DIM+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+        int dy = (int)floor((p->x[i*DIM+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+        int dz = (int)floor((p->x[i*DIM+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
         p->cellx[i*DIM+0] = dx;
         p->cellx[i*DIM+1] = dy;
         p->cellx[i*DIM+2] = dz;
@@ -1082,9 +1083,9 @@ __global__ void dk_build_pList(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* 
 
 __device__ int d_calcCellId(ParticleSys<DeviceMemory>* p,int i, DeviceBoundingBox* box){
     int bi = i*DIM;
-    int dx = floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
-    int dy = floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
-    int dz = floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
+    int dx = (int)floor((p->x[bi+0]-box->minx)*box->invdx)+1; //+1 for ghost cell
+    int dy = (int)floor((p->x[bi+1]-box->miny)*box->invdy)+1; //+1 for ghost cell
+    int dz = (int)floor((p->x[bi+2]-box->minz)*box->invdz)+1; //+1 for ghost cell
     p->cellx[bi+0] = dx;
     p->cellx[bi+1] = dy;
     p->cellx[bi+2] = dz;

@@ -1087,7 +1087,7 @@ __global__ void k_shouldRefreshNeighborList(ParticleSys<DeviceMemory> *p, Device
 
     double distsq=vdot(del,del);
     if(distsq>threshSq){
-        p->refreshVerletFlag[0]=1;
+        atomicOr(p->refreshVerletFlag,1);
     }
 }
 

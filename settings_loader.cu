@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "cJSON.h"
 #include "settings_loader.h"
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic pop
 
 cJSON* load_json_file(const char* filename){
     FILE* fp = fopen(filename, "rb");
@@ -23,7 +26,7 @@ cJSON* load_json_file(const char* filename){
     }
 
     // 読み込み
-    fread(buffer, 1, size, fp);
+    size_t read_bytes = fread(buffer, 1, size, fp);
     buffer[size] = '\0';
     fclose(fp);
 
