@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "ParticleSystem.h"
-#include "cJSON.h"
+#include "cJSON_d.h"
 
 struct HostMemory;
 struct DeviceMemory;

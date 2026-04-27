@@ -56,7 +56,7 @@
 #pragma GCC visibility pop
 #endif
 
-#include "cJSON.h"
+#include "cJSON_d.h"
 
 /* define our own boolean type */
 #ifdef true
@@ -3203,4 +3203,40 @@ CJSON_PUBLIC(void) cJSON_free(void *object)
 {
     global_hooks.deallocate(object);
     object = NULL;
+}
+
+int get_json_int(cJSON *obj, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(obj, key);
+    if (!item || !cJSON_IsNumber(item)) {
+        fprintf(stderr, "Error: invalid or missing '%s'\n", key);
+        abort();
+    }
+    return item->valueint;
+}
+
+double get_json_double(cJSON *obj, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(obj, key);
+    if (!item || !cJSON_IsNumber(item)) {
+        fprintf(stderr, "Error: invalid or missing '%s'\n", key);
+        abort();
+    }
+    return item->valuedouble;
+}
+
+char* get_json_string(cJSON *obj, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(obj, key);
+    if (!item || !cJSON_IsObject(item)) {
+        fprintf(stderr, "Error: invalid or missing object '%s'\n", key);
+        abort();
+    }
+    return item->valuestring;
+}
+
+cJSON* get_json_object(cJSON *obj, const char *key) {
+    cJSON *item = cJSON_GetObjectItem(obj, key);
+    if (!item || !cJSON_IsObject(item)) {
+        fprintf(stderr, "Error: invalid or missing object '%s'\n", key);
+        abort();
+    }
+    return item;
 }

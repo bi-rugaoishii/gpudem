@@ -108,6 +108,7 @@ __global__ void k_collision(ParticleSys<DeviceMemory>* p, DeviceBoundingBox* box
 void device_dem_naive(ParticleSys<DeviceMemory> *p,BoundingBox *box, TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
 void device_dem_verlet_verlet_withSort(ParticleSys<DeviceMemory> *p,ParticleSys<DeviceMemory> *tmpPs, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
+
 void device_dem_verlet_verlet(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, BVH *bvh, int gridSize, int blockSize);
 
 void device_dem_verlet_triangles(ParticleSys<DeviceMemory> *p, BoundingBox *box,TriangleMesh *mesh, int gridSize, int blockSize);

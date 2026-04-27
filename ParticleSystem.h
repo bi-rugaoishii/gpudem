@@ -6,7 +6,7 @@
 #include "Vec3.h"
 #include "BoundingBox.h"
 #include "TriangleMesh.h"
-#include "cJSON.h"
+#include "cJSON_d.h"
 struct TriangleMesh;
 struct BoundingBox;
 /* ==================== Memory Structs =================== */

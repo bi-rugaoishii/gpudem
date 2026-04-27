@@ -207,14 +207,14 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
         printf("shuffling particles\n");
 
         /* == get box for shuffling == */
+        cJSON *json_shuffle = get_json_object(json_inlet,"shuffle");
 
-        cJSON *json_shuffle = cJSON_GetObjectItem(json_inlet,"shuffle");
-        double minx_shuffle = cJSON_GetObjectItem(json_shuffle,"minx")->valuedouble;
-        double miny_shuffle = cJSON_GetObjectItem(json_shuffle,"miny")->valuedouble;
-        double minz_shuffle = cJSON_GetObjectItem(json_shuffle,"minz")->valuedouble;
-        double maxx_shuffle = cJSON_GetObjectItem(json_shuffle,"maxx")->valuedouble;
-        double maxy_shuffle = cJSON_GetObjectItem(json_shuffle,"maxy")->valuedouble;
-        double maxz_shuffle = cJSON_GetObjectItem(json_shuffle,"maxz")->valuedouble;
+        double minx_shuffle = get_json_double(json_shuffle,"minx");
+        double miny_shuffle = get_json_double(json_shuffle, "miny");
+        double minz_shuffle = get_json_double(json_shuffle, "minz");
+        double maxx_shuffle = get_json_double(json_shuffle, "maxx");
+        double maxy_shuffle = get_json_double(json_shuffle, "maxy");
+        double maxz_shuffle = get_json_double(json_shuffle, "maxz");
 
         for (int i = 0; i < ps->N; i++){
             int trial = 0;
@@ -354,9 +354,9 @@ void initializeParticles(ParticleSys<HostMemory>* ps,cJSON *json_inlet, double r
     }else if(strcmp(cJSON_GetObjectItem(json_inlet,"inputMode")->valuestring,"file")==0){
 
         printf("reading particle files\n");
-        cJSON *json_file=cJSON_GetObjectItem(json_inlet,"file");
+        cJSON *json_file=get_json_object(json_inlet,"file");
 
-        const char *filename = cJSON_GetObjectItem(json_file,"name")->valuestring;
+        const char *filename =get_json_string(json_file,"name");
         printf("filename = %s\n",filename);
 
         /* == check if file exists == */

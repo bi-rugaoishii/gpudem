@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "cJSON.h"
+#include "cJSON_d.h"
 #include "settings_loader.h"
 #pragma GCC diagnostic push 
 #pragma GCC diagnostic ignored "-Wconversion"

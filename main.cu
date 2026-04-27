@@ -54,21 +54,22 @@ int main(){
     printf("jsonSettings loaded successfully!\n");
     
 
-    cJSON *particleTypes = cJSON_GetObjectItem(jsonSettings,"particleTypes");
-    cJSON *particle0 = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonSettings,"particleTypes"),"particle0");
-    cJSON *json_inlet = cJSON_GetObjectItem(jsonSettings,"inlet");
+    cJSON *particleTypes = get_json_object(jsonSettings, "particleTypes");
+    cJSON *particle0     = get_json_object(particleTypes, "particle0");
+    cJSON *json_inlet    = get_json_object(jsonSettings, "inlet");
 
-    double r       = cJSON_GetObjectItem(particle0,"radius")->valuedouble;
-    double res     = cJSON_GetObjectItem(particle0,"CoR")->valuedouble;
-    double density = cJSON_GetObjectItem(particle0,"density")->valuedouble;
-    double E = cJSON_GetObjectItem(particle0,"YoungModulus")->valuedouble;
-    double mu      = cJSON_GetObjectItem(particle0,"mu")->valuedouble;
+    double r       = get_json_double(particle0, "radius");
+    double res     = get_json_double(particle0, "CoR");
+    double density = get_json_double(particle0, "density");
+    double E       = get_json_double(particle0, "YoungModulus");
+    double mu      = get_json_double(particle0, "mu");
+
     double m = density * 3.14 * r * r * r * 4. / 3.;
 
+    cJSON *json_others = get_json_object(jsonSettings, "others");
 
-    cJSON *json_others = cJSON_GetObjectItem(jsonSettings,"others");
-    int isGPUon =  cJSON_GetObjectItem(json_others,"gpuOn")->valueint;
-    int isBruteOn =  cJSON_GetObjectItem(json_others,"bruteOn")->valueint;
+    int isGPUon   = get_json_int(json_others, "gpuOn");
+    int isBruteOn = get_json_int(json_others, "bruteOn");
     
     if(isBruteOn ==1){
         printf("BRUTE FORCE MODE!!!!USED ONLY FOR DEBUGGING PURPOSE!!!\n");
@@ -77,20 +78,6 @@ int main(){
 
     cJSON *json_walls = cJSON_GetObjectItem(jsonSettings,"walls");
 
-    /* =========== parameters ============= */
-    /*
-       double r = 0.01;
-       double res = 0.3; //CoR
-                         //double res = 0.3; //CoR
-                         double density = 1000;
-                         double m = density*3.14*r*r*r*4./3.;
-    //double k = 1.27966e5;
-    double k = 5e5;
-    double mu = 0.3;
-     */
-
-
-    //ps.N = 10000;
 
     printf("allocating memory\n");
     ps.N = cJSON_GetObjectItem(json_inlet,"numParticle")->valueint;
@@ -220,14 +207,17 @@ int main(){
     /* === Memory Allocation for gpu === */
 
     ParticleSys<DeviceMemory> d_ps;
+    ParticleSys<DeviceMemory> d_psTmp;
     d_ps.N = ps.N;
     d_ps.dt = ps.dt;
     d_ps.mu = ps.mu;
     #if USE_GPU
     if (isGPUon == 1){
         allocate(&d_ps);
+        allocate(&d_psTmp);
         printf("copying memory to device\n");
         copyToDevice(&ps,&d_ps);
+        copyToDevice(&tmpPs,&d_psTmp);
         copyToDeviceBox(&box,&ps);
         copyToDeviceBVH(&bvh,mesh.nTri);
         deviceMallocCopyTriangleMesh(&mesh);
@@ -281,7 +271,7 @@ int main(){
                 //device_dem_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
                 //device_dem_verlet_triangles(&d_ps, &box, &mesh,gridSize, blockSize);
                 device_dem_verlet_verlet(&d_ps, &box, &mesh,&bvh,gridSize, blockSize);
-                //device_dem_verlet_verlet_withSort(&d_ps,&tmpPs, &box, &mesh,&bvh,gridSize, blockSize);
+                //device_dem_verlet_verlet_withSort(&d_ps,&d_psTmp, &box, &mesh,&bvh,gridSize, blockSize);
             }
 
 

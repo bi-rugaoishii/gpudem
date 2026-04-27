@@ -367,17 +367,20 @@ ContactCache d_calc_normal_force_wall(ParticleSys<DeviceMemory> *p,int i,int j,V
 
     double eta = p->etaconst[i]*p->sqrtm[i];
     result.eta = eta;
+    
+    double k=p->k[i];
+    double r=p->r[i];
 
-    result.fn.x = -p->k[i]*del.x - eta*result.vn_rel.x;
-    result.fn.y = -p->k[i]*del.y - eta*result.vn_rel.y;
-    result.fn.z = -p->k[i]*del.z - eta*result.vn_rel.z;
+    result.fn.x = -k*del.x - eta*result.vn_rel.x;
+    result.fn.y = -k*del.y - eta*result.vn_rel.y;
+    result.fn.z = -k*del.z - eta*result.vn_rel.z;
 
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[bi+0];
-    vrot.y = p->r[i]*p->angv[bi+1];
-    vrot.z = p->r[i]*p->angv[bi+2];
+    vrot.x = r*p->angv[bi+0];
+    vrot.y = r*p->angv[bi+1];
+    vrot.z = r*p->angv[bi+2];
     vrot = vcross(vrot,n);
 
     /* calculate relative tangential velocity */
@@ -813,15 +816,19 @@ ContactCache d_calc_normal_force(ParticleSys<DeviceMemory>* p,int i,int j,Vec3 n
     double eta = p->etaconst[i]*sqrt(m_eff);
     result.eta = eta;
 
-    result.fn.x = -p->k[i]*del.x - eta*result.vn_rel.x;
-    result.fn.y = -p->k[i]*del.y - eta*result.vn_rel.y;
-    result.fn.z = -p->k[i]*del.z - eta*result.vn_rel.z;
+    double k = p->k[i];
+    double ri = p->r[i];
+    double rj = p->r[j];
+
+    result.fn.x = -k*del.x - eta*result.vn_rel.x;
+    result.fn.y = -k*del.y - eta*result.vn_rel.y;
+    result.fn.z = -k*del.z - eta*result.vn_rel.z;
 
     /* calculate relative tangential velocity */
     Vec3 vrot;
-    vrot.x = p->r[i]*p->angv[bi+0]+p->r[j]*p->angv[bj+0];
-    vrot.y = p->r[i]*p->angv[bi+1]+p->r[j]*p->angv[bj+1];
-    vrot.z = p->r[i]*p->angv[bi+2]+p->r[j]*p->angv[bj+2];
+    vrot.x = ri*p->angv[bi+0]+rj*p->angv[bj+0];
+    vrot.y = ri*p->angv[bi+1]+rj*p->angv[bj+1];
+    vrot.z = ri*p->angv[bi+2]+rj*p->angv[bj+2];
     vrot = vcross(vrot,n);
 
     Vec3 vt;
@@ -916,25 +923,38 @@ __device__ __forceinline__ void d_particle_collision_verlet(ParticleSys<DeviceMe
     int bi=i*DIM;
     int end = p->numNei[i];
     int ci = i*MAX_NEI;
+
+    double xi=p->x[bi+0];
+    double yi=p->x[bi+1];
+    double zi=p->x[bi+2];
+    double ri = p->r[i];
+    double riInv = p->invr[i];
+
+
     for (int k=0; k<end; k++){
+
         int j = p->neiList[ci+k];
+
+
+
         if(p->isActive[j]!=1){
             continue;
         }
+
         int bj=j*DIM;
 
         Vec3 del;
         /* normal points toward particle i */
-        del.x = p->x[bi+0]- p->x[bj+0];
-        del.y = p->x[bi+1]- p->x[bj+1];
-        del.z = p->x[bi+2]- p->x[bj+2];
+        del.x = xi- p->x[bj+0];
+        del.y = yi- p->x[bj+1];
+        del.z = zi- p->x[bj+2];
         double distsq = vdot(del,del);
-        double R = p->r[i]+p->r[j];
+        double R = ri+p->r[j];
 
         if (distsq<R*R){
             double dist = sqrt(distsq);
             double delMag = R-dist;
-            if (delMag*p->invr[i]*0.5>0.05){
+            if (delMag*riInv*0.5>0.05){
                 printf("overlap over 5%% with pair %d %d!!!!\n",i,j);
                 printf("overlap is %f %% with pair %d %d\n",delMag*p->invr[i]*0.5*100.,i,j);
             }

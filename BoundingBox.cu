@@ -524,7 +524,7 @@ void update_neighborlist_brute(ParticleSys<HostMemory> *p,ParticleSys<HostMemory
 
 
 void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmpPs, BoundingBox *box){
-    //update_pList_withSort_fast(p,tmpPs,box);
+//    update_pList_withSort_fast(p,tmpPs,box);
     update_pList_fast(p,box);
 
     double skinR = box->skinR;

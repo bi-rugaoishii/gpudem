@@ -298,6 +298,10 @@ CJSON_PUBLIC(char*) cJSON_SetValuestring(cJSON *object, const char *valuestring)
 /* malloc/free objects using the malloc/free functions that have been set with cJSON_InitHooks */
 CJSON_PUBLIC(void *) cJSON_malloc(size_t size);
 CJSON_PUBLIC(void) cJSON_free(void *object);
+double get_json_double(cJSON *obj, const char *key);
+int get_json_int(cJSON *obj, const char *key);
+cJSON* get_json_object(cJSON *obj, const char *key);
+char* get_json_string(cJSON *obj, const char *key);
 
 #ifdef __cplusplus
 }
