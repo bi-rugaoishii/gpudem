@@ -3,6 +3,7 @@
 #define _TRIANGLEMESH_H_
 #include "Vec3.h"
 #include "BoundingBox.h"
+#include "cJSON_d.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -185,6 +186,6 @@ void deviceMallocCopyTriangleMesh(TriangleMesh *mesh);
 
 void free_TriangleMesh(TriangleMesh* mesh,int isGPUon);
 static int count_ascii_stl_triangles(FILE* fp);
-int load_ascii_stl_double(const char* filename, TriangleMesh* mesh);
+int load_ascii_stl_double(const cJSON* filename, TriangleMesh* mesh);
 
 #endif

@@ -94,12 +94,9 @@ int main(){
 
     //const char* trianglesDir = "geometry/box.stl";
     cJSON *json_filepaths = cJSON_GetObjectItemCaseSensitive(json_walls,"filepaths");
-    int wallIndex = 0;
-    const char* trianglesDir = cJSON_GetArrayItem(json_filepaths,wallIndex)->valuestring;
-    printf("filepath is %s\n",trianglesDir);
 
     TriangleMesh mesh;
-    load_ascii_stl_double(trianglesDir,&mesh);
+    load_ascii_stl_double(json_filepaths,&mesh);
     printf("Loading Triangles done!\n");
 
 
