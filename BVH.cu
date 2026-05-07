@@ -574,6 +574,8 @@ __device__ __forceinline__ int d_sphereAABBOverlapNeighbor(ParticleSys<DeviceMem
 }
 
 void update_neighborlist_wall(ParticleSys<HostMemory> *p,TriangleMesh *mesh, BVH *bvh,double skinR){
+
+    #pragma omp parallel for
     for(int i=0; i<p->N; i++){
 
         if(p->isActive[i]!=1){

@@ -3,3 +3,5 @@ results/
 *.o
 *.log
 *.out
+*.glsl
+*.stl

@@ -2,7 +2,7 @@ CC = nvcc
 CC_C = gcc
 ARCH = sm_70 
 CFLAGS = -O3 -Xcompiler "-Wconversion  -Werror  -fopenmp"  
-GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false -lineinfo
+GPUFLAGS = -DUSE_GPU=1 -arch=$(ARCH) -fmad=false 
 #CFLAGS = -O0 -g -G
 #CFLAGS = -O3  -pg
 #CFLAGS = -O0  -g 

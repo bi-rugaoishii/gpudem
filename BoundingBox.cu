@@ -528,6 +528,8 @@ void update_neighborlist(ParticleSys<HostMemory> *p,ParticleSys<HostMemory> *tmp
     update_pList_fast(p,box);
 
     double skinR = box->skinR;
+    
+    #pragma omp parallel for
     for (int i=0; i<p->N; i++){
         if(p->isActive[i]!=1){
             continue;
@@ -766,6 +768,8 @@ void update_tList(BoundingBox *box, TriangleMesh *mesh){
 void update_pList_fast(ParticleSys<HostMemory> *p, BoundingBox *box){
 
     /* initialize */
+
+    #pragma omp parallel for
     for (int i=0; i<box->numUsedCells; i++){
         int cid = box->usedCells[i];
         box->pNum[cid] = 0;
@@ -775,6 +779,7 @@ void update_pList_fast(ParticleSys<HostMemory> *p, BoundingBox *box){
 
 
     /* get cellId*/
+    #pragma omp parallel for
     for (int i=0; i<p->N; i++){
         if (p->isActive[i]!=1){
             continue;

@@ -30,7 +30,7 @@
 int main(){
     setvbuf(stdout,NULL,_IOLBF,0);
     setvbuf(stderr,NULL,_IONBF,0);
-    printf("OMP threads: %d\n", omp_get_num_threads());
+    printf("OMP threads: %d\n", omp_get_max_threads());
 
     ParticleSys<HostMemory> ps;
     ParticleSys<HostMemory> tmpPs;
