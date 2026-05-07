@@ -204,17 +204,17 @@ int main(){
     /* === Memory Allocation for gpu === */
 
     ParticleSys<DeviceMemory> d_ps;
-    ParticleSys<DeviceMemory> d_psTmp;
+    //ParticleSys<DeviceMemory> d_psTmp;
     d_ps.N = ps.N;
     d_ps.dt = ps.dt;
     d_ps.mu = ps.mu;
     #if USE_GPU
     if (isGPUon == 1){
         allocate(&d_ps);
-        allocate(&d_psTmp);
+     //   allocate(&d_psTmp);
         printf("copying memory to device\n");
         copyToDevice(&ps,&d_ps);
-        copyToDevice(&tmpPs,&d_psTmp);
+      //  copyToDevice(&tmpPs,&d_psTmp);
         copyToDeviceBox(&box,&ps);
         copyToDeviceBVH(&bvh,mesh.nTri);
         deviceMallocCopyTriangleMesh(&mesh);
